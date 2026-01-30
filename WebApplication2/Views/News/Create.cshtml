@@ -1,0 +1,90 @@
+﻿@model WebApplication2.Models.News
+
+@{
+    ViewData["Title"] = "إضافة خبر جديد";
+}
+
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-success text-white">
+            <h4 class="mb-0">
+                <i class="bi bi-plus-circle me-2"></i> إضافة خبر جديد
+            </h4>
+        </div>
+
+        <div class="card-body">
+            <form asp-action="Create" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+
+                <!-- عنوان الخبر -->
+                <div class="mb-3">
+                    <label asp-for="Title" class="form-label fw-bold">
+                        <span class="text-danger">*</span> عنوان الخبر
+                    </label>
+                    <input asp-for="Title" class="form-control"
+                           placeholder="اكتب عنوان الخبر هنا..."
+                           required />
+                    <span asp-validation-for="Title" class="text-danger"></span>
+                </div>
+
+                <!-- محتوى الخبر -->
+                <div class="mb-3">
+                    <label asp-for="Content" class="form-label fw-bold">
+                        <span class="text-danger">*</span> محتوى الخبر
+                    </label>
+                    <textarea asp-for="Content"
+                              class="form-control"
+                              rows="10"
+                              placeholder="اكتب محتوى الخبر بالكامل هنا..."
+                              required></textarea>
+                    <span asp-validation-for="Content" class="text-danger"></span>
+                </div>
+
+                <!-- صورة الخبر -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">صورة الخبر (اختياري)</label>
+                    <input type="file"
+                           name="ImageFile"
+                           class="form-control"
+                           accept="image/*"
+                           onchange="previewImage(event)" />
+                    <div class="form-text">يمكنك رفع صورة للخبر (JPG, PNG, GIF)</div>
+                </div>
+
+                <!-- معاينة الصورة -->
+                <div class="mb-3 text-center">
+                    <img id="imagePreview"
+                         src="#"
+                         class="img-fluid rounded d-none"
+                         style="max-height: 200px;" />
+                </div>
+
+                <!-- أزرار -->
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle me-1"></i> حفظ الخبر
+                    </button>
+                    <a asp-action="Index" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> رجوع للقائمة
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        function previewImage(event) {
+            const img = document.getElementById('imagePreview');
+            if (event.target.files && event.target.files[0]) {
+                img.src = URL.createObjectURL(event.target.files[0]);
+                img.classList.remove('d-none');
+            } else {
+                img.classList.add('d-none');
+            }
+        }
+    </script>
+}

@@ -1,0 +1,32 @@
+﻿@model IEnumerable<WebApplication2.Models.News>
+
+@{
+    ViewData["Title"] = "الأخبار";
+}
+
+<div class="container py-5">
+    <h1 class="text-center mb-5">الأخبار</h1>
+
+    <div class="row">
+        @foreach (var news in Model)
+        {
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    @if (!string.IsNullOrEmpty(news.ImageUrl))
+                    {
+                        <img src="@news.ImageUrl" class="card-img-top" alt="@news.Title" style="height: 200px; object-fit: cover;">
+                    }
+                    <div class="card-body">
+                        <h5 class="card-title">@news.Title</h5>
+                        <p class="card-text">
+                            @(news.Content.Length > 150 ? news.Content.Substring(0, 150) + "..." : news.Content)
+                        </p>
+                        <a href="@Url.Action("NewsDetails", "News", new { id = news.Id })" class="btn btn-primary">
+                            قراءة المزيد
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

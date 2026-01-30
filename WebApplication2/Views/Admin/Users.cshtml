@@ -1,0 +1,118 @@
+﻿@model List<WebApplication2.Models.Identify>
+@{
+    ViewData["Title"] = "مستخدمي محافظتي";
+    Layout = "_Layout";
+    var managedGovernorate = ViewBag.ManagedGovernorate as string;
+    var userCount = ViewBag.UserCount as int? ?? 0;
+}
+
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-success text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-users"></i>
+                مستخدمي محافظتي
+                <span class="badge bg-light text-dark">@userCount</span>
+            </h4>
+            <small class="opacity-75">المحافظة: <strong>@managedGovernorate</strong></small>
+        </div>
+        <div class="card-body">
+            @if (!string.IsNullOrEmpty(ViewBag.ErrorMessage))
+            {
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                    @ViewBag.ErrorMessage
+                </div>
+            }
+
+            @if (Model.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>الاسم الكامل</th>
+                                <th>الهاتف</th>
+                                <th>الجنس</th>
+                                <th>العنوان</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < Model.Count; i++)
+                            {
+                                var user = Model[i];
+                                <tr>
+                                    <td>@(i + 1)</td>
+                                    <td>
+                                        <strong>@user.FullName</strong>
+                                        @if (user.User?.EmailConfirmed == true)
+                                        {
+                                            <span class="badge bg-success ms-2">مفعل</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger ms-2">معطل</span>
+                                        }
+                                    </td>
+                                    <td>@user.PhoneNumber</td>
+                                    <td>
+                                        @if (user.Gender == "ذكر")
+                                        {
+                                            <span class="badge bg-info">ذكر</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-pink">أنثى</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (user.Address != null)
+                                        {
+                                            <div>
+                                                <small>
+                                                    @user.Address.Governorate -
+                                                    @user.Address.District
+                                                    @if (!string.IsNullOrEmpty(user.Address.Street))
+                                                    {
+                                                        <br>
+
+                                                        @user.Address.Street
+                                                    }
+                                                </small>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">غير محدد</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <a href="@Url.Action("Details", new { id = user.Id })"
+                                           class="btn btn-sm btn-info">
+                                            <i class="fas fa-eye"></i> تفاصيل
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <i class="fas fa-users-slash fa-3x text-muted mb-3"></i>
+                    <h5>لا يوجد مستخدمين في محافظتك بعد</h5>
+                    <p class="text-muted">المحافظة: @managedGovernorate</p>
+                </div>
+            }
+        </div>
+        <div class="card-footer">
+            <a href="@Url.Action("Dashboard", "Admin")" class="btn btn-primary">
+                <i class="fas fa-chart-bar"></i> عرض الإحصائيات
+            </a>
+        </div>
+    </div>
+</div>

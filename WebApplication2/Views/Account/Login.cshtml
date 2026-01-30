@@ -1,0 +1,170 @@
+﻿@model LoginViewModel
+@{
+    ViewData["Title"] = "تسجيل الدخول";
+    Layout = "_Layout";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow border-0">
+                <!-- رأس البطاقة -->
+                <div class="card-header bg-primary text-white text-center py-3">
+                    <h3 class="mb-0">🔐 تسجيل الدخول</h3>
+                    <p class="mb-0 small">أدخل بيانات حسابك للدخول</p>
+                </div>
+
+                <!-- محتوى البطاقة -->
+                <div class="card-body p-4">
+                    <!-- رسائل الترحيب أو الأخطاء -->
+                    @if (ViewBag.ShowWelcomeMessage == true)
+                    {
+                        <div class="alert alert-success mb-4">
+                            <h5><i class="bi bi-check-circle"></i> تهانينا!</h5>
+                            <p class="mb-0">تم تأكيد حسابك بنجاح. يمكنك الآن تسجيل الدخول.</p>
+                        </div>
+                    }
+
+                    @if (TempData["SuccessMessage"] != null)
+                    {
+                        <div class="alert alert-success mb-3">
+                            <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+                        </div>
+                    }
+
+                    @if (TempData["ErrorMessage"] != null)
+                    {
+                        <div class="alert alert-danger mb-3">
+                            <i class="bi bi-exclamation-triangle"></i> @TempData["ErrorMessage"]
+                        </div>
+                    }
+
+                    <!-- نموذج تسجيل الدخول -->
+                    <form asp-action="Login" method="post" asp-route-returnurl="@ViewData["ReturnUrl"]">
+                        @Html.AntiForgeryToken()
+
+                        <div class="mb-3">
+                            <label asp-for="Email" class="form-label">
+                                <i class="bi bi-envelope me-1"></i> البريد الإلكتروني
+                            </label>
+                            <input asp-for="Email" class="form-control form-control-lg" placeholder="example@email.com" />
+                            <span asp-validation-for="Email" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Password" class="form-label">
+                                <i class="bi bi-lock me-1"></i> كلمة المرور
+                            </label>
+                            <input asp-for="Password" type="password" class="form-control form-control-lg" placeholder="********" />
+                            <span asp-validation-for="Password" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input asp-for="RememberMe" class="form-check-input" />
+                            <label asp-for="RememberMe" class="form-check-label">تذكرني</label>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-box-arrow-in-right me-2"></i> تسجيل الدخول
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- روابط إضافية -->
+                    <div class="text-center mt-4 pt-3 border-top">
+                        <p class="text-muted mb-2">ليس لديك حساب؟</p>
+                        <a href="@Url.Action("Index", "Register")" class="btn btn-outline-success btn-lg">
+                            <i class="bi bi-person-plus me-1"></i> إنشاء حساب جديد
+                        </a>
+                    </div>
+
+                    <div class="text-center mt-3">
+                        <a href="#" class="text-decoration-none small">نسيت كلمة المرور؟</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- معلومات عن الخطوات -->
+            <div class="mt-4">
+                <div class="alert alert-info">
+                    <h6 class="alert-heading"><i class="bi bi-info-circle"></i> كيفية تسجيل الدخول:</h6>
+                    <ol class="mb-0 ps-3">
+                        <li>أدخل البريد الإلكتروني وكلمة المرور الخاصة بك</li>
+                        <li>اضغط على زر "تسجيل الدخول"</li>
+                        <li>إذا نسيت كلمة المرور استخدم رابط الاستعادة</li>
+                        <li>بعد الدخول يمكنك تعديل بياناتك الشخصية</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSS لتحسين التصميم -->
+<style>
+    /* تحسين رأس البطاقة */
+    .card-header h3 {
+        font-size: 24px;
+    }
+
+    /* تحسين الحقول */
+    .card-body input.form-control-lg {
+        border-radius: 8px;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* تحسين الأزرار */
+    .btn-lg {
+        border-radius: 8px;
+    }
+
+    /* تحسين العناوين داخل التنبيهات */
+    .alert-heading {
+        font-weight: 600;
+    }
+
+    /* استجابة الجوال */
+    @@media (max-width: 768px) {
+        .container
+
+    {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+
+    .card-header h3 {
+        font-size: 20px;
+    }
+
+    .card-body input.form-control-lg {
+        font-size: 14px;
+    }
+
+    .btn-lg {
+        font-size: 14px;
+    }
+
+    }
+
+    @@media (max-width: 576px) {
+        .card-header h3
+
+    {
+        font-size: 18px;
+    }
+
+    .card-body input.form-control-lg {
+        font-size: 13px;
+    }
+
+    .btn-lg {
+        font-size: 13px;
+    }
+
+    }
+</style>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

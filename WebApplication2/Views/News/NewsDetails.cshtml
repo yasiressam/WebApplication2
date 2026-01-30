@@ -1,0 +1,112 @@
+﻿@model WebApplication2.Models.News
+
+@{
+    ViewData["Title"] = Model.Title;
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <!-- زر العودة -->
+            <div class="mb-4">
+                <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-right me-2"></i> العودة للأخبار
+                </a>
+            </div>
+
+            <!-- عنوان الخبر -->
+            <h1 class="display-5 fw-bold text-primary mb-3">@Model.Title</h1>
+
+            <!-- تاريخ ونشر الخبر -->
+            <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+                <div>
+                    <small class="text-muted">
+                        <i class="bi bi-calendar3 me-2"></i>
+                        نشر في: @Model.CreatedAt.ToString("dd MMMM yyyy - hh:mm tt")
+                    </small>
+                </div>
+                <div>
+                    <button class="btn btn-outline-primary btn-sm me-2" onclick="window.print()">
+                        <i class="bi bi-printer"></i>
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="shareNews()">
+                        <i class="bi bi-share"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- صورة الخبر -->
+            @if (!string.IsNullOrEmpty(Model.ImageUrl))
+            {
+                <div class="text-center mb-5">
+                    <img src="@Model.ImageUrl"
+                         class="img-fluid rounded shadow"
+                         alt="@Model.Title"
+                         style="max-height: 500px; width: 100%; object-fit: cover;" />
+                </div>
+            }
+
+            <!-- محتوى الخبر -->
+            <div class="news-content mb-5" style="font-size: 1.2rem; line-height: 1.8; text-align: justify;">
+                @Html.Raw(Model.Content.Replace("\n", "<br><br>"))
+            </div>
+
+           
+
+           
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .news-content {
+            font-family: 'Tajawal', sans-serif;
+        }
+
+            .news-content h2, .news-content h3 {
+                color: #2c3e50;
+                margin-top: 30px;
+                margin-bottom: 20px;
+                font-weight: bold;
+            }
+
+            .news-content p {
+                margin-bottom: 25px;
+            }
+
+            .news-content img {
+                max-width: 100%;
+                height: auto;
+                border-radius: 8px;
+                margin: 20px 0;
+            }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        // مشاركة الخبر
+        function shareNews() {
+            if (navigator.share) {
+                navigator.share({
+                    title: '@Model.Title',
+                    text: '@(Model.Content.Length > 100 ? Model.Content.Substring(0, 100) + "..." : Model.Content)',
+                    url: window.location.href
+                });
+            } else {
+                // نسخ الرابط
+                navigator.clipboard.writeText(window.location.href).then(() => {
+                    alert('تم نسخ رابط الخبر!');
+                });
+            }
+        }
+
+        // طباعة الصفحة
+        window.onbeforeprint = function() {
+            document.querySelectorAll('.btn, .d-print-none').forEach(el => {
+                el.style.display = 'none';
+            });
+        };
+    </script>
+}

@@ -1,0 +1,273 @@
+﻿@model IEnumerable<WebApplication2.Models.SuperAdminUserVM>
+@{
+    ViewData["Title"] = "إدارة المستخدمين";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4">
+    <h3 class="mb-4">👑 إدارة المستخدمين</h3>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <i class="fas fa-users"></i> جميع المستخدمين
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>البريد</th>
+                        <th>الاسم</th>
+                        <th>المحافظة</th>
+                        <th>الأدوار</th>
+                        <th>الحالة</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in Model)
+                    {
+                        <tr>
+                            <td>@user.Email</td>
+                            <td>@user.FullName</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(user.ManagedGovernorate))
+                                {
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="fas fa-crown"></i> @user.ManagedGovernorate
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span>@user.Governorate</span>
+                                }
+                            </td>
+                            <td>
+                                @if (user.Roles.Contains("SuperAdmin"))
+                                {
+                                    <span class="badge bg-danger">سوبر أدمن</span>
+                                }
+                                else if (user.Roles.Contains("Admin"))
+                                {
+                                    <span class="badge bg-success">أدمن</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">مستخدم</span>
+                                }
+                            </td>
+                            <td>
+                                @if (user.IsActive)
+                                {
+                                    <span class="badge bg-success">مفعل</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">معطل</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button class="btn btn-primary edit-roles-btn"
+                                            data-user-id="@user.Id"
+                                            data-user-email="@user.Email">
+                                        <i class="fas fa-user-cog"></i> تعديل
+                                    </button>
+
+                                    <button class="btn @(user.IsActive ? "btn-warning" : "btn-success") toggle-status-btn"
+                                            data-user-id="@user.Id">
+                                        <i class="fas fa-power-off"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal لتعديل الأدوار -->
+<div class="modal fade" id="rolesModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">تعديل أدوار المستخدم</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalUserInfo" class="alert alert-info">
+                    <!-- سيتم تعبئته بالجافاسكريبت -->
+                </div>
+
+                <input type="hidden" id="modalUserId">
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">اختر الأدوار:</label>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="roleUser" value="User">
+                        <label class="form-check-label" for="roleUser">
+                            مستخدم عادي
+                        </label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="roleAdmin" value="Admin">
+                        <label class="form-check-label" for="roleAdmin">
+                            أدمن (سيرى مستخدمي محافظته فقط)
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="roleSuperAdmin" value="SuperAdmin">
+                        <label class="form-check-label" for="roleSuperAdmin">
+                            سوبر أدمن (يرى جميع المستخدمين)
+                        </label>
+                    </div>
+                </div>
+
+                <div class="alert alert-warning" id="adminWarning" style="display: none;">
+                    <i class="fas fa-info-circle"></i>
+                    سيتم تعيينه أدمن على محافظته الحالية تلقائيًا
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-primary" id="saveRolesBtn">حفظ التغييرات</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // متغيرات عامة
+        let selectedUserId = '';
+        let selectedUserEmail = '';
+
+        // 1. عند النقر على زر تعديل الأدوار
+        document.querySelectorAll('.edit-roles-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                selectedUserId = this.dataset.userId;
+                selectedUserEmail = this.dataset.userEmail;
+
+                // عرض معلومات المستخدم
+                document.getElementById('modalUserInfo').innerHTML =
+                    `<i class="fas fa-user"></i> <strong>${selectedUserEmail}</strong>`;
+
+                document.getElementById('modalUserId').value = selectedUserId;
+
+                // جلب الأدوار الحالية
+                try {
+                    const response = await fetch(`/SuperAdmin/GetUserRoles?userId=${selectedUserId}`);
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // تفريغ الخانات
+                        ['User', 'Admin', 'SuperAdmin'].forEach(role => {
+                            document.getElementById(`role${role}`).checked = false;
+                        });
+
+                        // تحديد الأدوار الحالية
+                        if (data.data.CurrentRoles) {
+                            data.data.CurrentRoles.forEach(role => {
+                                const checkbox = document.getElementById(`role${role}`);
+                                if (checkbox) checkbox.checked = true;
+                            });
+                        }
+                    }
+                } catch (error) {
+                    console.error('خطأ:', error);
+                    alert('حدث خطأ في جلب البيانات');
+                }
+
+                // إظهار/إخفاء تحذير الأدمن
+                document.getElementById('roleAdmin').addEventListener('change', function() {
+                    document.getElementById('adminWarning').style.display =
+                        this.checked ? 'block' : 'none';
+                });
+
+                // فتح الـ Modal
+                const modal = new bootstrap.Modal(document.getElementById('rolesModal'));
+                modal.show();
+            });
+        });
+
+        // 2. عند النقر على زر حفظ الأدوار
+        document.getElementById('saveRolesBtn').addEventListener('click', async function() {
+            if (!selectedUserId) {
+                alert('❌ لم يتم اختيار مستخدم');
+                return;
+            }
+
+            // جمع الأدوار المختارة
+            const selectedRoles = [];
+            if (document.getElementById('roleUser').checked) selectedRoles.push('User');
+            if (document.getElementById('roleAdmin').checked) selectedRoles.push('Admin');
+            if (document.getElementById('roleSuperAdmin').checked) selectedRoles.push('SuperAdmin');
+
+            // إرسال الطلب
+            try {
+                const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+                const response = await fetch('/SuperAdmin/UpdateUserRoles', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        UserId: selectedUserId,
+                        SelectedRoles: selectedRoles
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ ' + result.message);
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            } catch (error) {
+                console.error('خطأ:', error);
+                alert('❌ حدث خطأ في الاتصال');
+            }
+        });
+
+        // 3. عند النقر على زر تفعيل/تعطيل
+        document.querySelectorAll('.toggle-status-btn').forEach(btn => {
+            btn.addEventListener('click', async function() {
+                const userId = this.dataset.userId;
+                const isCurrentlyActive = this.closest('tr').querySelector('.badge').textContent === 'مفعل';
+                const action = isCurrentlyActive ? 'تعطيل' : 'تفعيل';
+
+                if (confirm(`هل تريد ${action} هذا المستخدم؟`)) {
+                    try {
+                        const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+                        const response = await fetch('/SuperAdmin/ToggleUserStatus', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'RequestVerificationToken': csrfToken
+                            },
+                            body: JSON.stringify({ UserId: userId })
+                        });
+
+                        const result = await response.json();
+
+                        if (result.success) {
+                            alert('✅ ' + result.message);
+                            setTimeout(() => window.location.reload(), 1000);
+                        } else {
+                            alert('❌ ' + result.message);
+                        }
+                    } catch (error) {
+                        console.error('خطأ:', error);
+                        alert('❌ حدث خطأ');
+                    }
+                }
+            });
+        });
+    </script>
+}

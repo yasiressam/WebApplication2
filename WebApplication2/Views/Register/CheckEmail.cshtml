@@ -1,0 +1,73 @@
+﻿@{
+    ViewData["Title"] = "تحقق من بريدك الإلكتروني";
+    Layout = "_Layout";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow border-0">
+                <div class="card-header bg-success text-white text-center py-4">
+                    <i class="bi bi-envelope-check display-4 mb-3"></i>
+                    <h2 class="mb-0">تم إرسال رابط التأكيد!</h2>
+                </div>
+
+                <div class="card-body p-5 text-center">
+                    <div class="alert alert-success mb-4">
+                        <h5 class="alert-heading">
+                            <i class="bi bi-check-circle"></i> شكراً لتسجيلك!
+                        </h5>
+                        <p class="mb-0">
+                            تم إرسال رابط تأكيد الحساب إلى:
+                            <strong class="text-dark">@ViewBag.Email</strong>
+                        </p>
+                    </div>
+
+                    <div class="steps mb-5">
+                        <h5 class="mb-3">📋 ماذا بعد؟</h5>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <div class="step-number bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center"
+                                     style="width: 40px; height: 40px;">
+                                    1
+                                </div>
+                                <p class="mt-2 mb-0 small">افتح بريدك الإلكتروني</p>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="step-number bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center"
+                                     style="width: 40px; height: 40px;">
+                                    2
+                                </div>
+                                <p class="mt-2 mb-0 small">اضغط على رابط التأكيد</p>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="step-number bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center"
+                                     style="width: 40px; height: 40px;">
+                                    3
+                                </div>
+                                <p class="mt-2 mb-0 small">سجل الدخول بحسابك</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <h6><i class="bi bi-exclamation-triangle"></i> ملاحظة مهمة</h6>
+                        <p class="mb-0">
+                            إذا لم تجد الإيميل في صندوق الوارد خلال 5 دقائق، يرجى التحقق من مجلد
+                            <strong>الرسائل غير المرغوب فيها (Spam)</strong>.
+                        </p>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-top">
+                        <a href="https://mail.google.com" target="_blank" class="btn btn-success me-2">
+                            <i class="bi bi-google"></i> فتح Gmail
+                        </a>
+                        <a href="@Url.Action("Index")" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> العودة للتسجيل
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

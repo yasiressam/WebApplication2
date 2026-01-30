@@ -1,0 +1,136 @@
+﻿@model WebApplication2.Models.News
+
+@{
+    ViewData["Title"] = "تعديل الخبر";
+}
+
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-warning text-white">
+            <h4 class="mb-0">
+                <i class="bi bi-pencil-square me-2"></i> تعديل الخبر
+            </h4>
+        </div>
+
+        <div class="card-body">
+            <form asp-action="Edit" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="Id" />
+
+                <!-- عنوان الخبر -->
+                <div class="mb-3">
+                    <label asp-for="Title" class="form-label fw-bold">
+                        <span class="text-danger">*</span> عنوان الخبر
+                    </label>
+                    <input asp-for="Title" class="form-control"
+                           placeholder="اكتب عنوان الخبر هنا..."
+                           required />
+                    <span asp-validation-for="Title" class="text-danger"></span>
+                </div>
+
+                <!-- محتوى الخبر -->
+                <div class="mb-3">
+                    <label asp-for="Content" class="form-label fw-bold">
+                        <span class="text-danger">*</span> محتوى الخبر
+                    </label>
+                    <textarea asp-for="Content"
+                              class="form-control"
+                              rows="10"
+                              placeholder="اكتب محتوى الخبر بالكامل هنا..."
+                              required></textarea>
+                    <span asp-validation-for="Content" class="text-danger"></span>
+                </div>
+
+                <!-- الصورة الحالية -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">الصورة الحالية</label>
+                    @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                    {
+                        <div class="mb-3">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <img src="@Model.ImageUrl" class="img-thumbnail" />
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="form-check mt-2">
+                                        <input class="form-check-input" type="checkbox" id="removeImage" name="removeImage" value="true">
+                                        <label class="form-check-label text-danger" for="removeImage">
+                                            <i class="bi bi-trash"></i> حذف الصورة الحالية
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block mt-2">اختر هذه الخانة إذا أردت حذف الصورة الحالية</small>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-muted">لا توجد صورة مرفقة حالياً</p>
+                    }
+                </div>
+
+                <!-- رفع صورة جديدة -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">تغيير الصورة (اختياري)</label>
+                    <input type="file"
+                           name="ImageFile"
+                           class="form-control"
+                           accept="image/*"
+                           onchange="previewImage(event)" />
+                    <div class="form-text">اختياري - يمكنك رفع صورة جديدة للخبر</div>
+                </div>
+
+                <!-- معاينة الصورة الجديدة -->
+                <div class="mb-3 text-center">
+                    <img id="imagePreview"
+                         src="#"
+                         class="img-fluid rounded d-none"
+                         style="max-height: 200px;" />
+                </div>
+
+                <!-- معلومات الخبر -->
+                <div class="alert alert-info mb-4">
+                    <h6><i class="bi bi-info-circle"></i> معلومات الخبر:</h6>
+                    <p class="mb-1">
+                        <strong>تم الإنشاء:</strong> @Model.CreatedAt.ToString("yyyy-MM-dd HH:mm")
+                    </p>
+                    @if (!string.IsNullOrEmpty(Model.AuthorId))
+                    {
+                        <p class="mb-0">
+                            <strong>معرف الكاتب:</strong> @Model.AuthorId
+                        </p>
+                    }
+                </div>
+
+                <!-- أزرار -->
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle me-1"></i> حفظ التعديلات
+                    </button>
+                    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-info">
+                        <i class="bi bi-eye me-1"></i> عرض التفاصيل
+                    </a>
+                    <a asp-action="Index" class="btn btn-secondary">
+                        <i class="bi bi-x-circle me-1"></i> إلغاء
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        function previewImage(event) {
+            const img = document.getElementById('imagePreview');
+            if (event.target.files && event.target.files[0]) {
+                img.src = URL.createObjectURL(event.target.files[0]);
+                img.classList.remove('d-none');
+            } else {
+                img.classList.add('d-none');
+            }
+        }
+    </script>
+}

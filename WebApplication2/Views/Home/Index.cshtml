@@ -1,0 +1,279 @@
+﻿@model IEnumerable<WebApplication2.Models.News>
+
+<h2>أحدث الأخبار</h2>
+
+<!-- ===== السلايدر البسيط ===== -->
+<div id="newsSlider" style="max-width: 1000px; margin: 0 auto; position: relative; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; border: 1px solid #ddd;">
+    @if (Model.Any())
+    {
+        @for (int i = 0; i < Model.Count(); i++)
+        {
+            var news = Model.ElementAt(i);
+            <div class="slider-item @(i==0 ? "active" : "")" style="@(i==0 ? "" : "display:none;")">
+                <!-- النص فوق الصورة -->
+                <div class="slider-text" style="padding: 15px; background: white; border-bottom: 1px solid #eee;">
+                    <h3 style="font-size: 22px; font-weight: bold; margin-bottom: 8px; color: #333; text-align: right;">@news.Title</h3>
+                    <p style="font-size: 15px; line-height: 1.5; margin: 0; color: #666; text-align: right;">
+                        @(news.Content.Length > 100 ? news.Content.Substring(0, 100) + "..." : news.Content)
+                    </p>
+                </div>
+
+                <!-- الصورة -->
+                <div class="slider-image-container" style="height: 350px; display: flex; align-items: center; justify-content: center; background: #f8f9fa;">
+                    @if (!string.IsNullOrEmpty(news.ImageUrl))
+                    {
+                        <img src="@news.ImageUrl"
+                             alt="@news.Title"
+                             style="max-width: 95%; max-height: 95%; object-fit: contain;"
+                             onerror="handleImageError(this, '@news.Title')">
+                    }
+                    else
+                    {
+                        <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#666;">
+                            <i class="bi bi-image" style="font-size: 50px; margin-bottom: 15px;"></i>
+                            <h4>@news.Title</h4>
+                        </div>
+                    }
+                </div>
+
+                <!-- المعلومات -->
+                <div class="slider-info" style="padding: 12px 15px; background: #f8f9fa; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #666; font-size: 14px;">
+                        <i class="bi bi-calendar"></i>
+                        @news.CreatedAt.ToString("yyyy-MM-dd")
+                    </span>
+                   <a href="@Url.Action("NewsDetails", "News", new { id = news.Id })" 
+   class="btn btn-sm btn-primary">قراءة المزيد</a>
+                </div>
+            </div>
+        }
+
+        <!-- أزرار التحكم -->
+        <button class="slider-prev" type="button" onclick="prevSlide()" style="position:absolute; top:50%; right:10px; transform:translateY(-50%); background:rgba(0,0,0,0.5); color:white; border:none; width:40px; height:40px; border-radius:50%; cursor:pointer; z-index: 10;">
+            <i class="bi bi-chevron-right"></i>
+        </button>
+        <button class="slider-next" type="button" onclick="nextSlide()" style="position:absolute; top:50%; left:10px; transform:translateY(-50%); background:rgba(0,0,0,0.5); color:white; border:none; width:40px; height:40px; border-radius:50%; cursor:pointer; z-index: 10;">
+            <i class="bi bi-chevron-left"></i>
+        </button>
+
+        <!-- مؤشرات -->
+        <div class="slider-dots" style="text-align:center; padding:10px; background: #f8f9fa;">
+            @for (int i = 0; i < Model.Count(); i++)
+            {
+                <button type="button" onclick="goToSlide(@i)"
+                        style="width:12px; height:12px; border-radius:50%; border:none; background:@(i==0?"#0d6efd":"#ddd"); margin:0 5px; cursor:pointer;"></button>
+            }
+        </div>
+    }
+    else
+    {
+        <div style="text-align:center; padding:40px; background:#f8f9fa; border-radius:10px;">
+            <i class="bi bi-newspaper" style="font-size:50px; color:#adb5bd;"></i>
+            <h4 style="margin-top:15px; color:#666;">لا توجد أخبار</h4>
+        </div>
+    }
+</div>
+
+
+
+<style>
+    /* تصميم بسيط للأيقونات */
+    .icon-card {
+        padding: 20px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+        .icon-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            background: #f8f9fa;
+        }
+
+        .icon-card i {
+            font-size: 40px;
+            color: #0d6efd;
+            margin-bottom: 15px;
+        }
+
+        .icon-card h5 {
+            color: #333;
+            font-weight: 600;
+        }
+
+    /* تصميم متجاوب للسلايدر */
+    @@media (max-width: 768px) {
+        #newsSlider {
+            max-width: 95% !important;
+        }
+
+        .slider-image-container {
+            height: 250px !important;
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .slider-image-container {
+            height: 200px !important;
+        }
+
+        .slider-text h3 {
+            font-size: 18px !important;
+        }
+
+        .slider-text p {
+            font-size: 14px !important;
+        }
+
+        .slider-prev, .slider-next {
+            width: 35px !important;
+            height: 35px !important;
+            font-size: 14px !important;
+        }
+    }
+</style>
+
+<script>
+    // دالة لمعالجة أخطاء الصور
+    function handleImageError(img, title) {
+        console.log('خطأ في تحميل الصورة:', title);
+        img.style.display = 'none';
+        const container = img.parentElement;
+
+        if (container) {
+            container.innerHTML = `
+                <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#666;">
+                    <i class="bi bi-image" style="font-size:50px;margin-bottom:15px;"></i>
+                    <h4>${title}</h4>
+                    <p style="margin-top:10px;font-size:14px;">لا توجد صورة</p>
+                </div>
+            `;
+        }
+    }
+
+    // المتغيرات للسلايدر
+    let currentSlide = 0;
+    let slideInterval;
+    let slides = [];
+    let dots = [];
+
+    // تهيئة السلايدر عند تحميل الصفحة
+    document.addEventListener('DOMContentLoaded', function() {
+        initSlider();
+    });
+
+    // تهيئة السلايدر
+    function initSlider() {
+        slides = document.querySelectorAll('.slider-item');
+        dots = document.querySelectorAll('.slider-dots button');
+
+        console.log('عدد الصور:', slides.length);
+
+        if (slides.length > 0) {
+            showSlide(currentSlide);
+            startAutoSlide();
+        }
+    }
+
+    // عرض سلايد معين
+    function showSlide(index) {
+        console.log('عرض السلايد:', index);
+
+        // إخفاء جميع السلايدات
+        slides.forEach(slide => {
+            slide.style.display = 'none';
+        });
+
+        // إزالة النشاط من جميع المؤشرات
+        dots.forEach(dot => {
+            dot.style.backgroundColor = '#ddd';
+        });
+
+        // عرض السلايد الحالي
+        if (slides[index]) {
+            slides[index].style.display = 'block';
+        }
+
+        // تفعيل المؤشر الحالي
+        if (dots[index]) {
+            dots[index].style.backgroundColor = '#0d6efd';
+        }
+
+        currentSlide = index;
+    }
+
+    // السلايد التالي
+    function nextSlide() {
+        if (slides.length === 0) return;
+
+        clearInterval(slideInterval);
+        let nextIndex = (currentSlide + 1) % slides.length;
+        showSlide(nextIndex);
+        startAutoSlide();
+    }
+
+    // السلايد السابق
+    function prevSlide() {
+        if (slides.length === 0) return;
+
+        clearInterval(slideInterval);
+        let prevIndex = (currentSlide - 1 + slides.length) % slides.length;
+        showSlide(prevIndex);
+        startAutoSlide();
+    }
+
+    // الذهاب إلى سلايد محدد
+    function goToSlide(index) {
+        if (slides.length === 0) return;
+
+        clearInterval(slideInterval);
+        if (index >= 0 && index < slides.length) {
+            showSlide(index);
+            startAutoSlide();
+        }
+    }
+
+    // بدء التبديل التلقائي
+    function startAutoSlide() {
+        if (slides.length > 1) {
+            clearInterval(slideInterval);
+            slideInterval = setInterval(() => {
+                nextSlide();
+            }, 4000); // التبديل كل 4 ثواني
+        }
+    }
+
+    // إضافة إمكانية السحب على الأجهزة المحمولة
+    document.addEventListener('DOMContentLoaded', function() {
+        const slider = document.getElementById('newsSlider');
+
+        if (slider) {
+            let startX = 0;
+            let endX = 0;
+
+            slider.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+            });
+
+            slider.addEventListener('touchend', (e) => {
+                endX = e.changedTouches[0].clientX;
+                handleSwipe(startX, endX);
+            });
+        }
+    });
+
+    function handleSwipe(startX, endX) {
+        const swipeThreshold = 50;
+
+        if (startX - endX > swipeThreshold) {
+            // سحب لليسار = التالي
+            nextSlide();
+        } else if (endX - startX > swipeThreshold) {
+            // سحب لليمين = السابق
+            prevSlide();
+        }
+    }
+</script>

@@ -1,0 +1,114 @@
+﻿@model WebApplication2.Models.RegisterViewModel
+
+@{
+    ViewData["Title"] = "إنشاء مستخدم جديد";
+}
+
+<div class="row justify-content-center mt-4">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-user-plus"></i> إنشاء مستخدم جديد</h4>
+            </div>
+            <div class="card-body">
+                @if (TempData["SuccessMessage"] != null)
+                {
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        @TempData["SuccessMessage"]
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                }
+
+                <form asp-action="CreateUserByAdmin" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Email" class="form-label"></label>
+                        <input asp-for="Email" class="form-control" placeholder="example@email.com" />
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Password" class="form-label"></label>
+                        <input asp-for="Password" class="form-control" />
+                        <small class="form-text text-muted">يجب أن تكون كلمة المرور على الأقل 6 أحرف</small>
+                        <span asp-validation-for="Password" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="ConfirmPassword" class="form-label"></label>
+                        <input asp-for="ConfirmPassword" class="form-control" />
+                        <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Role" class="form-label"></label>
+                        <select asp-for="Role" class="form-control">
+                            <option value="User">مستخدم عادي</option>
+                            @if (User.IsInRole(WebApplication2.Models.clsRoles.SuperAdmin))
+                            {
+                                <option value="Admin">أدمن</option>
+                            }
+                        </select>
+                        <span asp-validation-for="Role" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group mb-3" id="governorateField" style="display: none;">
+                        <label asp-for="ManagedGovernorate" class="form-label"></label>
+                        <select asp-for="ManagedGovernorate" class="form-control">
+                            <option value="">-- اختر المحافظة --</option>
+                            @foreach (var gov in ViewBag.Governorates)
+                            {
+                                <option value="@gov">@gov</option>
+                            }
+                        </select>
+                        <span asp-validation-for="ManagedGovernorate" class="text-danger"></span>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-user-plus"></i> إنشاء المستخدم
+                        </button>
+
+                        @if (User.IsInRole(WebApplication2.Models.clsRoles.SuperAdmin))
+                        {
+                            <a asp-action="Users" asp-controller="SuperAdmin" class="btn btn-secondary">
+                                <i class="fas fa-users"></i> العودة إلى المستخدمين
+                            </a>
+                        }
+                        else
+                        {
+                            <a asp-action="Users" asp-controller="Admin" class="btn btn-secondary">
+                                <i class="fas fa-users"></i> العودة إلى المستخدمين
+                            </a>
+                        }
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-muted">
+                <small>
+                    <i class="fas fa-info-circle"></i>
+                    المستخدم الجديد سيكون بإمكانه تسجيل الدخول مباشرة بدون حاجة لتأكيد البريد الإلكتروني.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+            // إظهار/إخفاء حقل المحافظة عند تغيير الدور
+            $('#Role').change(function() {
+                if ($(this).val() === 'Admin') {
+                    $('#governorateField').show();
+                } else {
+                    $('#governorateField').hide();
+                }
+            });
+
+            // تشغيل عند التحميل
+            $('#Role').trigger('change');
+        });
+    </script>
+}

@@ -7,19 +7,164 @@
 }
 
 <div class="container mt-4">
-    <div class="card">
-        <div class="card-header bg-success text-white">
-            <h4 class="mb-0">
-                <i class="fas fa-users"></i>
-                مستخدمي محافظتي
-                <span class="badge bg-light text-dark">@userCount</span>
-            </h4>
-            <small class="opacity-75">المحافظة: <strong>@managedGovernorate</strong></small>
+    <!-- بطاقات الإحصائيات -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">المستخدمين</h5>
+                            <h2 class="mb-0">@userCount</h2>
+                        </div>
+                        <i class="fas fa-users fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">المفعلين</h5>
+                            <h2 class="mb-0">@Model.Count(u => u.User?.EmailConfirmed == true)</h2>
+                        </div>
+                        <i class="fas fa-user-check fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">الذكور</h5>
+                            <h2 class="mb-0">@Model.Count(u => u.Gender == "ذكر")</h2>
+                        </div>
+                        <i class="fas fa-male fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-pink text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">الإناث</h5>
+                            <h2 class="mb-0">@Model.Count(u => u.Gender == "أنثى")</h2>
+                        </div>
+                        <i class="fas fa-female fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- بطاقة البحث والفلاتر -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">
+                <i class="fas fa-filter"></i> البحث والتصفية
+            </h5>
         </div>
         <div class="card-body">
+            <form method="get" action="@Url.Action("Users", "Admin")" id="filterForm">
+                <div class="row">
+                    <!-- البحث بالاسم -->
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-user"></i> البحث بالاسم:
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text"
+                                   class="form-control"
+                                   name="nameFilter"
+                                   id="searchInput"
+                                   placeholder="اكتب اسم المستخدم..."
+                                   value="@Context.Request.Query["nameFilter"]">
+                        </div>
+                    </div>
+
+                    <!-- تصفية بالجنس -->
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-venus-mars"></i> الجنس:
+                        </label>
+                        <select class="form-select" name="genderFilter" id="genderFilter">
+                            <option value="">جميع الأجناس</option>
+                            <option value="ذكر" selected="@(Context.Request.Query["genderFilter"] == "ذكر")">
+                                ذكر
+                            </option>
+                            <option value="أنثى" selected="@(Context.Request.Query["genderFilter"] == "أنثى")">
+                                أنثى
+                            </option>
+                        </select>
+                    </div>
+
+                    <!-- تصفية بالحالة -->
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-user-check"></i> حالة الحساب:
+                        </label>
+                        <select class="form-select" name="statusFilter" id="statusFilter">
+                            <option value="">جميع الحالات</option>
+                            <option value="active" selected="@(Context.Request.Query["statusFilter"] == "active")">
+                                مفعل فقط
+                            </option>
+                            <option value="inactive" selected="@(Context.Request.Query["statusFilter"] == "inactive")">
+                                معطل فقط
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row mt-3">
+                    <div class="col-md-8">
+                        <div class="btn-group" role="group">
+                            <button type="submit" class="btn btn-primary" id="applyFilter">
+                                <i class="fas fa-filter"></i> تطبيق الفلتر
+                            </button>
+                            <a href="@Url.Action("Users", "Admin")" class="btn btn-secondary" id="clearFilter">
+                                <i class="fas fa-times"></i> مسح الفلاتر
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="alert alert-info mb-0 py-2">
+                            <i class="fas fa-info-circle"></i>
+                            عرض <span id="filteredCount" class="fw-bold">@Model.Count</span> من @Model.Count مستخدم
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- بطاقة المستخدمين -->
+    <div class="card">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <div>
+                <i class="fas fa-users"></i> مستخدمي محافظة
+                <span class="fw-bold">@managedGovernorate</span>
+                <span class="badge bg-light text-dark ms-2">@Model.Count</span>
+            </div>
+            <div>
+                <span class="badge bg-warning text-dark me-2">
+                    <i class="fas fa-map-marker-alt"></i> @managedGovernorate
+                </span>
+            </div>
+        </div>
+
+        <div class="card-body p-0">
             @if (!string.IsNullOrEmpty(ViewBag.ErrorMessage))
             {
-                <div class="alert alert-danger">
+                <div class="alert alert-danger m-3">
                     <i class="fas fa-exclamation-circle"></i>
                     @ViewBag.ErrorMessage
                 </div>
@@ -28,59 +173,82 @@
             @if (Model.Any())
             {
                 <div class="table-responsive">
-                    <table class="table table-bordered table-hover">
+                    <table class="table table-hover mb-0" id="usersTable">
                         <thead class="table-light">
                             <tr>
-                                <th>#</th>
-                                <th>الاسم الكامل</th>
-                                <th>الهاتف</th>
-                                <th>الجنس</th>
-                                <th>العنوان</th>
-                                <th>الإجراءات</th>
+                                <th style="width: 5%;">#</th>
+                                <th style="width: 25%;">الاسم الكامل</th>
+                                <th style="width: 15%;">الهاتف</th>
+                                <th style="width: 15%;">الجنس</th>
+                                <th style="width: 20%;">العنوان</th>
+                                <th style="width: 10%;">الحالة</th>
+                                <th style="width: 10%;">الإجراءات</th>
                             </tr>
                         </thead>
                         <tbody>
                             @for (int i = 0; i < Model.Count; i++)
                             {
                                 var user = Model[i];
-                                <tr>
-                                    <td>@(i + 1)</td>
+                                <tr data-user data-index="@(i + 1)"
+                                    data-name="@user.FullName.ToLower()"
+                                    data-phone="@user.PhoneNumber"
+                                    data-gender="@user.Gender"
+                                    data-status="@(user.User?.EmailConfirmed == true ? "active" : "inactive")"
+                                    data-district="@user.Address?.District?.ToLower()">
+                                    <td class="text-muted">@(i + 1)</td>
                                     <td>
-                                        <strong>@user.FullName</strong>
-                                        @if (user.User?.EmailConfirmed == true)
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar me-2">
+                                                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
+                                                     style="width: 32px; height: 32px;">
+                                                    @user.FullName[0].ToString().ToUpper()
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold">@user.FullName</div>
+                                                @if (!string.IsNullOrEmpty(user.LastName))
+                                                {
+                                                    <small class="text-muted">@user.LastName</small>
+                                                }
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold">@user.PhoneNumber</div>
+                                        @if (user.User != null)
                                         {
-                                            <span class="badge bg-success ms-2">مفعل</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge bg-danger ms-2">معطل</span>
+                                            <small class="text-muted">
+                                                @user.User.Email
+                                            </small>
                                         }
                                     </td>
-                                    <td>@user.PhoneNumber</td>
                                     <td>
                                         @if (user.Gender == "ذكر")
                                         {
-                                            <span class="badge bg-info">ذكر</span>
+                                            <span class="badge bg-info">
+                                                <i class="fas fa-male"></i> ذكر
+                                            </span>
                                         }
                                         else
                                         {
-                                            <span class="badge bg-pink">أنثى</span>
+                                            <span class="badge bg-pink">
+                                                <i class="fas fa-female"></i> أنثى
+                                            </span>
                                         }
                                     </td>
                                     <td>
                                         @if (user.Address != null)
                                         {
                                             <div>
-                                                <small>
-                                                    @user.Address.Governorate -
+                                                <small class="fw-bold">@user.Address.Governorate</small>
+                                                <div class="text-muted small">
                                                     @user.Address.District
                                                     @if (!string.IsNullOrEmpty(user.Address.Street))
                                                     {
                                                         <br>
-
                                                         @user.Address.Street
                                                     }
-                                                </small>
+                                                </div>
                                             </div>
                                         }
                                         else
@@ -89,10 +257,28 @@
                                         }
                                     </td>
                                     <td>
-                                        <a href="@Url.Action("Details", new { id = user.Id })"
-                                           class="btn btn-sm btn-info">
-                                            <i class="fas fa-eye"></i> تفاصيل
-                                        </a>
+                                        @if (user.User?.EmailConfirmed == true)
+                                        {
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check-circle"></i> مفعل
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-times-circle"></i> معطل
+                                            </span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="@Url.Action("Details", "Admin", new { id = user.Id })"
+                                               class="btn btn-outline-info"
+                                               title="عرض التفاصيل">
+                                                <i class="fas fa-eye"></i>
+                                                <span class="d-none d-md-inline"> عرض</span>
+                                            </a>
+                                        </div>
                                     </td>
                                 </tr>
                             }
@@ -105,14 +291,304 @@
                 <div class="text-center py-5">
                     <i class="fas fa-users-slash fa-3x text-muted mb-3"></i>
                     <h5>لا يوجد مستخدمين في محافظتك بعد</h5>
-                    <p class="text-muted">المحافظة: @managedGovernorate</p>
+                    <p class="text-muted">
+                        <i class="fas fa-map-marker-alt"></i> المحافظة: @managedGovernorate
+                    </p>
+                    @if (!string.IsNullOrEmpty(Context.Request.Query["nameFilter"]) ||
+                   !string.IsNullOrEmpty(Context.Request.Query["genderFilter"]) ||
+                   !string.IsNullOrEmpty(Context.Request.Query["statusFilter"]))
+                    {
+                        <a href="@Url.Action("Users", "Admin")" class="btn btn-primary">
+                            <i class="fas fa-redo"></i> عرض جميع المستخدمين
+                        </a>
+                    }
                 </div>
             }
         </div>
-        <div class="card-footer">
-            <a href="@Url.Action("Dashboard", "Admin")" class="btn btn-primary">
-                <i class="fas fa-chart-bar"></i> عرض الإحصائيات
-            </a>
-        </div>
+
+        @if (Model.Any())
+        {
+            <div class="card-footer">
+                <div class="row align-items-center">
+                    <div class="col-md-6">
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination pagination-sm mb-0" id="pagination">
+                                <!-- سيتم إنشاء ترقيم الصفحات بالجافاسكريبت -->
+                            </ul>
+                        </nav>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="text-muted">
+                            <i class="fas fa-chart-bar"></i>
+                            <span id="currentRange">1-@(Model.Count > 10 ? 10 : Model.Count)</span> من @Model.Count
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
     </div>
 </div>
+
+@section Styles {
+    <style>
+        /* تنسيقات الأزرار */
+        .btn-group .btn {
+            border-radius: 4px;
+            margin: 0 2px;
+            transition: all 0.3s ease;
+        }
+
+            .btn-group .btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }
+
+        .btn-outline-info:hover {
+            background-color: #17a2b8;
+            color: white;
+        }
+
+        /* تنسيق الجدول */
+        .table-hover tbody tr:hover {
+            background-color: rgba(0, 123, 255, 0.05);
+            cursor: pointer;
+        }
+
+        .avatar {
+            display: inline-flex;
+        }
+
+        /* تنسيق البطاقات */
+        .card {
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* تنسيق الأيقونات */
+        .fa-3x {
+            font-size: 2.5rem;
+        }
+
+        /* تنسيق الباجات */
+        .badge {
+            padding: 0.5em 0.8em;
+            font-weight: 500;
+        }
+
+        .bg-pink {
+            background-color: #e83e8c !important;
+            color: white !important;
+        }
+
+        /* تأثير عند النقر على الصف */
+        tr[data-user] {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+            tr[data-user]:hover {
+                background-color: #f8f9fa !important;
+            }
+
+            tr[data-user]:active {
+                background-color: #e9ecef !important;
+            }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        // متغيرات عامة
+        let currentPage = 1;
+        const rowsPerPage = 10;
+        let filteredRows = [];
+
+        // تهيئة الفلتر
+        function initializeFilter() {
+            const allRows = document.querySelectorAll('#usersTable tbody tr[data-user]');
+            filteredRows = Array.from(allRows);
+
+            // إذا كان هناك فلتر من URL، نطبقه
+            const urlParams = new URLSearchParams(window.location.search);
+            const nameFilter = urlParams.get('nameFilter');
+            const genderFilter = urlParams.get('genderFilter');
+            const statusFilter = urlParams.get('statusFilter');
+
+            if (nameFilter || genderFilter || statusFilter) {
+                applyFilter();
+            } else {
+                updateTable();
+            }
+        }
+
+        // تطبيق الفلتر (عميل)
+        function applyFilter() {
+            const searchText = document.getElementById('searchInput').value.toLowerCase();
+            const genderFilter = document.getElementById('genderFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+
+            const allRows = document.querySelectorAll('#usersTable tbody tr[data-user]');
+            filteredRows = Array.from(allRows).filter(row => {
+                const name = row.dataset.name;
+                const gender = row.dataset.gender;
+                const status = row.dataset.status;
+
+                // البحث بالاسم
+                if (searchText && !name.includes(searchText)) {
+                    return false;
+                }
+
+                // فلتر الجنس
+                if (genderFilter && gender !== genderFilter) {
+                    return false;
+                }
+
+                // فلتر الحالة
+                if (statusFilter) {
+                    if (statusFilter === 'active' && status !== 'active') return false;
+                    if (statusFilter === 'inactive' && status !== 'inactive') return false;
+                }
+
+                return true;
+            });
+
+            currentPage = 1;
+            updateTable();
+        }
+
+        // تحديث الجدول
+        function updateTable() {
+            const allRows = document.querySelectorAll('#usersTable tbody tr[data-user]');
+
+            // إخفاء جميع الصفوف
+            allRows.forEach(row => row.style.display = 'none');
+
+            // حساب بداية ونهاية الصفوف للصفحة الحالية
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = startIndex + rowsPerPage;
+            const currentRows = filteredRows.slice(startIndex, endIndex);
+
+            // عرض الصفوف للصفحة الحالية
+            currentRows.forEach((row, index) => {
+                row.style.display = '';
+                // تحديث رقم التسلسل
+                row.querySelector('td:first-child').textContent = startIndex + index + 1;
+            });
+
+            // تحديث العداد
+            document.getElementById('filteredCount').textContent = filteredRows.length;
+
+            // تحديث نطاق العرض
+            const rangeStart = filteredRows.length > 0 ? startIndex + 1 : 0;
+            const rangeEnd = Math.min(endIndex, filteredRows.length);
+            document.getElementById('currentRange').textContent = `${rangeStart}-${rangeEnd}`;
+
+            // تحديث الترقيم
+            updatePagination();
+        }
+
+        // تحديث الترقيم
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+
+            if (totalPages <= 1) return;
+
+            // زر السابق
+            const prevLi = document.createElement('li');
+            prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+            prevLi.innerHTML = `<a class="page-link" href="#" data-page="${currentPage - 1}">السابق</a>`;
+            pagination.appendChild(prevLi);
+
+            // أرقام الصفحات
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+            if (endPage - startPage + 1 < maxVisiblePages) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageLi = document.createElement('li');
+                pageLi.className = `page-item ${currentPage === i ? 'active' : ''}`;
+                pageLi.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+                pagination.appendChild(pageLi);
+            }
+
+            // زر التالي
+            const nextLi = document.createElement('li');
+            nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+            nextLi.innerHTML = `<a class="page-link" href="#" data-page="${currentPage + 1}">التالي</a>`;
+            pagination.appendChild(nextLi);
+
+            // إضافة مستمعي الأحداث
+            pagination.querySelectorAll('.page-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const page = parseInt(this.dataset.page);
+                    if (page >= 1 && page <= totalPages && page !== currentPage) {
+                        currentPage = page;
+                        updateTable();
+                    }
+                });
+            });
+        }
+
+        // تطبيق الفلتر عند الضغط على Enter
+        document.getElementById('searchInput').addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                applyFilter();
+            }
+        });
+
+        // تطبيق الفلتر عند تغيير القوائم
+        document.getElementById('genderFilter').addEventListener('change', applyFilter);
+        document.getElementById('statusFilter').addEventListener('change', applyFilter);
+
+        // زر تطبيق الفلتر
+        document.getElementById('applyFilter').addEventListener('click', function(e) {
+            e.preventDefault();
+            applyFilter();
+        });
+
+        // عند النقر على صف الجدول (للانتقال للتفاصيل)
+        document.querySelectorAll('#usersTable tbody tr[data-user]').forEach(row => {
+            row.addEventListener('click', function(e) {
+                // منع الانتقال إذا كان النقر على زر
+                if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A' ||
+                    e.target.closest('button') || e.target.closest('a')) {
+                    return;
+                }
+
+                const detailsBtn = this.querySelector('a[href*="Details"]');
+                if (detailsBtn) {
+                    window.location.href = detailsBtn.href;
+                }
+            });
+        });
+
+        // 5. إضافة تأثير عند التمرير على الأزرار
+        document.querySelectorAll('.btn-group .btn').forEach(btn => {
+            btn.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-2px)';
+            });
+
+            btn.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+
+        // تهيئة الفلتر عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeFilter();
+        });
+    </script>
+}

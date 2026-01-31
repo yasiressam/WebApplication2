@@ -75,10 +75,8 @@ namespace WebApplication2.Controllers
 
                     var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                     var encodedToken = WebUtility.UrlEncode(token);
-
                     var loginUrl = Url.Action("Login", "Account", null,
                         protocol: Request.Scheme, host: Request.Host.Value);
-
                     var callbackUrl = Url.Action(
                         "ConfirmEmail",
                         "Register",
@@ -213,31 +211,83 @@ namespace WebApplication2.Controllers
                 return RedirectToAction("Login", "Account");
             }
 
+            var user = await _userManager.GetUserAsync(User);
+            var roles = await _userManager.GetRolesAsync(user);
+
             var existingProfile = await _context.Identifies
                 .Include(i => i.Address)
                 .FirstOrDefaultAsync(i => i.UserId == userId);
 
             if (existingProfile != null)
             {
-                TempData["InfoMessage"] = "ملفك الشخصي مكتمل بالفعل.";
-                return RedirectToAction("Index", "Home");
+                // إذا كان الملف موجوداً، نملأ النموذج بالبيانات الحالية
+                var model = new PersonalProfileViewModel
+                {
+                    UserId = userId,
+                    // بيانات Identify
+                    FullName = existingProfile.FullName ?? "",
+                    LastName = existingProfile.LastName ?? "",
+                    MotherName = existingProfile.MotherName ?? "",
+                    DateOfBirth = existingProfile.Date,
+                    Gender = existingProfile.Gender ?? "ذكر",
+                    MozakeName = existingProfile.MozakeName ?? "",
+                    Education = existingProfile.Education ?? "",
+                    Specialization = existingProfile.Specialization ?? "",
+                    PhoneNumber = existingProfile.PhoneNumber ?? "",
+                    IdentityCardN = existingProfile.IdentityCardN,
+                    IdentityDate = existingProfile.identityDate,
+                    RationN = existingProfile.RationN,
+                    RationCenter = existingProfile.RationCenter,
+
+                    // بيانات Address
+                    Governorate = existingProfile.Address?.Governorate ?? "بغداد",
+                    District = existingProfile.Address?.District ?? "",
+                    SubDistrict = existingProfile.Address?.SubDistrict ?? "",
+                    Alley = existingProfile.Address?.Alley ?? "",
+                    Street = existingProfile.Address?.Street ?? "",
+                    House = existingProfile.Address?.House ?? "",
+                    NearestPoint = existingProfile.Address?.NearestPoint ?? "",
+
+                    // بيانات للعرض فقط
+                    Email = user.Email,
+                    UserRole = roles.FirstOrDefault() ?? "User",
+                    IsEmailConfirmed = user.EmailConfirmed,
+                    RegistrationDate = existingProfile.Date,
+
+                    // قوائم الاختيار
+                    Governorates = GetGovernorates(),
+                    Genders = new List<string> { "ذكر", "أنثى" },
+                    Educations = GetEducations()
+                };
+
+                return View(model);
             }
 
-            var model = new PersonalProfileViewModel
+            // إذا لم يكن الملف موجوداً، ننشئ نموذجاً جديداً
+            var newModel = new PersonalProfileViewModel
             {
                 UserId = userId,
-                // تعيين قيم افتراضية واضحة
+                // قيم افتراضية
                 FullName = "",
                 DateOfBirth = DateTime.Now.AddYears(-20),
                 Gender = "ذكر",
                 PhoneNumber = "",
-                IdentityCardN = 100000, // قيمة ابتدائية صحيحة
+                IdentityCardN = 100000,
                 IdentityDate = DateTime.Now,
                 Governorate = "بغداد",
-                Governorates = GetGovernorates()
+
+                // بيانات للعرض فقط
+                Email = user.Email,
+                UserRole = roles.FirstOrDefault() ?? "User",
+                IsEmailConfirmed = user.EmailConfirmed,
+
+                // قوائم الاختيار
+                Governorates = GetGovernorates(),
+                Genders = new List<string> { "ذكر", "أنثى" },
+                Educations = GetEducations()
             };
 
-            return View(model);
+            return View(newModel);
         }
 
         // POST: /Register/CompleteProfile
@@ -246,16 +296,12 @@ namespace WebApplication2.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CompleteProfile(PersonalProfileViewModel model)
         {
-            _logger.LogInformation("=== 🚀 بدء حفظ الملف الشخصي ===");
+            _logger.LogInformation("=== 🚀 بدء حفظ الملف الشخصي الكامل ===");
 
-            // تسجيل جميع القيم المرسلة
-            _logger.LogInformation($"المستخدم: {model.UserId}");
-            _logger.LogInformation($"الاسم: {model.FullName}");
-            _logger.LogInformation($"الهاتف: {model.PhoneNumber}");
-            _logger.LogInformation($"المحافظة: {model.Governorate}");
-            _logger.LogInformation($"رقم البطاقة: {model.IdentityCardN}");
-            _logger.LogInformation($"تاريخ الميلاد: {model.DateOfBirth}");
-            _logger.LogInformation($"تاريخ البطاقة: {model.IdentityDate}");
+            // تعبئة القوائم في حالة وجود أخطاء
+            model.Governorates = GetGovernorates();
+            model.Genders = new List<string> { "ذكر", "أنثى" };
+            model.Educations = GetEducations();
 
             // 🔥 التحقق المفصل من ModelState
             if (!ModelState.IsValid)
@@ -285,7 +331,6 @@ namespace WebApplication2.Controllers
                 ViewBag.ValidationErrors = errors;
                 ViewBag.ErrorMessage = "يوجد أخطاء في البيانات المدخلة. يرجى تصحيحها.";
 
-                model.Governorates = GetGovernorates();
                 return View(model);
             }
 
@@ -309,63 +354,122 @@ namespace WebApplication2.Controllers
 
                 _logger.LogInformation("📦 بدء حفظ البيانات في قاعدة البيانات...");
 
-                // 1. حفظ العنوان
-                var address = new Address
+                // التحقق إذا كان الملف موجوداً مسبقاً (للتحديث)
+                var existingIdentify = await _context.Identifies
+                    .Include(i => i.Address)
+                    .FirstOrDefaultAsync(i => i.UserId == model.UserId);
+
+                if (existingIdentify != null)
                 {
-                    Governorate = model.Governorate ?? "غير محدد",
-                    District = model.District,
-                    SubDistrict = model.SubDistrict,
-                    Alley = model.Alley,
-                    Street = model.Street,
-                    House = model.House,
-                    NearestPoint = model.NearestPoint
-                };
+                    // تحديث البيانات الحالية
+                    _logger.LogInformation("🔄 تحديث البيانات الحالية...");
 
-                _logger.LogInformation($"📌 عنوان جديد: {address.Governorate}");
-                _context.Addresses.Add(address);
-                await _context.SaveChangesAsync();
-                _logger.LogInformation($"✅ تم حفظ العنوان، ID: {address.Id}");
+                    // تحديث بيانات Identify
+                    existingIdentify.FullName = model.FullName;
+                    existingIdentify.LastName = model.LastName;
+                    existingIdentify.MotherName = model.MotherName;
+                    existingIdentify.Date = model.DateOfBirth;
+                    existingIdentify.Gender = model.Gender;
+                    existingIdentify.MozakeName = model.MozakeName;
+                    existingIdentify.Education = model.Education;
+                    existingIdentify.Specialization = model.Specialization;
+                    existingIdentify.PhoneNumber = model.PhoneNumber;
+                    existingIdentify.IdentityCardN = model.IdentityCardN;
+                    existingIdentify.identityDate = model.IdentityDate;
+                    existingIdentify.RationN = model.RationN;
+                    existingIdentify.RationCenter = model.RationCenter;
 
-                // 2. حفظ الملف الشخصي
-                var identify = new Identify
+                    // تحديث أو إنشاء العنوان
+                    if (existingIdentify.Address != null)
+                    {
+                        existingIdentify.Address.Governorate = model.Governorate;
+                        existingIdentify.Address.District = model.District;
+                        existingIdentify.Address.SubDistrict = model.SubDistrict;
+                        existingIdentify.Address.Alley = model.Alley;
+                        existingIdentify.Address.Street = model.Street;
+                        existingIdentify.Address.House = model.House;
+                        existingIdentify.Address.NearestPoint = model.NearestPoint;
+                    }
+                    else
+                    {
+                        var address = new Address
+                        {
+                            Governorate = model.Governorate,
+                            District = model.District,
+                            SubDistrict = model.SubDistrict,
+                            Alley = model.Alley,
+                            Street = model.Street,
+                            House = model.House,
+                            NearestPoint = model.NearestPoint
+                        };
+                        _context.Addresses.Add(address);
+                        await _context.SaveChangesAsync();
+                        existingIdentify.AddressId = address.Id;
+                    }
+
+                    _context.Identifies.Update(existingIdentify);
+                }
+                else
                 {
-                    FullName = model.FullName,
-                    LastName = model.LastName,
-                    MotherName = model.MotherName,
-                    Date = model.DateOfBirth,
-                    Gender = model.Gender,
-                    MozakeName = model.MozakeName,
-                    Education = model.Education,
-                    Specialization = model.Specialization,
-                    PhoneNumber = model.PhoneNumber,
-                    IdentityCardN = model.IdentityCardN,
-                    identityDate = model.IdentityDate,
-                    RationN = model.RationN,
-                    RationCenter = model.RationCenter,
-                    UserId = user.Id,
-                    AddressId = address.Id
-                };
+                    // إنشاء بيانات جديدة
+                    _logger.LogInformation("➕ إنشاء بيانات جديدة...");
 
-                _logger.LogInformation($"📌 ملف شخصي جديد: {identify.FullName}");
-                _context.Identifies.Add(identify);
-                await _context.SaveChangesAsync();
-                _logger.LogInformation($"✅ تم حفظ الملف الشخصي، ID: {identify.Id}");
+                    // 1. حفظ العنوان
+                    var address = new Address
+                    {
+                        Governorate = model.Governorate,
+                        District = model.District,
+                        SubDistrict = model.SubDistrict,
+                        Alley = model.Alley,
+                        Street = model.Street,
+                        House = model.House,
+                        NearestPoint = model.NearestPoint
+                    };
+
+                    _logger.LogInformation($"📌 عنوان جديد: {address.Governorate}");
+                    _context.Addresses.Add(address);
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation($"✅ تم حفظ العنوان، ID: {address.Id}");
+
+                    // 2. حفظ الملف الشخصي
+                    var identify = new Identify
+                    {
+                        FullName = model.FullName,
+                        LastName = model.LastName,
+                        MotherName = model.MotherName,
+                        Date = model.DateOfBirth,
+                        Gender = model.Gender,
+                        MozakeName = model.MozakeName,
+                        Education = model.Education,
+                        Specialization = model.Specialization,
+                        PhoneNumber = model.PhoneNumber,
+                        IdentityCardN = model.IdentityCardN,
+                        identityDate = model.IdentityDate,
+                        RationN = model.RationN,
+                        RationCenter = model.RationCenter,
+                        UserId = user.Id,
+                        AddressId = address.Id
+                    };
+
+                    _logger.LogInformation($"📌 ملف شخصي جديد: {identify.FullName}");
+                    _context.Identifies.Add(identify);
+                }
 
                 // 3. تحديث الهاتف في Identity
                 if (!string.IsNullOrEmpty(model.PhoneNumber) && user.PhoneNumber != model.PhoneNumber)
                 {
                     user.PhoneNumber = model.PhoneNumber;
                     var updateResult = await _userManager.UpdateAsync(user);
-
                     if (updateResult.Succeeded)
                     {
                         _logger.LogInformation($"✅ تم تحديث رقم الهاتف: {model.PhoneNumber}");
                     }
                 }
 
+                await _context.SaveChangesAsync();
                 _logger.LogInformation("🎉 تم حفظ جميع البيانات بنجاح!");
 
-                TempData["SuccessMessage"] = "✅ تم إكمال ملفك الشخصي بنجاح! يمكنك الآن استخدام الموقع.";
+                TempData["SuccessMessage"] = "✅ تم حفظ ملفك الشخصي بنجاح!";
                 return RedirectToAction("Index", "Home");
             }
             catch (DbUpdateException dbEx)
@@ -386,7 +490,6 @@ namespace WebApplication2.Controllers
             }
 
             // في حالة الخطأ
-            model.Governorates = GetGovernorates();
             return View(model);
         }
 
@@ -397,6 +500,15 @@ namespace WebApplication2.Controllers
                 "بغداد", "الأنبار", "بابل", "البصرة", "ذي قار", "القادسية",
                 "ديالى", "دهوك", "أربيل", "كربلاء", "كركوك", "ميسان",
                 "المثنى", "النجف", "نينوى", "صلاح الدين", "السليمانية", "واسط"
+            };
+        }
+
+        private List<string> GetEducations()
+        {
+            return new List<string>
+            {
+                "ابتدائي", "متوسط", "إعدادي", "ثانوي",
+                "دبلوم", "بكالوريوس", "ماجستير", "دكتوراه"
             };
         }
 

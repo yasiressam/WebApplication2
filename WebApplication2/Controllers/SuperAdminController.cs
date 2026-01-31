@@ -223,6 +223,73 @@ namespace WebApplication2.Controllers
             }
         }
 
+        // GET: عرض تفاصيل مستخدم (للسوبر أدمن)
+        public async Task<IActionResult> UserDetails(string id)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(id))
+                {
+                    TempData["ErrorMessage"] = "معرف المستخدم مطلوب";
+                    return RedirectToAction(nameof(Users));
+                }
+
+                // الحصول على المستخدم من Identity
+                var user = await _userManager.FindByIdAsync(id);
+                if (user == null)
+                {
+                    TempData["ErrorMessage"] = "المستخدم غير موجود";
+                    return RedirectToAction(nameof(Users));
+                }
+
+                // الحصول على الملف الشخصي
+                var userProfile = await _context.Identifies
+                    .Include(i => i.Address)
+                    .FirstOrDefaultAsync(i => i.UserId == id);
+
+                // الحصول على الأدوار
+                var roles = await _userManager.GetRolesAsync(user);
+
+                // ViewModel للعرض
+                var viewModel = new SuperAdminUserDetailsVM
+                {
+                    UserId = user.Id,
+                    Email = user.Email,
+                    PhoneNumber = user.PhoneNumber ?? "",
+                    IsActive = user.EmailConfirmed,
+                    Roles = string.Join(", ", roles),
+
+                    // المعلومات الشخصية
+                    FullName = userProfile?.FullName ?? "غير مكتمل",
+                    LastName = userProfile?.LastName ?? "",
+                    MotherName = userProfile?.MotherName ?? "",
+                    DateOfBirth = userProfile?.Date ?? DateTime.MinValue,
+                    Gender = userProfile?.Gender ?? "غير محدد",
+                    MozakeName = userProfile?.MozakeName ?? "",
+                    Education = userProfile?.Education ?? "",
+                    Specialization = userProfile?.Specialization ?? "",
+                    IdentityCardN = userProfile?.IdentityCardN ?? 0,
+                    IdentityDate = userProfile?.identityDate ?? DateTime.MinValue,
+                    RationN = userProfile?.RationN ?? 0,
+                    RationCenter = userProfile?.RationCenter ?? 0,
+
+                    // معلومات العنوان
+                    Address = userProfile?.Address,
+
+                    // المحافظة المدارة (إذا كان أدمن)
+                    ManagedGovernorate = userProfile?.ManagedGovernorate
+                };
+
+                return View(viewModel);
+            }
+            catch (Exception ex)
+            {
+                // Log the error
+                TempData["ErrorMessage"] = "حدث خطأ في تحميل البيانات";
+                return RedirectToAction(nameof(Users));
+            }
+        }
+
         // POST: تفعيل/تعطيل المستخدم
         [HttpPost]
         [ValidateAntiForgeryToken]

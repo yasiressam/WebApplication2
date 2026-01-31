@@ -2,87 +2,319 @@
 @{
     ViewData["Title"] = "إدارة المستخدمين";
     Layout = "_Layout";
+
+    // جلب الإحصائيات
+    var totalUsers = Model.Count();
+    var activeUsers = Model.Count(u => u.IsActive);
+    var admins = Model.Count(u => u.Roles.Contains("Admin"));
+    var superAdmins = Model.Count(u => u.Roles.Contains("SuperAdmin"));
 }
 
 <div class="container mt-4">
     <h3 class="mb-4">👑 إدارة المستخدمين</h3>
 
+    <!-- بطاقات الإحصائيات -->
+    <div class="row mb-4">
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">المستخدمين</h5>
+                            <h2 class="mb-0">@totalUsers</h2>
+                        </div>
+                        <i class="fas fa-users fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">المفعلين</h5>
+                            <h2 class="mb-0">@activeUsers</h2>
+                        </div>
+                        <i class="fas fa-user-check fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">الأدمنية</h5>
+                            <h2 class="mb-0">@admins</h2>
+                        </div>
+                        <i class="fas fa-user-shield fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6 mb-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">سوبر أدمن</h5>
+                            <h2 class="mb-0">@superAdmins</h2>
+                        </div>
+                        <i class="fas fa-crown fa-3x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- بطاقة البحث والفلاتر -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">
+                <i class="fas fa-filter"></i> البحث والتصفية
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <!-- البحث بالاسم أو البريد -->
+                <div class="col-md-4 mb-3">
+                    <label class="form-label fw-bold">🔍 البحث:</label>
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" class="form-control" id="searchInput"
+                               placeholder="ابحث بالاسم أو البريد...">
+                    </div>
+                </div>
+
+                <!-- تصفية بالأدوار -->
+                <div class="col-md-3 mb-3">
+                    <label class="form-label fw-bold">👤 الدور:</label>
+                    <select class="form-select" id="roleFilter">
+                        <option value="">جميع الأدوار</option>
+                        <option value="User">مستخدم</option>
+                        <option value="Admin">أدمن</option>
+                        <option value="SuperAdmin">سوبر أدمن</option>
+                    </select>
+                </div>
+
+                <!-- تصفية بالمحافظة -->
+                <div class="col-md-3 mb-3">
+                    <label class="form-label fw-bold">📍 المحافظة:</label>
+                    <select class="form-select" id="governorateFilter">
+                        <option value="">جميع المحافظات</option>
+                        <option value="بغداد">بغداد</option>
+                        <option value="الأنبار">الأنبار</option>
+                        <option value="بابل">بابل</option>
+                        <option value="البصرة">البصرة</option>
+                        <option value="ذي قار">ذي قار</option>
+                        <option value="القادسية">القادسية</option>
+                        <option value="ديالى">ديالى</option>
+                        <option value="دهوك">دهوك</option>
+                        <option value="أربيل">أربيل</option>
+                        <option value="كربلاء">كربلاء</option>
+                        <option value="كركوك">كركوك</option>
+                        <option value="ميسان">ميسان</option>
+                        <option value="المثنى">المثنى</option>
+                        <option value="النجف">النجف</option>
+                        <option value="نينوى">نينوى</option>
+                        <option value="صلاح الدين">صلاح الدين</option>
+                        <option value="السليمانية">السليمانية</option>
+                        <option value="واسط">واسط</option>
+                    </select>
+                </div>
+
+                <!-- تصفية بالحالة -->
+                <div class="col-md-2 mb-3">
+                    <label class="form-label fw-bold">🟢 الحالة:</label>
+                    <select class="form-select" id="statusFilter">
+                        <option value="">جميع الحالات</option>
+                        <option value="active">المفعلين فقط</option>
+                        <option value="inactive">المعطلين فقط</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row mt-3">
+                <div class="col-md-8">
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-outline-primary" id="applyFilter">
+                            <i class="fas fa-filter"></i> تطبيق الفلتر
+                        </button>
+                        <button class="btn btn-outline-secondary" id="clearFilter">
+                            <i class="fas fa-times"></i> مسح الفلاتر
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-4 text-end">
+                    <div class="alert alert-info mb-0 py-2">
+                        <i class="fas fa-info-circle"></i>
+                        عرض <span id="filteredCount" class="fw-bold">@totalUsers</span> من @totalUsers مستخدم
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- جدول المستخدمين -->
     <div class="card">
-        <div class="card-header bg-primary text-white">
-            <i class="fas fa-users"></i> جميع المستخدمين
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <div>
+                <i class="fas fa-users"></i> جميع المستخدمين
+                <span class="badge bg-light text-dark ms-2">@totalUsers</span>
+            </div>
+            <button class="btn btn-light btn-sm" id="exportBtn">
+                <i class="fas fa-download"></i> تصدير
+            </button>
         </div>
         <div class="card-body p-0">
-            <table class="table table-hover mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>البريد</th>
-                        <th>الاسم</th>
-                        <th>المحافظة</th>
-                        <th>الأدوار</th>
-                        <th>الحالة</th>
-                        <th>الإجراءات</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var user in Model)
-                    {
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="usersTable">
+                    <thead class="table-light">
                         <tr>
-                            <td>@user.Email</td>
-                            <td>@user.FullName</td>
-                            <td>
-                                @if (!string.IsNullOrEmpty(user.ManagedGovernorate))
-                                {
-                                    <span class="badge bg-warning text-dark">
-                                        <i class="fas fa-crown"></i> @user.ManagedGovernorate
-                                    </span>
-                                }
-                                else
-                                {
-                                    <span>@user.Governorate</span>
-                                }
-                            </td>
-                            <td>
-                                @if (user.Roles.Contains("SuperAdmin"))
-                                {
-                                    <span class="badge bg-danger">سوبر أدمن</span>
-                                }
-                                else if (user.Roles.Contains("Admin"))
-                                {
-                                    <span class="badge bg-success">أدمن</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-secondary">مستخدم</span>
-                                }
-                            </td>
-                            <td>
-                                @if (user.IsActive)
-                                {
-                                    <span class="badge bg-success">مفعل</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-danger">معطل</span>
-                                }
-                            </td>
-                            <td>
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <button class="btn btn-primary edit-roles-btn"
-                                            data-user-id="@user.Id"
-                                            data-user-email="@user.Email">
-                                        <i class="fas fa-user-cog"></i> تعديل
-                                    </button>
-
-                                    <button class="btn @(user.IsActive ? "btn-warning" : "btn-success") toggle-status-btn"
-                                            data-user-id="@user.Id">
-                                        <i class="fas fa-power-off"></i>
-                                    </button>
-                                </div>
-                            </td>
+                            <th style="width: 5%;">#</th>
+                            <th style="width: 20%;">البريد</th>
+                            <th style="width: 15%;">الاسم</th>
+                            <th style="width: 15%;">المحافظة</th>
+                            <th style="width: 15%;">الأدوار</th>
+                            <th style="width: 10%;">الحالة</th>
+                            <th style="width: 20%;">الإجراءات</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.Count(); i++)
+                        {
+                            var user = Model.ElementAt(i);
+                            <tr data-user data-index="@(i + 1)"
+                                data-name="@user.FullName.ToLower()"
+                                data-email="@user.Email.ToLower()"
+                                data-role="@user.Roles.ToLower()"
+                                data-governorate="@(user.ManagedGovernorate?.ToLower() ?? user.Governorate?.ToLower() ?? "")"
+                                data-status="@(user.IsActive ? "active" : "inactive")">
+                                <td class="text-muted">@(i + 1)</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar me-2">
+                                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
+                                                 style="width: 32px; height: 32px;">
+                                                @user.FullName[0].ToString().ToUpper()
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">@user.Email</div>
+                                            <small class="text-muted">@user.Id.Substring(0, 8)...</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="fw-bold">@user.FullName</div>
+                                    @if (!string.IsNullOrEmpty(user.ManagedGovernorate))
+                                    {
+                                        <small class="text-warning">
+                                            <i class="fas fa-crown"></i> مدير
+                                        </small>
+                                    }
+                                </td>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(user.ManagedGovernorate))
+                                    {
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="fas fa-crown"></i> @user.ManagedGovernorate
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">@user.Governorate</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (user.Roles.Contains("SuperAdmin"))
+                                    {
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-crown"></i> سوبر أدمن
+                                        </span>
+                                    }
+                                    else if (user.Roles.Contains("Admin"))
+                                    {
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-user-shield"></i> أدمن
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-user"></i> مستخدم
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (user.IsActive)
+                                    {
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle"></i> مفعل
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-times-circle"></i> معطل
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <!-- زر عرض التفاصيل -->
+                                        <a href="@Url.Action("UserDetails", "SuperAdmin", new { id = user.Id })"
+                                           class="btn btn-outline-info"
+                                           title="عرض التفاصيل"
+                                           data-user-id="@user.Id">
+                                            <i class="fas fa-eye"></i>
+                                            <span class="d-none d-md-inline"> عرض</span>
+                                        </a>
+
+                                        <!-- زر تعديل الأدوار -->
+                                        <button class="btn btn-outline-primary edit-roles-btn"
+                                                data-user-id="@user.Id"
+                                                data-user-email="@user.Email"
+                                                title="تعديل الأدوار">
+                                            <i class="fas fa-user-cog"></i>
+                                            <span class="d-none d-md-inline"> أدوار</span>
+                                        </button>
+
+                                        <!-- زر تفعيل/تعطيل -->
+                                        <button class="btn @(user.IsActive ? "btn-outline-warning" : "btn-outline-success") toggle-status-btn"
+                                                data-user-id="@user.Id"
+                                                title="@(user.IsActive ? "تعطيل" : "تفعيل")">
+                                            <i class="fas fa-power-off"></i>
+                                            <span class="d-none d-md-inline"> @(user.IsActive ? "تعطيل" : "تفعيل")</span>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination pagination-sm mb-0" id="pagination">
+                            <!-- سيتم إنشاء ترقيم الصفحات بالجافاسكريبت -->
+                        </ul>
+                    </nav>
+                </div>
+                <div class="col-md-6 text-end">
+                    <div class="text-muted">
+                        <i class="fas fa-chart-bar"></i>
+                        <span id="currentRange">1-@(totalUsers > 10 ? 10 : totalUsers)</span> من @totalUsers
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -92,7 +324,9 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">تعديل أدوار المستخدم</h5>
+                <h5 class="modal-title">
+                    <i class="fas fa-user-cog"></i> تعديل أدوار المستخدم
+                </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -107,19 +341,19 @@
                     <div class="form-check mb-2">
                         <input class="form-check-input" type="checkbox" id="roleUser" value="User">
                         <label class="form-check-label" for="roleUser">
-                            مستخدم عادي
+                            <i class="fas fa-user"></i> مستخدم عادي
                         </label>
                     </div>
                     <div class="form-check mb-2">
                         <input class="form-check-input" type="checkbox" id="roleAdmin" value="Admin">
                         <label class="form-check-label" for="roleAdmin">
-                            أدمن (سيرى مستخدمي محافظته فقط)
+                            <i class="fas fa-user-shield"></i> أدمن (سيرى مستخدمي محافظته فقط)
                         </label>
                     </div>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="roleSuperAdmin" value="SuperAdmin">
                         <label class="form-check-label" for="roleSuperAdmin">
-                            سوبر أدمن (يرى جميع المستخدمين)
+                            <i class="fas fa-crown"></i> سوبر أدمن (يرى جميع المستخدمين)
                         </label>
                     </div>
                 </div>
@@ -130,22 +364,260 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                <button type="button" class="btn btn-primary" id="saveRolesBtn">حفظ التغييرات</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> إلغاء
+                </button>
+                <button type="button" class="btn btn-primary" id="saveRolesBtn">
+                    <i class="fas fa-save"></i> حفظ التغييرات
+                </button>
             </div>
         </div>
     </div>
 </div>
+
+@section Styles {
+    <style>
+        /* تنسيقات الأزرار */
+        .btn-group .btn {
+            border-radius: 4px;
+            margin: 0 2px;
+            transition: all 0.3s ease;
+        }
+
+            .btn-group .btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }
+
+        .btn-outline-info:hover {
+            background-color: #17a2b8;
+            color: white;
+        }
+
+        .btn-outline-primary:hover {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-outline-warning:hover {
+            background-color: #ffc107;
+            color: black;
+        }
+
+        .btn-outline-success:hover {
+            background-color: #28a745;
+            color: white;
+        }
+
+        /* تنسيق الجدول */
+        .table-hover tbody tr:hover {
+            background-color: rgba(0, 123, 255, 0.05);
+            cursor: pointer;
+        }
+
+        .avatar {
+            display: inline-flex;
+        }
+
+        /* تنسيق البطاقات */
+        .card {
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* تنسيق الأيقونات */
+        .fa-3x {
+            font-size: 2.5rem;
+        }
+
+        /* تنسيق الباجات */
+        .badge {
+            padding: 0.5em 0.8em;
+            font-weight: 500;
+        }
+    </style>
+}
 
 @section Scripts {
     <script>
         // متغيرات عامة
         let selectedUserId = '';
         let selectedUserEmail = '';
+        let currentPage = 1;
+        const rowsPerPage = 10;
+        let filteredRows = [];
+
+        // تهيئة الفلتر
+        function initializeFilter() {
+            const allRows = document.querySelectorAll('#usersTable tbody tr[data-user]');
+            filteredRows = Array.from(allRows);
+            updateTable();
+        }
+
+        // تطبيق الفلتر
+        function applyFilter() {
+            const searchText = document.getElementById('searchInput').value.toLowerCase();
+            const roleFilter = document.getElementById('roleFilter').value.toLowerCase();
+            const governorateFilter = document.getElementById('governorateFilter').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+
+            const allRows = document.querySelectorAll('#usersTable tbody tr[data-user]');
+            filteredRows = Array.from(allRows).filter(row => {
+                const name = row.dataset.name;
+                const email = row.dataset.email;
+                const role = row.dataset.role;
+                const governorate = row.dataset.governorate;
+                const status = row.dataset.status;
+
+                // البحث
+                if (searchText && !name.includes(searchText) && !email.includes(searchText)) {
+                    return false;
+                }
+
+                // فلتر الدور
+                if (roleFilter && !role.includes(roleFilter)) {
+                    return false;
+                }
+
+                // فلتر المحافظة
+                if (governorateFilter && !governorate.includes(governorateFilter)) {
+                    return false;
+                }
+
+                // فلتر الحالة
+                if (statusFilter) {
+                    if (statusFilter === 'active' && status !== 'active') return false;
+                    if (statusFilter === 'inactive' && status !== 'inactive') return false;
+                }
+
+                return true;
+            });
+
+            currentPage = 1;
+            updateTable();
+        }
+
+        // تحديث الجدول
+        function updateTable() {
+            const allRows = document.querySelectorAll('#usersTable tbody tr[data-user]');
+
+            // إخفاء جميع الصفوف
+            allRows.forEach(row => row.style.display = 'none');
+
+            // حساب بداية ونهاية الصفوف للصفحة الحالية
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = startIndex + rowsPerPage;
+            const currentRows = filteredRows.slice(startIndex, endIndex);
+
+            // عرض الصفوف للصفحة الحالية
+            currentRows.forEach((row, index) => {
+                row.style.display = '';
+                // تحديث رقم التسلسل
+                row.querySelector('td:first-child').textContent = startIndex + index + 1;
+            });
+
+            // تحديث العداد
+            document.getElementById('filteredCount').textContent = filteredRows.length;
+
+            // تحديث نطاق العرض
+            const rangeStart = filteredRows.length > 0 ? startIndex + 1 : 0;
+            const rangeEnd = Math.min(endIndex, filteredRows.length);
+            document.getElementById('currentRange').textContent = `${rangeStart}-${rangeEnd}`;
+
+            // تحديث الترقيم
+            updatePagination();
+        }
+
+        // تحديث الترقيم
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+
+            if (totalPages <= 1) return;
+
+            // زر السابق
+            const prevLi = document.createElement('li');
+            prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+            prevLi.innerHTML = `<a class="page-link" href="#" data-page="${currentPage - 1}">السابق</a>`;
+            pagination.appendChild(prevLi);
+
+            // أرقام الصفحات
+            const maxVisiblePages = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+            if (endPage - startPage + 1 < maxVisiblePages) {
+                startPage = Math.max(1, endPage - maxVisiblePages + 1);
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const pageLi = document.createElement('li');
+                pageLi.className = `page-item ${currentPage === i ? 'active' : ''}`;
+                pageLi.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+                pagination.appendChild(pageLi);
+            }
+
+            // زر التالي
+            const nextLi = document.createElement('li');
+            nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+            nextLi.innerHTML = `<a class="page-link" href="#" data-page="${currentPage + 1}">التالي</a>`;
+            pagination.appendChild(nextLi);
+
+            // إضافة مستمعي الأحداث
+            pagination.querySelectorAll('.page-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const page = parseInt(this.dataset.page);
+                    if (page >= 1 && page <= totalPages && page !== currentPage) {
+                        currentPage = page;
+                        updateTable();
+                    }
+                });
+            });
+        }
+
+        // تطبيق الفلتر عند الضغط على Enter
+        document.getElementById('searchInput').addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                applyFilter();
+            }
+        });
+
+        // تطبيق الفلتر عند تغيير القوائم
+        ['roleFilter', 'governorateFilter', 'statusFilter'].forEach(id => {
+            document.getElementById(id).addEventListener('change', applyFilter);
+        });
+
+        // زر تطبيق الفلتر
+        document.getElementById('applyFilter').addEventListener('click', applyFilter);
+
+        // زر مسح الفلاتر
+        document.getElementById('clearFilter').addEventListener('click', function() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('roleFilter').value = '';
+            document.getElementById('governorateFilter').value = '';
+            document.getElementById('statusFilter').value = '';
+            applyFilter();
+        });
+
+        // زر التصدير
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            alert('📊 سيتم تصدير البيانات قريبًا...');
+            // هنا يمكنك إضافة منطق التصدير إلى Excel أو PDF
+        });
 
         // 1. عند النقر على زر تعديل الأدوار
         document.querySelectorAll('.edit-roles-btn').forEach(btn => {
-            btn.addEventListener('click', async function() {
+            btn.addEventListener('click', async function(e) {
+                e.stopPropagation();
+
                 selectedUserId = this.dataset.userId;
                 selectedUserEmail = this.dataset.userEmail;
 
@@ -236,9 +708,11 @@
 
         // 3. عند النقر على زر تفعيل/تعطيل
         document.querySelectorAll('.toggle-status-btn').forEach(btn => {
-            btn.addEventListener('click', async function() {
+            btn.addEventListener('click', async function(e) {
+                e.stopPropagation();
+
                 const userId = this.dataset.userId;
-                const isCurrentlyActive = this.closest('tr').querySelector('.badge').textContent === 'مفعل';
+                const isCurrentlyActive = this.closest('tr').querySelector('.badge').textContent.includes('مفعل');
                 const action = isCurrentlyActive ? 'تعطيل' : 'تفعيل';
 
                 if (confirm(`هل تريد ${action} هذا المستخدم؟`)) {
@@ -268,6 +742,36 @@
                     }
                 }
             });
+        });
+
+        // 4. عند النقر على صف الجدول (للانتقال للتفاصيل)
+        document.querySelectorAll('#usersTable tbody tr[data-user]').forEach(row => {
+            row.addEventListener('click', function(e) {
+                // منع الانتقال إذا كان النقر على زر
+                if (e.target.tagName === 'BUTTON' || e.target.tagName === 'A' ||
+                    e.target.closest('button') || e.target.closest('a')) {
+                    return;
+                }
+
+                const userId = this.querySelector('.edit-roles-btn').dataset.userId;
+                window.location.href = `/SuperAdmin/UserDetails/${userId}`;
+            });
+        });
+
+        // 5. إضافة تأثير عند التمرير على الأزرار
+        document.querySelectorAll('.btn-group .btn').forEach(btn => {
+            btn.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-2px)';
+            });
+
+            btn.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+            });
+        });
+
+        // تهيئة الفلتر عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeFilter();
         });
     </script>
 }

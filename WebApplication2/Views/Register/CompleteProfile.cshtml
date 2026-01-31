@@ -1,4 +1,4 @@
-﻿@model PersonalProfileViewModel
+﻿@model WebApplication2.Models.PersonalProfileViewModel
 
 @{
     ViewData["Title"] = "إكمال الملف الشخصي";
@@ -16,6 +16,45 @@
                 </div>
 
                 <div class="card-body">
+                    <!-- معلومات الحساب -->
+                    @if (!string.IsNullOrEmpty(Model.Email))
+                    {
+                        <div class="row mb-4">
+                            <div class="col-md-8">
+                                <div class="card bg-light">
+                                    <div class="card-body">
+                                        <h6 class="card-title"><i class="fas fa-info-circle"></i> معلومات الحساب</h6>
+                                        <div class="row">
+                                            <div class="col-md-4"><strong>البريد الإلكتروني:</strong></div>
+                                            <div class="col-md-8">@Model.Email</div>
+
+                                            <div class="col-md-4"><strong>الدور:</strong></div>
+                                            <div class="col-md-8"><span class="badge bg-info">@Model.UserRole</span></div>
+
+                                            <div class="col-md-4"><strong>حالة الحساب:</strong></div>
+                                            <div class="col-md-8">
+                                                @if (Model.IsEmailConfirmed)
+                                                {
+                                                    <span class="badge bg-success">مفعل</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-warning">غير مفعل</span>
+                                                }
+                                            </div>
+
+                                            @if (Model.RegistrationDate.HasValue)
+                                            {
+                                                <div class="col-md-4"><strong>تاريخ التسجيل:</strong></div>
+                                                <div class="col-md-8">@Model.RegistrationDate.Value.ToString("yyyy-MM-dd")</div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
                     <!-- 🔥 عرض رسائل الخطأ العامة -->
                     @if (!string.IsNullOrEmpty(ViewBag.ErrorMessage))
                     {
@@ -54,138 +93,229 @@
                         <i class="fas fa-info-circle"></i> يرجى تعبئة جميع الحقول المطلوبة (<span class="text-danger">*</span>) للمتابعة في الموقع.
                     </p>
 
-                    <form asp-action="CompleteProfile" method="post" id="profileForm" novalidate>
+                    <form asp-action="CompleteProfile" method="post" id="profileForm" class="needs-validation" novalidate>
                         @Html.AntiForgeryToken()
 
                         <input type="hidden" asp-for="UserId" id="UserId" />
+                        <input type="hidden" asp-for="Email" />
+                        <input type="hidden" asp-for="UserRole" />
 
                         <!-- البيانات الشخصية -->
-                        <h5 class="border-bottom pb-2 mb-3 text-primary">
-                            <i class="fas fa-id-card"></i> البيانات الشخصية
-                        </h5>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="FullName" class="form-label fw-bold">
-                                    <span class="text-danger">*</span> الاسم الكامل
-                                </label>
-                                <input asp-for="FullName" class="form-control"
-                                       placeholder="أدخل اسمك الكامل (3 أحرف على الأقل)"
-                                       required />
-                                <div class="invalid-feedback">الاسم الكامل مطلوب (3 أحرف على الأقل)</div>
-                                <span asp-validation-for="FullName" class="text-danger"></span>
+                        <div class="card mb-4">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="mb-0"><i class="fas fa-id-card"></i> البيانات الشخصية</h5>
                             </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <!-- الاسم الكامل -->
+                                    <div class="col-md-6">
+                                        <label asp-for="FullName" class="form-label fw-bold">
+                                            <span class="text-danger">*</span> الاسم الكامل
+                                        </label>
+                                        <input asp-for="FullName" class="form-control"
+                                               placeholder="أدخل اسمك الكامل (3 أحرف على الأقل)"
+                                               required />
+                                        <div class="invalid-feedback">الاسم الكامل مطلوب (3 أحرف على الأقل)</div>
+                                        <span asp-validation-for="FullName" class="text-danger"></span>
+                                    </div>
 
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="LastName" class="form-label fw-bold">اسم العائلة</label>
-                                <input asp-for="LastName" class="form-control" placeholder="اسم العائلة (اختياري)" />
+                                    <!-- اسم العائلة -->
+                                    <div class="col-md-6">
+                                        <label asp-for="LastName" class="form-label fw-bold">اللقب</label>
+                                        <input asp-for="LastName" class="form-control" placeholder="اللقب  (اختياري)" />
+                                        <span asp-validation-for="LastName" class="text-danger"></span>
+                                    </div>
+
+                                    <!-- اسم الأم -->
+                                    <div class="col-md-6">
+                                        <label asp-for="MotherName" class="form-label fw-bold">اسم الأم</label>
+                                        <input asp-for="MotherName" class="form-control" placeholder="اسم الأم (اختياري)" />
+                                        <span asp-validation-for="MotherName" class="text-danger"></span>
+                                    </div>
+
+                                    <!-- اللقب -->
+                                    <div class="col-md-6">
+                                        <label asp-for="MozakeName" class="form-label fw-bold">المزكي</label>
+                                        <input asp-for="MozakeName" class="form-control" placeholder="المزكي (اختياري)" />
+                                        <span asp-validation-for="MozakeName" class="text-danger"></span>
+                                    </div>
+
+                                    <!-- تاريخ الميلاد -->
+                                    <div class="col-md-4">
+                                        <label asp-for="DateOfBirth" class="form-label fw-bold">
+                                            <span class="text-danger">*</span> تاريخ الميلاد
+                                        </label>
+                                        <input asp-for="DateOfBirth" type="date" class="form-control" required />
+                                        <div class="invalid-feedback">تاريخ الميلاد مطلوب</div>
+                                        <span asp-validation-for="DateOfBirth" class="text-danger"></span>
+                                    </div>
+
+                                    <!-- الجنس -->
+                                    <div class="col-md-4">
+                                        <label asp-for="Gender" class="form-label fw-bold">
+                                            <span class="text-danger">*</span> الجنس
+                                        </label>
+                                        <select asp-for="Gender" class="form-select" required>
+                                            <option value="">-- اختر الجنس --</option>
+                                            @foreach (var gender in Model.Genders)
+                                            {
+                                                <option value="@gender">@gender</option>
+                                            }
+                                        </select>
+                                        <div class="invalid-feedback">الجنس مطلوب</div>
+                                        <span asp-validation-for="Gender" class="text-danger"></span>
+                                    </div>
+
+                                    <!-- رقم الهاتف -->
+                                    <div class="col-md-4">
+                                        <label asp-for="PhoneNumber" class="form-label fw-bold">
+                                            <span class="text-danger">*</span> رقم الهاتف
+                                        </label>
+                                        <input asp-for="PhoneNumber" class="form-control"
+                                               placeholder="07XXXXXXXXX"
+                                               pattern="07[0-9]{9}"
+                                               required />
+                                        <div class="invalid-feedback">رقم هاتف صحيح مطلوب (يبدأ بـ 07 و 11 رقم)</div>
+                                        <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                                        <small class="form-text text-muted">مثال: 07701234567</small>
+                                    </div>
+
+                                    <!-- المؤهل العلمي -->
+                                    <div class="col-md-6">
+                                        <label asp-for="Education" class="form-label fw-bold">المؤهل العلمي</label>
+                                        <select asp-for="Education" class="form-select">
+                                            <option value="">-- اختر المؤهل العلمي --</option>
+                                            @foreach (var edu in Model.Educations)
+                                            {
+                                                <option value="@edu">@edu</option>
+                                            }
+                                        </select>
+                                        <span asp-validation-for="Education" class="text-danger"></span>
+                                    </div>
+
+                                    <!-- التخصص -->
+                                    <div class="col-md-6">
+                                        <label asp-for="Specialization" class="form-label fw-bold">التخصص</label>
+                                        <input asp-for="Specialization" class="form-control" placeholder="مثال: هندسة حاسوب" />
+                                        <span asp-validation-for="Specialization" class="text-danger"></span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="DateOfBirth" class="form-label fw-bold">
-                                    <span class="text-danger">*</span> تاريخ الميلاد
-                                </label>
-                                <input asp-for="DateOfBirth" type="date" class="form-control" required />
-                                <div class="invalid-feedback">تاريخ الميلاد مطلوب</div>
-                                <span asp-validation-for="DateOfBirth" class="text-danger"></span>
+                        <!-- بيانات البطاقة الوطنية -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-warning text-dark">
+                                <h5 class="mb-0"><i class="fas fa-address-card"></i> بيانات البطاقة الوطنية</h5>
                             </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <!-- رقم البطاقة الوطنية -->
+                                    <div class="col-md-6">
+                                        <label asp-for="IdentityCardN" class="form-label fw-bold">
+                                            <span class="text-danger">*</span> رقم البطاقة الوطنية
+                                        </label>
+                                        <input asp-for="IdentityCardN" class="form-control"
+                                               placeholder="أدخل رقم البطاقة"
+                                               min="100000"
+                                               max="999999999"
+                                               required />
+                                        <div class="invalid-feedback">رقم بطاقة وطنية صحيح مطلوب (بين 100,000 و 999,999,999)</div>
+                                        <span asp-validation-for="IdentityCardN" class="text-danger"></span>
+                                    </div>
 
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Gender" class="form-label fw-bold">
-                                    <span class="text-danger">*</span> الجنس
-                                </label>
-                                <select asp-for="Gender" class="form-select" required>
-                                    <option value="">-- اختر الجنس --</option>
-                                    <option value="ذكر">ذكر</option>
-                                    <option value="أنثى">أنثى</option>
-                                </select>
-                                <div class="invalid-feedback">الجنس مطلوب</div>
-                                <span asp-validation-for="Gender" class="text-danger"></span>
-                            </div>
-                        </div>
+                                    <!-- تاريخ إصدار البطاقة -->
+                                    <div class="col-md-6">
+                                        <label asp-for="IdentityDate" class="form-label fw-bold">
+                                            <span class="text-danger">*</span> تاريخ إصدار البطاقة
+                                        </label>
+                                        <input asp-for="IdentityDate" type="date" class="form-control" required />
+                                        <div class="invalid-feedback">تاريخ إصدار البطاقة مطلوب</div>
+                                        <span asp-validation-for="IdentityDate" class="text-danger"></span>
+                                    </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="PhoneNumber" class="form-label fw-bold">
-                                    <span class="text-danger">*</span> رقم الهاتف
-                                </label>
-                                <input asp-for="PhoneNumber" class="form-control"
-                                       placeholder="07XXXXXXXXX"
-                                       pattern="07[0-9]{9}"
-                                       required />
-                                <div class="invalid-feedback">رقم هاتف صحيح مطلوب (يبدأ بـ 07 و 11 رقم)</div>
-                                <span asp-validation-for="PhoneNumber" class="text-danger"></span>
-                                <small class="form-text text-muted">مثال: 07701234567</small>
-                            </div>
+                                    <!-- رقم البطاقة التموينية -->
+                                    <div class="col-md-6">
+                                        <label asp-for="RationN" class="form-label fw-bold">رقم البطاقة التموينية</label>
+                                        <input asp-for="RationN" class="form-control" placeholder="رقم البطاقة التموينية (اختياري)" />
+                                        <span asp-validation-for="RationN" class="text-danger"></span>
+                                    </div>
 
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="IdentityCardN" class="form-label fw-bold">
-                                    <span class="text-danger">*</span> رقم البطاقة الوطنية
-                                </label>
-                                <input asp-for="IdentityCardN" class="form-control"
-                                       placeholder="أدخل رقم البطاقة"
-                                       min="100000"
-                                       max="999999999"
-                                       required />
-                                <div class="invalid-feedback">رقم بطاقة وطنية صحيح مطلوب (بين 100,000 و 999,999,999)</div>
-                                <span asp-validation-for="IdentityCardN" class="text-danger"></span>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="IdentityDate" class="form-label fw-bold">
-                                    <span class="text-danger">*</span> تاريخ إصدار البطاقة
-                                </label>
-                                <input asp-for="IdentityDate" type="date" class="form-control" required />
-                                <div class="invalid-feedback">تاريخ إصدار البطاقة مطلوب</div>
-                                <span asp-validation-for="IdentityDate" class="text-danger"></span>
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="MozakeName" class="form-label fw-bold">اللقب</label>
-                                <input asp-for="MozakeName" class="form-control" placeholder="اللقب (اختياري)" />
+                                    <!-- مركز التوزيع -->
+                                    <div class="col-md-6">
+                                        <label asp-for="RationCenter" class="form-label fw-bold">مركز التوزيع</label>
+                                        <input asp-for="RationCenter" class="form-control" placeholder="مركز التوزيع (اختياري)" />
+                                        <span asp-validation-for="RationCenter" class="text-danger"></span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         <!-- العنوان -->
-                        <h5 class="border-bottom pb-2 mb-3 mt-4 text-primary">
-                            <i class="fas fa-map-marker-alt"></i> العنوان
-                        </h5>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Governorate" class="form-label fw-bold">
-                                    <span class="text-danger">*</span> المحافظة
-                                </label>
-                                <select asp-for="Governorate" class="form-select" id="governorateSelect" required>
-                                    <option value="">-- اختر المحافظة --</option>
-                                    @foreach (var gov in Model.Governorates)
-                                    {
-                                        <option value="@gov">@gov</option>
-                                    }
-                                </select>
-                                <div class="invalid-feedback">المحافظة مطلوبة</div>
-                                <span asp-validation-for="Governorate" class="text-danger"></span>
+                        <div class="card mb-4">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0"><i class="fas fa-map-marker-alt"></i> العنوان</h5>
                             </div>
+                            <div class="card-body">
+                                <div class="row g-3">
+                                    <!-- المحافظة -->
+                                    <div class="col-md-6">
+                                        <label asp-for="Governorate" class="form-label fw-bold">
+                                            <span class="text-danger">*</span> المحافظة
+                                        </label>
+                                        <select asp-for="Governorate" class="form-select" id="governorateSelect" required>
+                                            <option value="">-- اختر المحافظة --</option>
+                                            @foreach (var gov in Model.Governorates)
+                                            {
+                                                <option value="@gov">@gov</option>
+                                            }
+                                        </select>
+                                        <div class="invalid-feedback">المحافظة مطلوبة</div>
+                                        <span asp-validation-for="Governorate" class="text-danger"></span>
+                                    </div>
 
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="District" class="form-label fw-bold">القضاء/المديرية</label>
-                                <input asp-for="District" class="form-control" placeholder="اسم القضاء أو المديرية (اختياري)" />
-                            </div>
-                        </div>
+                                    <!-- القضاء/المديرية -->
+                                    <div class="col-md-6">
+                                        <label asp-for="District" class="form-label fw-bold">القضاء/المديرية</label>
+                                        <input asp-for="District" class="form-control" placeholder="اسم القضاء أو المديرية (اختياري)" />
+                                        <span asp-validation-for="District" class="text-danger"></span>
+                                    </div>
 
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="Street" class="form-label fw-bold">الشارع</label>
-                                <input asp-for="Street" class="form-control" placeholder="اسم الشارع (اختياري)" />
-                            </div>
+                                    <!-- الناحية -->
+                                    <div class="col-md-6">
+                                        <label asp-for="SubDistrict" class="form-label fw-bold">الناحية</label>
+                                        <input asp-for="SubDistrict" class="form-control" placeholder="الناحية (اختياري)" />
+                                        <span asp-validation-for="SubDistrict" class="text-danger"></span>
+                                    </div>
 
-                            <div class="col-md-6 mb-3">
-                                <label asp-for="House" class="form-label fw-bold">المنزل</label>
-                                <input asp-for="House" class="form-control" placeholder="رقم المنزل (اختياري)" />
+                                    <!-- المحلة/الزقاق -->
+                                    <div class="col-md-6">
+                                        <label asp-for="Alley" class="form-label fw-bold">المحلة/الزقاق</label>
+                                        <input asp-for="Alley" class="form-control" placeholder="المحلة/الزقاق (اختياري)" />
+                                        <span asp-validation-for="Alley" class="text-danger"></span>
+                                    </div>
+
+                                    <!-- الشارع -->
+                                    <div class="col-md-6">
+                                        <label asp-for="Street" class="form-label fw-bold">الشارع</label>
+                                        <input asp-for="Street" class="form-control" placeholder="اسم الشارع (اختياري)" />
+                                        <span asp-validation-for="Street" class="text-danger"></span>
+                                    </div>
+
+                                    <!-- المنزل -->
+                                    <div class="col-md-6">
+                                        <label asp-for="House" class="form-label fw-bold">المنزل</label>
+                                        <input asp-for="House" class="form-control" placeholder="رقم المنزل (اختياري)" />
+                                        <span asp-validation-for="House" class="text-danger"></span>
+                                    </div>
+
+                                    <!-- أقرب نقطة دالة -->
+                                    <div class="col-12">
+                                        <label asp-for="NearestPoint" class="form-label fw-bold">أقرب نقطة دالة</label>
+                                        <input asp-for="NearestPoint" class="form-control" placeholder="أقرب نقطة دالة أو معلم (اختياري)" />
+                                        <span asp-validation-for="NearestPoint" class="text-danger"></span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -199,19 +329,10 @@
                                 <i class="fas fa-home"></i> العودة للرئيسية
                             </a>
 
-                            <a href="@Url.Action("TestSave", "Register")" class="btn btn-warning btn-lg"
-                               onclick="return confirm('هل تريد اختبار الحفظ بقيم افتراضية؟')">
-                                <i class="fas fa-vial"></i> اختبار الحفظ
-                            </a>
-
-                            <a href="@Url.Action("DebugModelState", "Register")" class="btn btn-info btn-lg">
-                                <i class="fas fa-bug"></i> فحص الأخطاء
-                            </a>
+                          
                         </div>
 
-                        <div class="mt-3 text-muted">
-                            <small><i class="fas fa-lightbulb"></i> تلميح: استخدم زر "فحص الأخطاء" لمعرفة المشاكل قبل الحفظ.</small>
-                        </div>
+                        
                     </form>
                 </div>
             </div>
@@ -249,69 +370,129 @@
         // تعيين القيم الافتراضية إذا كانت فارغة
         document.addEventListener('DOMContentLoaded', function() {
             // تعيين تاريخ الميلاد إذا كان فارغاً
-            if (!document.getElementById('DateOfBirth').value) {
+            var dobField = document.getElementById('DateOfBirth');
+            if (!dobField.value) {
                 var today = new Date();
                 var birthDate = new Date(today.getFullYear() - 20, today.getMonth(), today.getDate());
-                document.getElementById('DateOfBirth').value = birthDate.toISOString().split('T')[0];
+                dobField.value = birthDate.toISOString().split('T')[0];
             }
 
             // تعيين تاريخ البطاقة إذا كان فارغاً
-            if (!document.getElementById('IdentityDate').value) {
+            var idDateField = document.getElementById('IdentityDate');
+            if (!idDateField.value) {
                 var today = new Date();
-                document.getElementById('IdentityDate').value = today.toISOString().split('T')[0];
+                idDateField.value = today.toISOString().split('T')[0];
             }
 
             // تعيين المحافظة الافتراضية
-            if (!document.getElementById('governorateSelect').value) {
-                document.getElementById('governorateSelect').value = 'بغداد';
+            var governorateSelect = document.getElementById('governorateSelect');
+            if (!governorateSelect.value) {
+                governorateSelect.value = 'بغداد';
             }
 
             // إضافة رقم افتراضي للبطاقة إذا كان 0
-            if (document.getElementById('IdentityCardN').value == '0') {
-                document.getElementById('IdentityCardN').value = '100000';
+            var cardNumberField = document.querySelector('input[asp-for="IdentityCardN"]');
+            if (cardNumberField && cardNumberField.value == '0') {
+                cardNumberField.value = '100000';
             }
         });
 
         // عرض رسالة تحميل أثناء الحفظ
-        document.getElementById('profileForm').addEventListener('submit', function() {
-            var submitBtn = document.getElementById('submitBtn');
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
-            submitBtn.disabled = true;
+        var profileForm = document.getElementById('profileForm');
+        if (profileForm) {
+            profileForm.addEventListener('submit', function() {
+                var submitBtn = document.getElementById('submitBtn');
+                if (submitBtn) {
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+                    submitBtn.disabled = true;
 
-            // منع النقر المتعدد
-            setTimeout(function() {
-                submitBtn.disabled = false;
-            }, 3000);
-        });
+                    // منع النقر المتعدد
+                    setTimeout(function() {
+                        submitBtn.disabled = false;
+                    }, 3000);
+                }
+            });
+        }
 
         // تحقق من صحة رقم الهاتف
-        document.getElementById('PhoneNumber').addEventListener('blur', function() {
-            var phone = this.value;
-            if (phone && !/^07[0-9]{9}$/.test(phone)) {
-                this.classList.add('is-invalid');
-                var feedback = this.nextElementSibling;
-                while (feedback && !feedback.classList.contains('invalid-feedback')) {
-                    feedback = feedback.nextElementSibling;
+        var phoneField = document.querySelector('input[asp-for="PhoneNumber"]');
+        if (phoneField) {
+            phoneField.addEventListener('blur', function() {
+                var phone = this.value;
+                if (phone && !/^07[0-9]{9}$/.test(phone)) {
+                    this.classList.add('is-invalid');
+                    var feedback = this.nextElementSibling;
+                    while (feedback && !feedback.classList.contains('invalid-feedback')) {
+                        feedback = feedback.nextElementSibling;
+                    }
+                    if (feedback) {
+                        feedback.textContent = 'رقم الهاتف غير صحيح. يجب أن يبدأ بـ 07 ويحتوي على 11 رقم';
+                    }
                 }
-                if (feedback) {
-                    feedback.textContent = 'رقم الهاتف غير صحيح. يجب أن يبدأ بـ 07 ويحتوي على 11 رقم';
+            });
+        }
+
+        // تحقق من صحة رقم البطاقة
+        var cardField = document.querySelector('input[asp-for="IdentityCardN"]');
+        if (cardField) {
+            cardField.addEventListener('blur', function() {
+                var cardNum = parseInt(this.value);
+                if (cardNum < 100000) {
+                    this.classList.add('is-invalid');
+                    var feedback = this.nextElementSibling;
+                    while (feedback && !feedback.classList.contains('invalid-feedback')) {
+                        feedback = feedback.nextElementSibling;
+                    }
+                    if (feedback) {
+                        feedback.textContent = 'رقم البطاقة الوطنية غير صحيح. يجب أن يكون 6 أرقام على الأقل';
+                    }
+                }
+            });
+        }
+
+        // تحديث ألوان الحقول المطلوبة
+        document.querySelectorAll('label[class*="fw-bold"]').forEach(function(label) {
+            if (label.innerHTML.includes('text-danger')) {
+                var inputId = label.getAttribute('for');
+                if (inputId) {
+                    var input = document.getElementById(inputId);
+                    if (input) {
+                        input.classList.add('required-field');
+                    }
                 }
             }
         });
 
-        // تحقق من صحة رقم البطاقة
-        document.getElementById('IdentityCardN').addEventListener('blur', function() {
-            var cardNum = parseInt(this.value);
-            if (cardNum < 100000) {
-                this.classList.add('is-invalid');
-                var feedback = this.nextElementSibling;
-                while (feedback && !feedback.classList.contains('invalid-feedback')) {
-                    feedback = feedback.nextElementSibling;
-                }
-                if (feedback) {
-                    feedback.textContent = 'رقم البطاقة الوطنية غير صحيح. يجب أن يكون 6 أرقام على الأقل';
-                }
-            }
+        // إضافة تلميحات للمستخدم
+        document.querySelectorAll('input[placeholder*="اختياري"]').forEach(function(input) {
+            input.title = 'هذا الحقل اختياري، يمكنك تركه فارغاً';
         });
     </script>
+
+    <style>
+        .required-field {
+            border-left: 4px solid #dc3545 !important;
+        }
+
+        .was-validated .required-field:valid {
+            border-left: 4px solid #198754 !important;
+        }
+
+        .was-validated .required-field:invalid {
+            border-left: 4px solid #dc3545 !important;
+        }
+
+        .card-header {
+            font-size: 1.1rem;
+        }
+
+        .form-label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .invalid-feedback {
+            font-size: 0.875rem;
+        }
+    </style>
 }

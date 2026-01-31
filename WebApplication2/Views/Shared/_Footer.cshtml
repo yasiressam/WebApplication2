@@ -26,40 +26,291 @@
     }
 }
 
-<footer class="footer">
-    <div class="container">
-        <div class="row">
-            <!-- معلومات الموقع والوسائل الاجتماعية -->
-            <div class="col-lg-6 mb-4 mb-lg-0">
-                <h5 class="mb-3 fw-bold">
-                    <i class="bi bi-newspaper me-2"></i>موقع الأخبار العراقي
-                </h5>
-                <p class="text-light opacity-75">
-                    @siteSettings.SiteDescription
-                </p>
+<style>
+    /* ===== فوتر أنيق ومصغر ===== */
+    .footer {
+        background: linear-gradient(135deg, #1a2530 0%, #2c3e50 100%);
+        color: #fff;
+        padding: 0.8rem 0 0.4rem !important;
+        margin-top: auto;
+        width: 100%;
+        position: relative;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        border-top: 2px solid #3498db;
+        min-height: 100px !important; /* أصغر من السابق */
+        font-family: 'Tajawal', sans-serif;
+    }
 
-                <!-- وسائل التواصل الاجتماعي (الثلاثة فقط) -->
-                <div class="social-icons">
+    .footer-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 15px;
+    }
+
+    .footer-main {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        gap: 30px;
+    }
+
+    .footer-section {
+        flex: 1;
+    }
+
+    .site-info {
+        margin-bottom: 0.5rem;
+    }
+
+    .site-name {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 0.3rem;
+    }
+
+    .site-description {
+        color: #bdc3c7;
+        font-size: 0.85rem;
+        line-height: 1.4;
+        opacity: 0.9;
+    }
+
+    .footer-social {
+        display: flex;
+        gap: 10px;
+        margin-top: 0.5rem;
+    }
+
+    .social-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        text-decoration: none;
+        transition: all 0.3s;
+        font-size: 0.9rem;
+    }
+
+        .social-icon:hover {
+            background: rgba(52, 152, 219, 0.9);
+            transform: translateY(-2px);
+        }
+
+    .footer-contact {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .contact-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #ecf0f1;
+        font-size: 0.85rem;
+    }
+
+    .contact-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(52, 152, 219, 0.15);
+        color: #3498db;
+        flex-shrink: 0;
+        font-size: 0.85rem;
+    }
+
+    .contact-details {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .contact-label {
+        font-size: 0.75rem;
+        color: #95a5a6;
+        margin-bottom: 1px;
+    }
+
+    .contact-value {
+        font-weight: 500;
+        color: #ecf0f1;
+        font-size: 0.85rem;
+    }
+
+    .footer-bottom {
+        padding-top: 0.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .footer-bottom-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .copyright {
+        font-size: 0.8rem;
+        color: #ecf0f1;
+        opacity: 0.9;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .footer-links {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .footer-link {
+        color: #bdc3c7;
+        text-decoration: none;
+        font-size: 0.8rem;
+        transition: all 0.3s;
+    }
+
+        .footer-link:hover {
+            color: #3498db;
+        }
+
+    .update-info {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.75rem;
+        color: #95a5a6;
+    }
+
+    /* تصميم متجاوب */
+    @@media (max-width: 992px) {
+        .footer-main {
+            flex-direction: column;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        .footer-section {
+            width: 100%;
+        }
+
+        .footer-bottom-content {
+            flex-direction: column;
+            gap: 8px;
+            text-align: center;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .footer {
+            padding: 0.6rem 0 0.3rem !important;
+            min-height: 110px !important;
+        }
+
+        .site-name {
+            font-size: 1rem;
+        }
+
+        .site-description {
+            font-size: 0.8rem;
+        }
+
+        .footer-social {
+            gap: 8px;
+        }
+
+        .social-icon {
+            width: 30px;
+            height: 30px;
+            font-size: 0.85rem;
+        }
+
+        .contact-item {
+            font-size: 0.8rem;
+        }
+
+        .contact-icon {
+            width: 26px;
+            height: 26px;
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .footer {
+            min-height: 120px !important;
+        }
+
+        .footer-main {
+            gap: 15px;
+        }
+
+        .footer-links {
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .footer-bottom-content {
+            gap: 5px;
+        }
+
+        .copyright,
+        .footer-link,
+        .update-info {
+            font-size: 0.75rem;
+        }
+    }
+</style>
+
+<footer class="footer">
+    <div class="footer-container">
+        <!-- القسم الرئيسي -->
+        <div class="footer-main">
+            <!-- معلومات الموقع والوسائط الاجتماعية -->
+            <div class="footer-section">
+                <div class="site-info">
+                    <div class="site-name">
+                        <i class="bi bi-newspaper"></i>
+                        موقع الأخبار العراقي
+                    </div>
+                    <p class="site-description">
+                        @siteSettings.SiteDescription
+                    </p>
+                </div>
+
+                <div class="footer-social">
                     @if (!string.IsNullOrEmpty(siteSettings.FacebookUrl))
                     {
-                        <a href="@siteSettings.FacebookUrl" target="_blank" class="social-icon social-facebook" title="فيسبوك">
+                        <a href="@siteSettings.FacebookUrl" target="_blank" class="social-icon" title="فيسبوك">
                             <i class="bi bi-facebook"></i>
                         </a>
                     }
-
                     @if (!string.IsNullOrEmpty(siteSettings.InstagramUrl))
                     {
-                        <a href="@siteSettings.InstagramUrl" target="_blank" class="social-icon social-instagram" title="إنستغرام">
+                        <a href="@siteSettings.InstagramUrl" target="_blank" class="social-icon" title="إنستغرام">
                             <i class="bi bi-instagram"></i>
                         </a>
                     }
-
                     @if (!string.IsNullOrEmpty(siteSettings.WhatsAppNumber))
                     {
                         <a href="https://wa.me/@siteSettings.WhatsAppNumber.Replace("+", "")"
-                           target="_blank"
-                           class="social-icon social-whatsapp"
-                           title="واتساب">
+                           target="_blank" class="social-icon" title="واتساب">
                             <i class="bi bi-whatsapp"></i>
                         </a>
                     }
@@ -67,69 +318,55 @@
             </div>
 
             <!-- معلومات الاتصال -->
-            <div class="col-lg-6">
-                <h5 class="mb-3 fw-bold">تواصل معنا</h5>
-
-                <div class="contact-card">
-                    <div class="contact-icon bg-primary bg-opacity-25">
-                        <i class="bi bi-envelope text-light"></i>
-                    </div>
-                    <div class="contact-info">
-                        <div class="contact-label">البريد الإلكتروني</div>
-                        <div class="contact-value">@siteSettings.ContactEmail</div>
-                    </div>
-                </div>
-
-                <div class="contact-card">
-                    <div class="contact-icon bg-success bg-opacity-25">
-                        <i class="bi bi-telephone text-light"></i>
-                    </div>
-                    <div class="contact-info">
-                        <div class="contact-label">رقم الهاتف</div>
-                        <div class="contact-value">@siteSettings.ContactPhone</div>
-                    </div>
-                </div>
-
-                @if (!string.IsNullOrEmpty(siteSettings.SiteAddress))
-                {
-                    <div class="contact-card">
-                        <div class="contact-icon bg-warning bg-opacity-25">
-                            <i class="bi bi-geo-alt text-light"></i>
+            <div class="footer-section">
+                <div class="footer-contact">
+                    @if (!string.IsNullOrEmpty(siteSettings.ContactEmail))
+                    {
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i class="bi bi-envelope"></i>
+                            </div>
+                            <div class="contact-details">
+                                <div class="contact-label">البريد الإلكتروني</div>
+                                <div class="contact-value">@siteSettings.ContactEmail</div>
+                            </div>
                         </div>
-                        <div class="contact-info">
-                            <div class="contact-label">العنوان</div>
-                            <div class="contact-value">@siteSettings.SiteAddress</div>
-                        </div>
-                    </div>
-                }
+                    }
 
-                @if (!string.IsNullOrEmpty(siteSettings.WhatsAppNumber))
-                {
-                    <div class="mt-3">
-                        <a href="https://wa.me/@siteSettings.WhatsAppNumber.Replace("+", "")"
-                           target="_blank"
-                           class="btn-whatsapp-direct">
-                            <i class="bi bi-whatsapp me-2"></i>تواصل معنا عبر واتساب
-                        </a>
-                    </div>
-                }
+                    @if (!string.IsNullOrEmpty(siteSettings.ContactPhone))
+                    {
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i class="bi bi-telephone"></i>
+                            </div>
+                            <div class="contact-details">
+                                <div class="contact-label">رقم الهاتف</div>
+                                <div class="contact-value">@siteSettings.ContactPhone</div>
+                            </div>
+                        </div>
+                    }
+                </div>
             </div>
         </div>
 
-        <hr class="my-4 opacity-25">
+        <!-- القسم السفلي -->
+        <div class="footer-bottom">
+            <div class="footer-bottom-content">
+                <div class="copyright">
+                    <i class="bi bi-c-circle"></i>
+                    <span>&copy; @DateTime.Now.Year موقع الأخبار العراقي</span>
+                </div>
 
-        <div class="text-center">
-            <p class="mb-0 text-light opacity-75">
-                &copy; @DateTime.Now.Year - موقع الأخبار العراقي. جميع الحقوق محفوظة.
-                <span class="d-block d-sm-inline mt-2 mt-sm-0">
-                    <a href="/Home/Privacy" class="text-light opacity-75 text-decoration-none mx-2">سياسة الخصوصية</a> |
-                    <a href="/Home/Terms" class="text-light opacity-75 text-decoration-none mx-2">الشروط والأحكام</a>
-                </span>
-            </p>
-            <small class="text-light opacity-50 mt-2 d-block">
-                <i class="bi bi-clock-history me-1"></i>
-                آخر تحديث: @siteSettings.LastUpdated.ToString("yyyy/MM/dd HH:mm")
-            </small>
+                <div class="footer-links">
+                    <a href="/Home/Privacy" class="footer-link">الخصوصية</a>
+                    
+                </div>
+
+                <div class="update-info">
+                    <i class="bi bi-clock-history"></i>
+                    <span>@siteSettings.LastUpdated.ToString("yyyy/MM/dd")</span>
+                </div>
+            </div>
         </div>
     </div>
 </footer>

@@ -1,140 +1,538 @@
 ﻿@model IEnumerable<WebApplication2.Models.News>
 
+<style>
+    /* تصميم الصفحة الرئيسية - مبسط ومكبر */
+    body {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: #f8f9fa;
+    }
+
+    main {
+        flex: 1 0 auto;
+        min-height: calc(100vh - 180px);
+    }
+
+    /* العنوان الرئيسي - مكبر */
+    h2 {
+        font-size: 2.8rem;
+        font-weight: 800;
+        color: #2c3e50;
+        text-align: center;
+        margin: 40px 0 50px;
+        padding-bottom: 20px;
+        border-bottom: 4px solid #3498db;
+        position: relative;
+    }
+
+        h2::after {
+            content: '📰';
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 2.5rem;
+        }
+
+    /* ===== السلايدر المكبر ===== */
+    #newsSlider {
+        max-width: 1300px;
+        margin: 0 auto 60px;
+        position: relative;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        overflow: hidden;
+        border: 3px solid #e9ecef;
+    }
+
+    .slider-item {
+        display: none;
+    }
+
+        .slider-item.active {
+            display: block;
+        }
+
+    /* النص فوق الصورة - مكبر */
+    .slider-text {
+        padding: 25px 35px;
+        background: white;
+        border-bottom: 2px solid #eee;
+    }
+
+        .slider-text h3 {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            text-align: right;
+            line-height: 1.4;
+        }
+
+        .slider-text p {
+            font-size: 18px;
+            line-height: 1.7;
+            margin: 0;
+            color: #555;
+            text-align: right;
+        }
+
+    /* الصورة - مكبرة */
+    .slider-image-container {
+        height: 500px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+
+        .slider-image-container img {
+            max-width: 96%;
+            max-height: 96%;
+            object-fit: contain;
+            border-radius: 5px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+    /* المعلومات - مكبرة */
+    .slider-info {
+        padding: 20px 35px;
+        background: #f8f9fa;
+        border-top: 2px solid #eee;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+        .slider-info span {
+            color: #555;
+            font-size: 18px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider-info .btn {
+            padding: 12px 30px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            background: #3498db;
+            border: none;
+            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
+        }
+
+            .slider-info .btn:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 7px 15px rgba(52, 152, 219, 0.4);
+                background: #2980b9;
+            }
+
+    /* أزرار التحكم - مكبرة */
+    .slider-prev, .slider-next {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(52, 152, 219, 0.9);
+        color: white;
+        border: none;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        cursor: pointer;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        transition: all 0.3s ease;
+        opacity: 0.9;
+    }
+
+        .slider-prev:hover, .slider-next:hover {
+            background: #2980b9;
+            opacity: 1;
+            transform: translateY(-50%) scale(1.1);
+        }
+
+    .slider-prev {
+        right: 20px;
+    }
+
+    .slider-next {
+        left: 20px;
+    }
+
+    /* مؤشرات - مكبرة */
+    .slider-dots {
+        text-align: center;
+        padding: 20px;
+        background: #f8f9fa;
+        border-top: 2px solid #eee;
+    }
+
+        .slider-dots button {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid #ddd;
+            background: white;
+            margin: 0 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+            .slider-dots button:hover {
+                background: #3498db;
+                border-color: #3498db;
+                transform: scale(1.2);
+            }
+
+            .slider-dots button.active-dot {
+                background: #3498db;
+                border-color: #3498db;
+                transform: scale(1.3);
+                box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
+            }
+
+    /* أيقونات الخدمات - مبسطة */
+    .services-section {
+        margin: 70px auto;
+        max-width: 1300px;
+    }
+
+    .services-title {
+        font-size: 2.5rem;
+        color: #2c3e50;
+        text-align: center;
+        margin-bottom: 50px;
+        font-weight: 700;
+    }
+
+    .icon-card {
+        padding: 30px;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+        height: 100%;
+        border: 2px solid transparent;
+        margin-bottom: 25px;
+    }
+
+        .icon-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+            border-color: #3498db;
+        }
+
+        .icon-card i {
+            font-size: 60px;
+            color: #3498db;
+            margin-bottom: 25px;
+            display: block;
+        }
+
+        .icon-card h5 {
+            color: #2c3e50;
+            font-weight: 700;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+        }
+
+        .icon-card p {
+            color: #666;
+            font-size: 1.2rem;
+            line-height: 1.7;
+            margin: 0;
+        }
+
+    /* تصميم متجاوب للسلايدر */
+    @@media (max-width: 1200px) {
+        #newsSlider {
+            max-width: 95%;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            margin: 35px 0 45px;
+        }
+    }
+
+    @@media (max-width: 992px) {
+        h2 {
+            font-size: 2.2rem;
+            margin: 30px 0 40px;
+        }
+
+        .slider-image-container {
+            height: 450px;
+        }
+
+        .slider-text {
+            padding: 20px 30px;
+        }
+
+            .slider-text h3 {
+                font-size: 24px;
+            }
+
+            .slider-text p {
+                font-size: 16px;
+            }
+
+        .services-title {
+            font-size: 2.2rem;
+        }
+
+        .icon-card {
+            padding: 25px;
+        }
+
+            .icon-card h5 {
+                font-size: 1.6rem;
+            }
+
+            .icon-card p {
+                font-size: 1.1rem;
+            }
+    }
+
+    @@media (max-width: 768px) {
+        main {
+            min-height: calc(100vh - 160px);
+        }
+
+        h2 {
+            font-size: 2rem;
+            margin: 25px 0 35px;
+        }
+
+        .slider-image-container {
+            height: 400px;
+        }
+
+        .slider-text {
+            padding: 15px 25px;
+        }
+
+            .slider-text h3 {
+                font-size: 22px;
+            }
+
+            .slider-text p {
+                font-size: 16px;
+            }
+
+        .slider-info {
+            padding: 15px 25px;
+            flex-direction: column;
+            gap: 15px;
+            text-align: center;
+        }
+
+            .slider-info .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+
+        .slider-prev, .slider-next {
+            width: 50px;
+            height: 50px;
+            font-size: 20px;
+        }
+
+        .services-title {
+            font-size: 2rem;
+            margin-bottom: 40px;
+        }
+
+        .icon-card {
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+            .icon-card i {
+                font-size: 50px;
+                margin-bottom: 20px;
+            }
+
+            .icon-card h5 {
+                font-size: 1.4rem;
+                margin-bottom: 15px;
+            }
+
+            .icon-card p {
+                font-size: 1rem;
+            }
+    }
+
+    @@media (max-width: 576px) {
+        h2 {
+            font-size: 1.8rem;
+            margin: 20px 0 30px;
+            padding-bottom: 15px;
+        }
+
+        .slider-image-container {
+            height: 350px;
+        }
+
+        .slider-text h3 {
+            font-size: 20px;
+        }
+
+        .slider-info .btn {
+            font-size: 16px;
+            padding: 10px 25px;
+        }
+
+        .slider-prev, .slider-next {
+            width: 45px;
+            height: 45px;
+            font-size: 18px;
+        }
+
+        .services-title {
+            font-size: 1.8rem;
+            margin-bottom: 35px;
+        }
+
+        .icon-card h5 {
+            font-size: 1.3rem;
+        }
+
+        .slider-dots button {
+            width: 14px;
+            height: 14px;
+            margin: 0 6px;
+        }
+    }
+
+    @@media (max-width: 480px) {
+        .slider-image-container {
+            height: 300px;
+        }
+
+        h2 {
+            font-size: 1.6rem;
+        }
+
+        .services-title {
+            font-size: 1.6rem;
+        }
+    }
+</style>
+
 <h2>أحدث الأخبار</h2>
 
 <!-- ===== السلايدر البسيط ===== -->
-<div id="newsSlider" style="max-width: 1000px; margin: 0 auto; position: relative; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; border: 1px solid #ddd;">
+<div id="newsSlider">
     @if (Model.Any())
     {
         @for (int i = 0; i < Model.Count(); i++)
         {
             var news = Model.ElementAt(i);
-            <div class="slider-item @(i==0 ? "active" : "")" style="@(i==0 ? "" : "display:none;")">
+            <div class="slider-item @(i==0 ? "active" : "")">
                 <!-- النص فوق الصورة -->
-                <div class="slider-text" style="padding: 15px; background: white; border-bottom: 1px solid #eee;">
-                    <h3 style="font-size: 22px; font-weight: bold; margin-bottom: 8px; color: #333; text-align: right;">@news.Title</h3>
-                    <p style="font-size: 15px; line-height: 1.5; margin: 0; color: #666; text-align: right;">
-                        @(news.Content.Length > 100 ? news.Content.Substring(0, 100) + "..." : news.Content)
+                <div class="slider-text">
+                    <h3>@news.Title</h3>
+                    <p>
+                        @(news.Content.Length > 150 ? news.Content.Substring(0, 150) + "..." : news.Content)
                     </p>
                 </div>
 
                 <!-- الصورة -->
-                <div class="slider-image-container" style="height: 350px; display: flex; align-items: center; justify-content: center; background: #f8f9fa;">
+                <div class="slider-image-container">
                     @if (!string.IsNullOrEmpty(news.ImageUrl))
                     {
                         <img src="@news.ImageUrl"
                              alt="@news.Title"
-                             style="max-width: 95%; max-height: 95%; object-fit: contain;"
                              onerror="handleImageError(this, '@news.Title')">
                     }
                     else
                     {
-                        <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#666;">
-                            <i class="bi bi-image" style="font-size: 50px; margin-bottom: 15px;"></i>
+                        <div class="no-image-placeholder">
+                            <i class="bi bi-newspaper"></i>
                             <h4>@news.Title</h4>
                         </div>
                     }
                 </div>
 
                 <!-- المعلومات -->
-                <div class="slider-info" style="padding: 12px 15px; background: #f8f9fa; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-                    <span style="color: #666; font-size: 14px;">
+                <div class="slider-info">
+                    <span>
                         <i class="bi bi-calendar"></i>
                         @news.CreatedAt.ToString("yyyy-MM-dd")
                     </span>
-                   <a href="@Url.Action("NewsDetails", "News", new { id = news.Id })" 
-   class="btn btn-sm btn-primary">قراءة المزيد</a>
+                    <a href="@Url.Action("NewsDetails", "News", new { id = news.Id })"
+                       class="btn btn-primary">
+                        <i class="bi bi-book me-2"></i>قراءة المزيد
+                    </a>
                 </div>
             </div>
         }
 
         <!-- أزرار التحكم -->
-        <button class="slider-prev" type="button" onclick="prevSlide()" style="position:absolute; top:50%; right:10px; transform:translateY(-50%); background:rgba(0,0,0,0.5); color:white; border:none; width:40px; height:40px; border-radius:50%; cursor:pointer; z-index: 10;">
+        <button class="slider-prev" type="button" onclick="prevSlide()">
             <i class="bi bi-chevron-right"></i>
         </button>
-        <button class="slider-next" type="button" onclick="nextSlide()" style="position:absolute; top:50%; left:10px; transform:translateY(-50%); background:rgba(0,0,0,0.5); color:white; border:none; width:40px; height:40px; border-radius:50%; cursor:pointer; z-index: 10;">
+        <button class="slider-next" type="button" onclick="nextSlide()">
             <i class="bi bi-chevron-left"></i>
         </button>
 
         <!-- مؤشرات -->
-        <div class="slider-dots" style="text-align:center; padding:10px; background: #f8f9fa;">
+        <div class="slider-dots">
             @for (int i = 0; i < Model.Count(); i++)
             {
                 <button type="button" onclick="goToSlide(@i)"
-                        style="width:12px; height:12px; border-radius:50%; border:none; background:@(i==0?"#0d6efd":"#ddd"); margin:0 5px; cursor:pointer;"></button>
+                        class="@(i==0 ? "active-dot" : "")"></button>
             }
         </div>
     }
     else
     {
-        <div style="text-align:center; padding:40px; background:#f8f9fa; border-radius:10px;">
-            <i class="bi bi-newspaper" style="font-size:50px; color:#adb5bd;"></i>
-            <h4 style="margin-top:15px; color:#666;">لا توجد أخبار</h4>
+        <div class="no-news-message">
+            <i class="bi bi-newspaper"></i>
+            <h4>لا توجد أخبار</h4>
+            <p>سيتم إضافة الأخبار قريباً</p>
         </div>
     }
 </div>
 
-
-
-<style>
-    /* تصميم بسيط للأيقونات */
-    .icon-card {
-        padding: 20px;
-        background: white;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-
-        .icon-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            background: #f8f9fa;
-        }
-
-        .icon-card i {
-            font-size: 40px;
-            color: #0d6efd;
-            margin-bottom: 15px;
-        }
-
-        .icon-card h5 {
-            color: #333;
-            font-weight: 600;
-        }
-
-    /* تصميم متجاوب للسلايدر */
-    @@media (max-width: 768px) {
-        #newsSlider {
-            max-width: 95% !important;
-        }
-
-        .slider-image-container {
-            height: 250px !important;
-        }
-    }
-
-    @@media (max-width: 576px) {
-        .slider-image-container {
-            height: 200px !important;
-        }
-
-        .slider-text h3 {
-            font-size: 18px !important;
-        }
-
-        .slider-text p {
-            font-size: 14px !important;
-        }
-
-        .slider-prev, .slider-next {
-            width: 35px !important;
-            height: 35px !important;
-            font-size: 14px !important;
-        }
-    }
-</style>
+<!-- قسم الخدمات -->
+<div class="services-section">
+    <h3 class="services-title">خدماتنا المميزة</h3>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="icon-card">
+                <i class="bi bi-lightning-charge"></i>
+                <h5>أخبار سريعة</h5>
+                <p>نوفر لكم آخر الأخبار بأسرع وقت ممكن مع تحديثات مستمرة على مدار الساعة</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="icon-card">
+                <i class="bi bi-shield-check"></i>
+                <h5>معلومات موثقة</h5>
+                <p>جميع الأخبار تخضع للتحقق والتوثق قبل النشر لضمان مصداقية المعلومات</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="icon-card">
+                <i class="bi bi-globe2"></i>
+                <h5>تغطية شاملة</h5>
+                <p>نغطي جميع محافظات العراق وأهم الأحداث العالمية المؤثرة</p>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
     // دالة لمعالجة أخطاء الصور
@@ -146,9 +544,9 @@
         if (container) {
             container.innerHTML = `
                 <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#666;">
-                    <i class="bi bi-image" style="font-size:50px;margin-bottom:15px;"></i>
-                    <h4>${title}</h4>
-                    <p style="margin-top:10px;font-size:14px;">لا توجد صورة</p>
+                    <i class="bi bi-newspaper" style="font-size:60px;margin-bottom:20px;color:#adb5bd;"></i>
+                    <h4 style="color:#495057;margin-bottom:10px;font-size:1.5rem;text-align:center;">${title}</h4>
+                    <p style="color:#6c757d;font-size:14px;">لا توجد صورة</p>
                 </div>
             `;
         }
@@ -170,8 +568,6 @@
         slides = document.querySelectorAll('.slider-item');
         dots = document.querySelectorAll('.slider-dots button');
 
-        console.log('عدد الصور:', slides.length);
-
         if (slides.length > 0) {
             showSlide(currentSlide);
             startAutoSlide();
@@ -180,26 +576,26 @@
 
     // عرض سلايد معين
     function showSlide(index) {
-        console.log('عرض السلايد:', index);
-
         // إخفاء جميع السلايدات
         slides.forEach(slide => {
+            slide.classList.remove('active');
             slide.style.display = 'none';
         });
 
         // إزالة النشاط من جميع المؤشرات
         dots.forEach(dot => {
-            dot.style.backgroundColor = '#ddd';
+            dot.classList.remove('active-dot');
         });
 
         // عرض السلايد الحالي
         if (slides[index]) {
+            slides[index].classList.add('active');
             slides[index].style.display = 'block';
         }
 
         // تفعيل المؤشر الحالي
         if (dots[index]) {
-            dots[index].style.backgroundColor = '#0d6efd';
+            dots[index].classList.add('active-dot');
         }
 
         currentSlide = index;
@@ -242,7 +638,7 @@
             clearInterval(slideInterval);
             slideInterval = setInterval(() => {
                 nextSlide();
-            }, 4000); // التبديل كل 4 ثواني
+            }, 5000); // التبديل كل 5 ثواني
         }
     }
 

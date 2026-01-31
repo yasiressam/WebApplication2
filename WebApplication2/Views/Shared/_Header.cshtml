@@ -35,6 +35,13 @@
                                 <i class="bi bi-people me-1"></i> مستخدمي محافظتي
                             </a>
                         </li>
+
+                        <!-- 🔥 رابط جديد: إنشاء مستخدم جديد -->
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Account" asp-action="CreateUserByAdmin">
+                                <i class="bi bi-person-plus me-1"></i> إنشاء مستخدم جديد
+                            </a>
+                        </li>
                         <!-- تم حذف: الإحصائيات -->
                     }
 
@@ -55,11 +62,19 @@
                     }
 
                     <!-- روابط إدارة المستخدمين (فقط لـ SuperAdmin) -->
+                    <!-- روابط إدارة المستخدمين (فقط لـ SuperAdmin) -->
                     @if (SignInManager.IsSignedIn(User) && User.IsInRole(clsRoles.SuperAdmin))
                     {
                         <li class="nav-item">
                             <a class="nav-link" asp-controller="SuperAdmin" asp-action="Users">
                                 <i class="bi bi-people me-1"></i> إدارة المستخدمين
+                            </a>
+                        </li>
+
+                        <!-- 🔥 رابط جديد: إنشاء مستخدم جديد -->
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Account" asp-action="CreateUserByAdmin">
+                                <i class="bi bi-person-plus me-1"></i> إنشاء مستخدم جديد
                             </a>
                         </li>
 
@@ -70,6 +85,7 @@
                         </li>
                     }
                 </ul>
+
 
                 <!-- عناصر جانبية -->
                 <ul class="navbar-nav align-items-center">

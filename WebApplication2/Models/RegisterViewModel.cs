@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿
+using System.ComponentModel.DataAnnotations;
 
 namespace WebApplication2.Models
 {
@@ -17,6 +18,17 @@ namespace WebApplication2.Models
         [DataType(DataType.Password)]
         [Display(Name = "تأكيد كلمة المرور")]
         [Compare("Password", ErrorMessage = "كلمة المرور وتأكيدها غير متطابقين")]
-        public string ConfirmPassword { get; set; } 
+        public string ConfirmPassword { get; set; } = string.Empty;
+
+        // ⭐ خاصية جديدة: الدور (للاستخدام من قبل الأدمن فقط)
+        [Display(Name = "الدور")]
+        public string? Role { get; set; } = "User";
+
+        // ⭐ خاصية جديدة: المحافظة المدارة (للأدمن فقط)
+        [Display(Name = "المحافظة المدارة (للأدمن فقط)")]
+        public string? ManagedGovernorate { get; set; }
+
+        // ⭐ خاصية جديدة: هل الحساب تم إنشاؤه من قبل أدمن؟
+        public bool IsCreatedByAdmin { get; set; } = false;
     }
 }

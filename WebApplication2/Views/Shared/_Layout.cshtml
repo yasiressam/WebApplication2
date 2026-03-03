@@ -15,393 +15,245 @@
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
 
     <!-- أنماط مخصصة -->
-    ﻿
-    <!DOCTYPE html>
-    <html lang="ar" dir="rtl">
-    <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>@ViewData["Title"] - موقع الأخبار العراقي</title>
+    <style>
+        /* ===== تعديل الخلفية لتكون واضحة جداً ===== */
+        .site-background {
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            width: 100%; /* يغطي كامل العرض */
+            height: calc(100vh - var(--header-height) - var(--footer-height)); /* من أسفل الهيدر حتى أعلى الفوتر */
+            background-color: white; /* خلفية بيضاء لملء الفراغ */
+            background-image: url('/images/background1.jpg');
+            background-size: contain; /* تظهر الصورة بالكامل طولاً وعرضاً */
+            background-position: center top; /* تبدأ من الأعلى وتبقى في المنتصف عرضياً */
+            background-repeat: no-repeat;
+            opacity: 0.85;
+            z-index: -1;
+            pointer-events: none;
+            filter: brightness(0.95);
+        }
+        .site-background::after {
+    content: "";
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(255,255,255,0.2); /* تعديل الشفافية */
+}
 
-        <!-- CSS Files -->
-        <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" />
-        <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-        <link rel="stylesheet" href="~/css/_LayoutStyles.css" asp-append-version="true" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+        /* تعديل خلفية المحتوى لتكون أقل شفافية (أكثر إعتاماً) */
+        :root {
+            --header-height: 60px;
+            --footer-height: 130px;
+            --content-bg: rgba(255, 255, 255, 0.85);
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --shadow-color: rgba(0, 0, 0, 0.2);
+        }
 
-        <!-- أنماط مخصصة -->
-        <style>
-            /* ===== تعديل الخلفية لتكون واضحة جداً ===== */
-            .site-background {
-                position: fixed;
-                top: 60px;
-                left: 0;
-                width: 100%;
-                height: calc(100vh - 60px);
-                background-image: url('/images/background.jpg');
-                background-size: 40% auto; /* ◀ استخدام cover لتكون واضحة */
-                background-position: center center;
-                background-repeat: no-repeat;
-                opacity: 0.8; /* ◀ زيادة الشفافية لتكون واضحة */
-                z-index: -1;
-                pointer-events: none;
-                filter: brightness(0.9); /* ◀ جعلها أكثر إشراقاً */
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            margin: 0;
+            background-color: #f8f9fa;
+            position: relative;
+            color: #2c3e50;
+        }
+
+        main {
+            flex: 1 0 auto;
+            min-height: calc(100vh - var(--header-height) - var(--footer-height));
+            padding: 30px 0 50px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            position: relative;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            margin-bottom: 2.5rem;
+            color: #2c3e50;
+            font-weight: 800;
+            text-align: center;
+            border-bottom: 3px solid #2980b9;
+            padding-bottom: 15px;
+            background-color: var(--content-bg);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .content-area {
+            font-size: 1.15rem;
+            line-height: 1.9;
+            padding: 30px;
+            background: var(--card-bg);
+            border-radius: 15px;
+            box-shadow: 0 8px 25px var(--shadow-color);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        /* تحسين النماذج والأزرار - أقل شفافية */
+        .form-control {
+            background-color: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ced4da;
+            color: #495057;
+        }
+
+            .form-control:focus {
+                background-color: white;
+                border-color: #3498db;
+                box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
             }
 
-            /* تعديل خلفية المحتوى لتكون أقل شفافية (أكثر إعتاماً) */
-            :root {
-                --header-height: 60px;
-                --footer-height: 130px;
-                --content-bg: rgba(255, 255, 255, 0.85); /* ◀ خلفية بيضاء أقل شفافية */
-                --card-bg: rgba(255, 255, 255, 0.9); /* ◀ خلفية أكثر إعتاماً */
-                --shadow-color: rgba(0, 0, 0, 0.2); /* ◀ ظلال أغمق */
+        .btn {
+            font-weight: 600;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            background-color: rgba(52, 152, 219, 0.95);
+            color: white;
+        }
+
+            .btn:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+                background-color: rgba(41, 128, 185, 0.95);
             }
 
-            body {
-                min-height: 100vh;
-                display: flex;
-                flex-direction: column;
-                padding: 0;
-                margin: 0;
-                background-color: #f8f9fa;
-                position: relative;
-                color: #2c3e50; /* ◀ لون نص أغمق */
-            }
+        /* تحسين الجداول - أقل شفافية */
+        .table {
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px var(--shadow-color);
+        }
 
-            main {
-                flex: 1 0 auto;
-                min-height: calc(100vh - var(--header-height) - var(--footer-height));
-                padding: 30px 0 50px;
-            }
-
-            .container {
-                max-width: 1400px;
-                margin: 0 auto;
-                padding: 0 20px;
-                position: relative;
-            }
-
-            .page-title {
-                font-size: 2.5rem;
-                margin-bottom: 2.5rem;
-                color: #2c3e50;
-                font-weight: 800;
-                text-align: center;
-                border-bottom: 3px solid #2980b9;
-                padding-bottom: 15px;
-                background-color: var(--content-bg);
-                border-radius: 10px;
-                padding: 20px;
-                box-shadow: 0 5px 15px var(--shadow-color);
-                border: 1px solid rgba(255, 255, 255, 0.5); /* ◀ إضافة حدود بيضاء */
-            }
-
-            .content-area {
-                font-size: 1.15rem;
-                line-height: 1.9;
-                padding: 30px;
-                background: var(--card-bg);
-                border-radius: 15px;
-                box-shadow: 0 8px 25px var(--shadow-color);
-                border: 1px solid rgba(255, 255, 255, 0.6); /* ◀ حدود بيضاء أقل شفافية */
-            }
-
-            /* تحسين النماذج والأزرار - أقل شفافية */
-            .form-control {
-                background-color: rgba(255, 255, 255, 0.95);
-                border: 1px solid #ced4da;
-                color: #495057;
-            }
-
-                .form-control:focus {
-                    background-color: white;
-                    border-color: #3498db;
-                    box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
-                }
-
-            .btn {
-                font-weight: 600;
-                border: none;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                transition: all 0.3s ease;
-                background-color: rgba(52, 152, 219, 0.95); /* ◀ أزرار أقل شفافية */
+            .table thead th {
+                background-color: rgba(52, 152, 219, 0.9);
                 color: white;
+                border: none;
+                font-weight: 600;
             }
 
-                .btn:hover {
-                    transform: translateY(-3px);
-                    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-                    background-color: rgba(41, 128, 185, 0.95); /* ◀ لون عند التحويم أقل شفافية */
-                }
-
-            /* تحسين الجداول - أقل شفافية */
-            .table {
-                background-color: var(--card-bg);
-                border-radius: 10px;
-                overflow: hidden;
-                box-shadow: 0 4px 10px var(--shadow-color);
+            .table tbody tr:hover {
+                background-color: rgba(52, 152, 219, 0.15);
             }
 
-                .table thead th {
-                    background-color: rgba(52, 152, 219, 0.9); /* ◀ أقل شفافية */
-                    color: white;
-                    border: none;
-                    font-weight: 600;
-                }
+        /* تحسين التنبيهات - أقل شفافية */
+        .alert {
+            font-size: 1.05rem;
+            background-color: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0,0,0,0.15);
+            box-shadow: 0 4px 12px var(--shadow-color);
+        }
 
-                .table tbody tr:hover {
-                    background-color: rgba(52, 152, 219, 0.15);
-                }
+        .alert-success {
+            background-color: rgba(213, 245, 227, 0.95);
+            border-color: #28a745;
+        }
 
-            /* تحسين التنبيهات - أقل شفافية */
-            .alert {
-                font-size: 1.05rem;
-                background-color: rgba(255, 255, 255, 0.95);
-                border: 1px solid rgba(0,0,0,0.15);
-                box-shadow: 0 4px 12px var(--shadow-color);
+        .alert-danger {
+            background-color: rgba(248, 215, 218, 0.95);
+            border-color: #dc3545;
+        }
+
+        /* تحسين البطاقات - أقل شفافية */
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid rgba(0,0,0,0.15);
+            box-shadow: 0 4px 15px var(--shadow-color);
+        }
+
+        /* تحسين الروابط */
+        a {
+            color: #2980b9;
+            font-weight: 500;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+            a:hover {
+                color: #1a5276;
+                text-decoration: underline;
             }
 
-            .alert-success {
-                background-color: rgba(213, 245, 227, 0.95);
-                border-color: #28a745;
+        /* تحسين العناوين */
+        h1, h2, h3, h4, h5, h6 {
+            color: #2c3e50;
+            font-weight: 700;
+        }
+
+        /* تحسين القوائم - أقل شفافية */
+        .list-group-item {
+            background-color: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0,0,0,0.15);
+        }
+
+        /* مؤشر التقدم */
+        .progress-indicator {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 0%;
+            height: 3px;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            z-index: 9999;
+            transition: width 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        /* تحسين شريط التمرير */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(241, 241, 241, 0.9);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(52, 152, 219, 0.7);
+            border-radius: 5px;
+        }
+
+            ::-webkit-scrollbar-thumb:hover {
+                background: rgba(41, 128, 185, 0.9);
             }
 
-            .alert-danger {
-                background-color: rgba(248, 215, 218, 0.95);
-                border-color: #dc3545;
-            }
+        /* تأثيرات إضافية للوضوح */
+        .text-muted {
+            color: #6c757d !important;
+        }
 
-            /* تحسين البطاقات - أقل شفافية */
-            .card {
-                background-color: var(--card-bg);
-                border: 1px solid rgba(0,0,0,0.15);
-                box-shadow: 0 4px 15px var(--shadow-color);
-            }
+        .bg-light {
+            background-color: rgba(248, 249, 250, 0.95) !important;
+        }
 
-            /* تحسين الروابط */
-            a {
-                color: #2980b9;
-                font-weight: 500;
-                text-decoration: none;
-                transition: color 0.3s ease;
-            }
+        .bg-white {
+            background-color: rgba(255, 255, 255, 0.95) !important;
+        }
 
-                a:hover {
-                    color: #1a5276;
-                    text-decoration: underline;
-                }
+        /* تحسين الأيقونات */
+        .bi {
+            text-shadow: 0px 0px 2px rgba(255, 255, 255, 0.8);
+        }
 
-            /* تحسين العناوين */
-            h1, h2, h3, h4, h5, h6 {
-                color: #2c3e50;
-                font-weight: 700;
-            }
+        /* تحسينات إضافية للوضوح */
+        .text-dark {
+            color: #2c3e50 !important;
+        }
 
-            /* تحسين القوائم - أقل شفافية */
-            .list-group-item {
-                background-color: rgba(255, 255, 255, 0.95);
-                border: 1px solid rgba(0,0,0,0.15);
-            }
-
-            /* مؤشر التقدم */
-            .progress-indicator {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 0%;
-                height: 3px;
-                background: linear-gradient(90deg, #3498db, #2ecc71);
-                z-index: 9999;
-                transition: width 0.3s ease;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            }
-
-            /* تحسين شريط التمرير */
-            ::-webkit-scrollbar {
-                width: 10px;
-            }
-
-            ::-webkit-scrollbar-track {
-                background: rgba(241, 241, 241, 0.9);
-            }
-
-            ::-webkit-scrollbar-thumb {
-                background: rgba(52, 152, 219, 0.7);
-                border-radius: 5px;
-            }
-
-                ::-webkit-scrollbar-thumb:hover {
-                    background: rgba(41, 128, 185, 0.9);
-                }
-
-            /* تأثيرات إضافية للوضوح */
-            .text-muted {
-                color: #6c757d !important;
-            }
-
-            .bg-light {
-                background-color: rgba(248, 249, 250, 0.95) !important;
-            }
-
-            .bg-white {
-                background-color: rgba(255, 255, 255, 0.95) !important;
-            }
-
-            /* تحسين الأيقونات */
-            .bi {
-                text-shadow: 0px 0px 2px rgba(255, 255, 255, 0.8);
-            }
-
-            /* تحسينات إضافية للوضوح */
-            .text-dark {
-                color: #2c3e50 !important;
-            }
-
-            .border {
-                border-color: rgba(0, 0, 0, 0.15) !important;
-            }
-        </style>
-
-        @RenderSection("Styles", required: false)
-    </head>
-    <body>
-        <!-- ===== الخلفية واضحة جداً ===== -->
-        <div class="site-background"></div>
-
-        <!-- مؤشر التقدم -->
-        <div class="progress-indicator" id="progressIndicator"></div>
-
-        <!-- رسائل عائمة -->
-        <partial name="_FloatingAlerts" />
-
-        <!-- الرأس والقائمة -->
-        <partial name="_Header" />
-
-        <main class="main-content">
-            <div class="container">
-                @if (!string.IsNullOrEmpty(ViewData["Title"] as string))
-                {
-                    <h1 class="page-title">
-                        <i class="@(ViewData["Icon"] as string ?? "bi bi-file-text") me-3"></i>
-                        @ViewData["Title"]
-                    </h1>
-                }
-
-                <!-- رسائل محتوى الصفحة -->
-                @if (ViewBag.ErrorMessage != null)
-                {
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-x-circle-fill fs-4 me-3"></i>
-                            <div class="flex-grow-1">
-                                <h5 class="alert-heading mb-1 fw-bold">خطأ في الإدخال</h5>
-                                <p class="mb-0">@ViewBag.ErrorMessage</p>
-                            </div>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                }
-
-                @if (ViewBag.SuccessMessage != null)
-                {
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        <div class="d-flex align-items-center">
-                            <i class="bi bi-check2-circle fs-4 me-3"></i>
-                            <div class="flex-grow-1">
-                                <h5 class="alert-heading mb-1 fw-bold">تم بنجاح</h5>
-                                <p class="mb-0">@ViewBag.SuccessMessage</p>
-                            </div>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                }
-
-                <div class="content-area">
-                    @RenderBody()
-                </div>
-            </div>
-        </main>
-
-        <!-- الفوتر -->
-        <partial name="_Footer" />
-
-        <!-- JavaScript Files -->
-        <script src="~/lib/jquery/dist/jquery.min.js"></script>
-        <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-        <script src="https://unpkg.com/feather-icons"></script>
-
-        <!-- إعدادات عامة -->
-        <script>
-            feather.replace();
-
-            document.addEventListener('DOMContentLoaded', function() {
-                document.querySelectorAll('a').forEach(link => {
-                    link.addEventListener('click', function(e) {
-                        if (this.href && !this.href.includes('javascript')) {
-                            document.getElementById('progressIndicator').style.width = '100%';
-                            setTimeout(() => {
-                                document.getElementById('progressIndicator').style.width = '0%';
-                            }, 500);
-                        }
-                    });
-                });
-
-                setTimeout(() => {
-                    document.querySelectorAll('.floating-alert').forEach(alert => {
-                        const bsAlert = new bootstrap.Alert(alert);
-                        bsAlert.close();
-                    });
-                }, 5000);
-
-                document.querySelectorAll('.btn').forEach(btn => {
-                    btn.addEventListener('mouseenter', function() {
-                        this.style.transform = 'translateY(-3px)';
-                        this.style.boxShadow = '0 7px 14px rgba(0,0,0,0.1)';
-                    });
-
-                    btn.addEventListener('mouseleave', function() {
-                        this.style.transform = 'translateY(0)';
-                        this.style.boxShadow = '0 2px 5px rgba(0,0,0,0.1)';
-                    });
-                });
-            });
-
-            window.addEventListener('beforeunload', function() {
-                document.getElementById('progressIndicator').style.width = '100%';
-            });
-
-            document.addEventListener('click', function(e) {
-                if (!e.target.closest('.alert') && !e.target.closest('.btn-close')) {
-                    document.querySelectorAll('.alert.show').forEach(alert => {
-                        const bsAlert = bootstrap.Alert.getInstance(alert);
-                        if (bsAlert) bsAlert.close();
-                    });
-                }
-            });
-
-            document.addEventListener('DOMContentLoaded', function() {
-                document.querySelectorAll('label[for]').forEach(label => {
-                    const inputId = label.getAttribute('for');
-                    const input = document.getElementById(inputId);
-                    if (input && input.hasAttribute('required')) {
-                        label.classList.add('required-field');
-                        label.innerHTML += ' <span class="text-danger">*</span>';
-                    }
-                });
-            });
-        </script>
-        <script>
-            window.getCsrfToken = function() {
-                return document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
-            };
-        </script>
-
-        @await RenderSectionAsync("Scripts", required: false)
-    </body>
-</html>
+        .border {
+            border-color: rgba(0, 0, 0, 0.15) !important;
+        }
+    </style>
 
     @RenderSection("Styles", required: false)
 </head>

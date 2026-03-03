@@ -289,6 +289,71 @@ namespace WebApplication2.Controllers
                 return RedirectToAction(nameof(Users));
             }
         }
+        // POST: حذف مستخدم
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteUser([FromBody] DeleteUserRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(request.UserId))
+                    return Json(new { success = false, message = "معرف المستخدم مطلوب" });
+
+                var user = await _userManager.FindByIdAsync(request.UserId);
+                if (user == null)
+                    return Json(new { success = false, message = "المستخدم غير موجود" });
+
+                // التحقق من أن المستخدم ليس سوبر أدمن (لا يمكن حذف سوبر أدمن)
+                var roles = await _userManager.GetRolesAsync(user);
+                if (roles.Contains(clsRoles.SuperAdmin))
+                {
+                    return Json(new { success = false, message = "لا يمكن حذف حساب سوبر أدمن" });
+                }
+
+                // حذف الملف الشخصي المرتبط أولاً
+                var userProfile = await _context.Identifies
+                    .Include(i => i.Address)
+                    .FirstOrDefaultAsync(i => i.UserId == request.UserId);
+
+                if (userProfile != null)
+                {
+                    // حذف العنوان إذا كان موجوداً
+                    if (userProfile.Address != null)
+                    {
+                        _context.Addresses.Remove(userProfile.Address);
+                    }
+
+                    // حذف الملف الشخصي
+                    _context.Identifies.Remove(userProfile);
+                    await _context.SaveChangesAsync();
+                }
+
+                // حذف المستخدم من نظام Identity
+                var result = await _userManager.DeleteAsync(user);
+
+                if (result.Succeeded)
+                {
+                    return Json(new
+                    {
+                        success = true,
+                        message = "✅ تم حذف المستخدم وجميع بياناته بنجاح"
+                    });
+                }
+
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                return Json(new { success = false, message = $"❌ فشل في حذف المستخدم: {errors}" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = $"❌ حدث خطأ: {ex.Message}" });
+            }
+        }
+
+        // إضافة كلاس الطلب في نهاية الملف (قبل الأقواس الأخيرة)
+        public class DeleteUserRequest
+        {
+            public string UserId { get; set; }
+        }
 
         // POST: تفعيل/تعطيل المستخدم
         [HttpPost]
@@ -337,4 +402,6 @@ namespace WebApplication2.Controllers
     {
         public string UserId { get; set; }
     }
+
+
 }

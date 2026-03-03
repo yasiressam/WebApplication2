@@ -1,9 +1,334 @@
 ﻿@model WebApplication2.Models.SiteSettings
 
-@{
-    ViewData["Title"] = "إعدادات الموقع";
-    ViewData["Icon"] = "bi bi-gear";
-}
+
+<style>
+    /* تحسينات التصميم فقط - بدون تغيير في هيكل الكود */
+    .card {
+        border-radius: 20px !important;
+        overflow: hidden;
+        transition: transform 0.3s ease;
+        border: none !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
+    }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(30, 60, 114, 0.15) !important;
+        }
+
+    .card-header {
+        background: linear-gradient(135deg, #1e3c72, #2a5a9c) !important;
+        padding: 1.5rem 2rem !important;
+        border: none !important;
+    }
+
+        .card-header h3 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: white;
+        }
+
+        .card-header i {
+            font-size: 2rem;
+            background: rgba(255,255,255,0.2);
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+        }
+
+        .card-header small {
+            color: rgba(255,255,255,0.9);
+            font-size: 0.95rem;
+        }
+
+    .card-body {
+        padding: 2rem !important;
+        background: #ffffff;
+    }
+
+    /* تحسين العناوين */
+    h4 {
+        font-size: 1.3rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem !important;
+        padding-bottom: 0.8rem !important;
+    }
+
+        h4.text-primary {
+            color: #1e3c72 !important;
+            border-bottom-color: #1e3c72 !important;
+        }
+
+        h4.text-success {
+            color: #0d9488 !important;
+            border-bottom-color: #0d9488 !important;
+        }
+
+        h4.text-info {
+            color: #2563eb !important;
+            border-bottom-color: #2563eb !important;
+        }
+
+        h4 i {
+            font-size: 1.4rem;
+            margin-left: 0.5rem;
+        }
+
+    /* تحسين الحقول */
+    .form-label {
+        font-weight: 600;
+        color: #1e3c72;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+        .form-label i {
+            color: #1e3c72;
+            font-size: 1rem;
+        }
+
+    .form-control {
+        border-radius: 12px !important;
+        padding: 0.7rem 1rem !important;
+        border: 2px solid #e2e8f0 !important;
+        transition: all 0.3s;
+        background: #ffffff;
+    }
+
+        .form-control:focus {
+            border-color: #1e3c72 !important;
+            box-shadow: 0 0 0 4px rgba(30, 60, 114, 0.1) !important;
+            outline: none;
+        }
+
+        .form-control::placeholder {
+            color: #cbd5e1;
+        }
+
+    textarea.form-control {
+        min-height: 120px;
+        resize: vertical;
+    }
+
+    .text-muted {
+        color: #64748b !important;
+        font-size: 0.9rem;
+        margin-top: 0.5rem;
+    }
+
+    .text-danger {
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
+    }
+
+    /* تحسين كروت التواصل الاجتماعي */
+    .border-primary {
+        border-color: #1e3c72 !important;
+        border-width: 2px !important;
+    }
+
+    .border-danger {
+        border-color: #c41e3a !important;
+        border-width: 2px !important;
+    }
+
+    .border-success {
+        border-color: #0d9488 !important;
+        border-width: 2px !important;
+    }
+
+    .card.h-100 {
+        border-radius: 16px !important;
+        transition: all 0.3s;
+        background: #ffffff;
+    }
+
+        .card.h-100:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+    .card-body {
+        padding: 1.5rem !important;
+    }
+
+    /* تحسين الأزرار */
+    .btn {
+        border-radius: 50px !important;
+        padding: 0.7rem 1.8rem !important;
+        font-weight: 600 !important;
+        transition: all 0.3s !important;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1) !important;
+        }
+
+    .btn-outline-secondary {
+        border: 2px solid #cbd5e1 !important;
+        color: #475569 !important;
+        background: transparent;
+    }
+
+        .btn-outline-secondary:hover {
+            background: #f1f5f9 !important;
+            border-color: #94a3b8 !important;
+        }
+
+    .btn-outline-warning {
+        border: 2px solid #f59e0b !important;
+        color: #b45309 !important;
+        background: transparent;
+    }
+
+        .btn-outline-warning:hover {
+            background: #f59e0b !important;
+            color: white !important;
+        }
+
+    .btn-warning {
+        background: #f59e0b !important;
+        color: white !important;
+        border: none;
+    }
+
+        .btn-warning:hover {
+            background: #d97706 !important;
+        }
+
+    .btn-success {
+        background: linear-gradient(135deg, #0d9488, #0f766e) !important;
+        color: white !important;
+        border: none;
+    }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #0f766e, #0d9488) !important;
+        }
+
+    /* تحسين تذييل البطاقة */
+    .card-footer {
+        background: #f8fafc !important;
+        border-top: 2px solid #e2e8f0 !important;
+        padding: 1rem 2rem !important;
+    }
+
+        .card-footer small {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #475569;
+        }
+
+        .card-footer i {
+            color: #1e3c72;
+        }
+
+    /* تحسين التنبيهات */
+    .alert {
+        border-radius: 16px;
+        padding: 1rem 1.5rem;
+        border: none;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideIn 0.3s ease;
+    }
+
+    @@keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .alert-success {
+        background: #dcfce7;
+        color: #166534;
+        border-right: 6px solid #0d9488;
+    }
+
+    .alert-danger {
+        background: #fee2e2;
+        color: #991b1b;
+        border-right: 6px solid #dc2626;
+    }
+
+    .alert i {
+        font-size: 1.3rem;
+    }
+
+    /* تحسينات الموبايل */
+    @@media (max-width: 992px) {
+        .card-header h3 {
+            font-size: 1.5rem;
+        }
+
+        .d-flex.justify-content-between {
+            flex-direction: column;
+            gap: 15px;
+        }
+
+            .d-flex.justify-content-between > div {
+                width: 100%;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+
+        .btn {
+            flex: 1;
+            justify-content: center;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .card-header {
+            padding: 1.2rem !important;
+        }
+
+            .card-header h3 {
+                font-size: 1.3rem;
+            }
+
+        .card-body {
+            padding: 1.5rem !important;
+        }
+
+        .row {
+            flex-direction: column;
+        }
+
+        .col-md-6, .col-md-4 {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        .btn {
+            width: 100%;
+        }
+
+        .card-footer .d-flex {
+            flex-direction: column;
+            gap: 10px;
+            text-align: center;
+        }
+    }
+</style>
 
 <div class="container py-4">
     <div class="row justify-content-center">

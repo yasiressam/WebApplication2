@@ -1,50 +1,15 @@
 ﻿@model IEnumerable<WebApplication2.Models.News>
 
+
+
 <style>
-    /* تصميم الصفحة الرئيسية - مبسط ومكبر */
-    body {
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-        background: #f8f9fa;
-    }
-
-    main {
-        flex: 1 0 auto;
-        min-height: calc(100vh - 180px);
-    }
-
-    /* العنوان الرئيسي - مكبر */
-    h2 {
-        font-size: 2.8rem;
-        font-weight: 800;
-        color: #2c3e50;
-        text-align: center;
-        margin: 40px 0 50px;
-        padding-bottom: 20px;
-        border-bottom: 4px solid #3498db;
-        position: relative;
-    }
-
-        h2::after {
-            content: '📰';
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 2.5rem;
-        }
-
-    /* ===== السلايدر المكبر ===== */
-    #newsSlider {
-        max-width: 1300px;
-        margin: 0 auto 60px;
-        position: relative;
+    /* ===== السلايدر الرئيسي ===== */
+    .featured-slider {
         background: white;
         border-radius: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
         overflow: hidden;
-        border: 3px solid #e9ecef;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        margin-bottom: 60px;
     }
 
     .slider-item {
@@ -55,621 +20,689 @@
             display: block;
         }
 
-    /* النص فوق الصورة - مكبر */
-    .slider-text {
-        padding: 25px 35px;
-        background: white;
-        border-bottom: 2px solid #eee;
-    }
-
-        .slider-text h3 {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: #2c3e50;
-            text-align: right;
-            line-height: 1.4;
-        }
-
-        .slider-text p {
-            font-size: 18px;
-            line-height: 1.7;
-            margin: 0;
-            color: #555;
-            text-align: right;
-        }
-
-    /* الصورة - مكبرة */
-    .slider-image-container {
+    .slider-image {
         height: 500px;
+        background: #f3f4f6;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     }
 
-        .slider-image-container img {
-            max-width: 96%;
-            max-height: 96%;
-            object-fit: contain;
-            border-radius: 5px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        .slider-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
-    /* المعلومات - مكبرة */
-    .slider-info {
-        padding: 20px 35px;
-        background: #f8f9fa;
-        border-top: 2px solid #eee;
+    .slider-content {
+        padding: 40px;
+        background: white;
+    }
+
+        .slider-content h3 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            color: #111827;
+            line-height: 1.4;
+        }
+
+        .slider-content p {
+            color: #4b5563;
+            font-size: 1.2rem;
+            line-height: 1.8;
+            margin-bottom: 25px;
+        }
+
+    .slider-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: #6b7280;
+        font-size: 1.1rem;
+    }
+
+    .slider-controls {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        padding: 20px;
+        background: #f9fafb;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .slider-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: none;
+        background: #d1d5db;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+        .slider-dot.active {
+            background: #111827;
+            width: 30px;
+            border-radius: 20px;
+        }
+
+    .slider-arrow {
+        position: absolute;
+        top: -25px;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: white;
+        border: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-size: 1.5rem;
+    }
+
+        .slider-arrow:hover {
+            background: #111827;
+            color: white;
+            border-color: #111827;
+        }
+
+        .slider-arrow.prev {
+            left: 20px;
+        }
+
+        .slider-arrow.next {
+            right: 20px;
+        }
+
+    /* ===== قائمة الأخبار الرئيسية ===== */
+    .main-news-section {
+        margin: 60px 0;
+    }
+
+    .section-header {
+        margin-bottom: 40px;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 15px;
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
 
-        .slider-info span {
-            color: #555;
-            font-size: 18px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+    .section-title {
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: #111827;
+        margin: 0;
+        position: relative;
+    }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -17px;
+            right: 0;
+            width: 100px;
+            height: 4px;
+            background: #dc2626;
         }
 
-        .slider-info .btn {
-            padding: 12px 30px;
-            font-size: 18px;
-            font-weight: 600;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            background: #3498db;
-            border: none;
-            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
-        }
-
-            .slider-info .btn:hover {
-                transform: translateY(-3px);
-                box-shadow: 0 7px 15px rgba(52, 152, 219, 0.4);
-                background: #2980b9;
-            }
-
-    /* أزرار التحكم - مكبرة */
-    .slider-prev, .slider-next {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        background: rgba(52, 152, 219, 0.9);
-        color: white;
-        border: none;
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
+    .view-all-link {
+        color: #111827;
+        font-size: 1.1rem;
+        font-weight: 600;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
         cursor: pointer;
-        z-index: 10;
+    }
+
+        .view-all-link:hover {
+            color: #dc2626;
+            gap: 12px;
+        }
+
+    /* ===== قائمة الأخبار العمودية ===== */
+    .news-list-vertical {
+        display: flex;
+        flex-direction: column;
+        gap: 25px;
+    }
+
+    .news-item-horizontal {
+        background: white;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.03);
+        transition: all 0.3s ease;
+        border: 1px solid #e5e7eb;
+    }
+
+        .news-item-horizontal:hover {
+            box-shadow: 0 15px 40px rgba(0,0,0,0.08);
+            border-color: #111827;
+        }
+
+    .news-item-link {
+        display: flex;
+        padding: 25px;
+        text-decoration: none;
+        color: inherit;
+        gap: 30px;
+    }
+
+    .news-item-image {
+        width: 280px;
+        height: 180px;
+        border-radius: 12px;
+        overflow: hidden;
+        background: #f3f4f6;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 24px;
-        transition: all 0.3s ease;
-        opacity: 0.9;
+        flex-shrink: 0;
     }
 
-        .slider-prev:hover, .slider-next:hover {
-            background: #2980b9;
-            opacity: 1;
-            transform: translateY(-50%) scale(1.1);
+        .news-item-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
         }
 
-    .slider-prev {
-        right: 20px;
+    .news-item-horizontal:hover .news-item-image img {
+        transform: scale(1.05);
     }
 
-    .slider-next {
-        left: 20px;
+    .news-item-image i {
+        font-size: 4rem;
+        color: #9ca3af;
     }
 
-    /* مؤشرات - مكبرة */
-    .slider-dots {
-        text-align: center;
-        padding: 20px;
-        background: #f8f9fa;
-        border-top: 2px solid #eee;
+    .news-item-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
 
-        .slider-dots button {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            border: 2px solid #ddd;
-            background: white;
-            margin: 0 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-            .slider-dots button:hover {
-                background: #3498db;
-                border-color: #3498db;
-                transform: scale(1.2);
-            }
-
-            .slider-dots button.active-dot {
-                background: #3498db;
-                border-color: #3498db;
-                transform: scale(1.3);
-                box-shadow: 0 0 10px rgba(52, 152, 219, 0.5);
-            }
-
-    /* أيقونات الخدمات - مبسطة */
-    .services-section {
-        margin: 70px auto;
-        max-width: 1300px;
-    }
-
-    .services-title {
-        font-size: 2.5rem;
-        color: #2c3e50;
-        text-align: center;
-        margin-bottom: 50px;
+    .news-item-title {
+        font-size: 1.6rem;
         font-weight: 700;
+        color: #111827;
+        margin-bottom: 15px;
+        line-height: 1.4;
     }
 
-    .icon-card {
-        padding: 30px;
-        background: white;
-        border-radius: 15px;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-        cursor: pointer;
-        transition: all 0.3s ease;
-        text-align: center;
-        height: 100%;
-        border: 2px solid transparent;
-        margin-bottom: 25px;
+    .news-item-excerpt {
+        color: #4b5563;
+        font-size: 1.1rem;
+        line-height: 1.7;
+        margin-bottom: 20px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
 
-        .icon-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
-            border-color: #3498db;
+    .news-item-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: auto;
+    }
+
+    .news-item-date {
+        color: #9ca3af;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+        .news-item-date i {
+            color: #111827;
         }
 
-        .icon-card i {
-            font-size: 60px;
-            color: #3498db;
-            margin-bottom: 25px;
+    .read-more {
+        color: #111827;
+        font-weight: 600;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+    }
+
+    .news-item-horizontal:hover .read-more {
+        color: #dc2626;
+        gap: 12px;
+    }
+
+    /* ===== تذييل الصفحة ===== */
+    .load-more-container {
+        text-align: center;
+        margin-top: 50px;
+    }
+
+    .btn-load-more {
+        background: transparent;
+        border: 2px solid #111827;
+        color: #111827;
+        padding: 15px 50px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: 50px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+        .btn-load-more:hover {
+            background: #111827;
+            color: white;
+        }
+
+    /* ===== إخفاء الأخبار الإضافية ===== */
+    .news-item-horizontal.extra-news {
+        display: none;
+    }
+
+        .news-item-horizontal.extra-news.show {
             display: block;
         }
 
-        .icon-card h5 {
-            color: #2c3e50;
-            font-weight: 700;
-            font-size: 1.8rem;
-            margin-bottom: 20px;
-        }
-
-        .icon-card p {
-            color: #666;
-            font-size: 1.2rem;
-            line-height: 1.7;
-            margin: 0;
-        }
-
-    /* تصميم متجاوب للسلايدر */
-    @@media (max-width: 1200px) {
-        #newsSlider {
-            max-width: 95%;
-        }
-
-        h2 {
-            font-size: 2.5rem;
-            margin: 35px 0 45px;
-        }
+    /* ===== رسالة لا توجد أخبار ===== */
+    .no-news {
+        text-align: center;
+        padding: 80px 20px;
+        background: white;
+        border-radius: 20px;
     }
 
-    @@media (max-width: 992px) {
-        h2 {
-            font-size: 2.2rem;
-            margin: 30px 0 40px;
+        .no-news i {
+            font-size: 5rem;
+            color: #d1d5db;
+            margin-bottom: 25px;
         }
 
-        .slider-image-container {
-            height: 450px;
-        }
-
-        .slider-text {
-            padding: 20px 30px;
-        }
-
-            .slider-text h3 {
-                font-size: 24px;
-            }
-
-            .slider-text p {
-                font-size: 16px;
-            }
-
-        .services-title {
-            font-size: 2.2rem;
-        }
-
-        .icon-card {
-            padding: 25px;
-        }
-
-            .icon-card h5 {
-                font-size: 1.6rem;
-            }
-
-            .icon-card p {
-                font-size: 1.1rem;
-            }
-    }
-
-    @@media (max-width: 768px) {
-        main {
-            min-height: calc(100vh - 160px);
-        }
-
-        h2 {
+        .no-news h3 {
             font-size: 2rem;
-            margin: 25px 0 35px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 15px;
         }
 
-        .slider-image-container {
+        .no-news p {
+            color: #6b7280;
+            font-size: 1.2rem;
+        }
+
+    /* ===== صفحة جميع الأخبار ===== */
+    .all-news-page {
+        margin-top: 30px;
+    }
+
+    .page-title {
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: #111827;
+        margin-bottom: 30px;
+        padding-bottom: 15px;
+        border-bottom: 3px solid #dc2626;
+    }
+
+    .back-link {
+        margin-bottom: 20px;
+        display: inline-block;
+    }
+
+        .back-link a {
+            color: #111827;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 600;
+        }
+
+            .back-link a:hover {
+                color: #dc2626;
+            }
+
+    /* ===== تحسينات الموبايل ===== */
+    @@media (max-width: 992px) {
+        .slider-image {
             height: 400px;
         }
 
-        .slider-text {
-            padding: 15px 25px;
+        .slider-content h3 {
+            font-size: 1.8rem;
         }
 
-            .slider-text h3 {
-                font-size: 22px;
-            }
-
-            .slider-text p {
-                font-size: 16px;
-            }
-
-        .slider-info {
-            padding: 15px 25px;
+        .news-item-link {
             flex-direction: column;
-            gap: 15px;
-            text-align: center;
         }
 
-            .slider-info .btn {
-                width: 100%;
-                max-width: 300px;
-            }
-
-        .slider-prev, .slider-next {
-            width: 50px;
-            height: 50px;
-            font-size: 20px;
+        .news-item-image {
+            width: 100%;
+            height: 250px;
         }
 
-        .services-title {
-            font-size: 2rem;
-            margin-bottom: 40px;
-        }
-
-        .icon-card {
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-            .icon-card i {
-                font-size: 50px;
-                margin-bottom: 20px;
-            }
-
-            .icon-card h5 {
-                font-size: 1.4rem;
-                margin-bottom: 15px;
-            }
-
-            .icon-card p {
-                font-size: 1rem;
-            }
-    }
-
-    @@media (max-width: 576px) {
-        h2 {
-            font-size: 1.8rem;
-            margin: 20px 0 30px;
-            padding-bottom: 15px;
-        }
-
-        .slider-image-container {
-            height: 350px;
-        }
-
-        .slider-text h3 {
-            font-size: 20px;
-        }
-
-        .slider-info .btn {
-            font-size: 16px;
-            padding: 10px 25px;
-        }
-
-        .slider-prev, .slider-next {
-            width: 45px;
-            height: 45px;
-            font-size: 18px;
-        }
-
-        .services-title {
-            font-size: 1.8rem;
-            margin-bottom: 35px;
-        }
-
-        .icon-card h5 {
-            font-size: 1.3rem;
-        }
-
-        .slider-dots button {
-            width: 14px;
-            height: 14px;
-            margin: 0 6px;
+        .news-item-title {
+            font-size: 1.4rem;
         }
     }
 
-    @@media (max-width: 480px) {
-        .slider-image-container {
+    @@media (max-width: 768px) {
+        .slider-image {
             height: 300px;
         }
 
-        h2 {
-            font-size: 1.6rem;
+        .slider-content {
+            padding: 25px;
         }
 
-        .services-title {
-            font-size: 1.6rem;
+            .slider-content h3 {
+                font-size: 1.5rem;
+            }
+
+            .slider-content p {
+                font-size: 1rem;
+            }
+
+        .slider-arrow {
+            width: 40px;
+            height: 40px;
+            font-size: 1.2rem;
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+        }
+
+        .news-item-title {
+            font-size: 1.3rem;
+        }
+
+        .news-item-excerpt {
+            font-size: 1rem;
+        }
+
+        .page-title {
+            font-size: 1.8rem;
         }
     }
 </style>
 
-<h2>أحدث الأخبار</h2>
+@{
+    var showAll = Context.Request.Query.ContainsKey("all") && Context.Request.Query["all"] == "true";
+}
 
-<!-- ===== السلايدر البسيط ===== -->
-<div id="newsSlider">
-    @if (Model.Any())
-    {
-        @for (int i = 0; i < Model.Count(); i++)
+@if (showAll)
+{
+    <!-- صفحة عرض جميع الأخبار -->
+    <div class="all-news-page">
+        <div class="back-link">
+            <a href="@Url.Action("Index", "Home")">
+                <i class="bi bi-arrow-right"></i> العودة للرئيسية
+            </a>
+        </div>
+
+        <h1 class="page-title">جميع الأخبار</h1>
+
+        @if (Model.Any())
         {
-            var news = Model.ElementAt(i);
-            <div class="slider-item @(i==0 ? "active" : "")">
-                <!-- النص فوق الصورة -->
-                <div class="slider-text">
-                    <h3>@news.Title</h3>
-                    <p>
-                        @(news.Content.Length > 150 ? news.Content.Substring(0, 150) + "..." : news.Content)
-                    </p>
-                </div>
-
-                <!-- الصورة -->
-                <div class="slider-image-container">
-                    @if (!string.IsNullOrEmpty(news.ImageUrl))
-                    {
-                        <img src="@news.ImageUrl"
-                             alt="@news.Title"
-                             onerror="handleImageError(this, '@news.Title')">
-                    }
-                    else
-                    {
-                        <div class="no-image-placeholder">
-                            <i class="bi bi-newspaper"></i>
-                            <h4>@news.Title</h4>
-                        </div>
-                    }
-                </div>
-
-                <!-- المعلومات -->
-                <div class="slider-info">
-                    <span>
-                        <i class="bi bi-calendar"></i>
-                        @news.CreatedAt.ToString("yyyy-MM-dd")
-                    </span>
-                    <a href="@Url.Action("NewsDetails", "News", new { id = news.Id })"
-                       class="btn btn-primary">
-                        <i class="bi bi-book me-2"></i>قراءة المزيد
-                    </a>
-                </div>
+            <div class="news-list-vertical">
+                @foreach (var news in Model)
+                {
+                    <div class="news-item-horizontal">
+                        <a href="@Url.Action("NewsDetails", "News", new { id = news.Id })" class="news-item-link">
+                            <div class="news-item-image">
+                                @if (!string.IsNullOrEmpty(news.ImageUrl))
+                                {
+                                    <img src="@news.ImageUrl" alt="@news.Title"
+                                         onerror="this.onerror=null; this.innerHTML='<i class=\'bi bi-newspaper\'></i>'">
+                                }
+                                else
+                                {
+                                    <i class="bi bi-newspaper"></i>
+                                }
+                            </div>
+                            <div class="news-item-content">
+                                <h3 class="news-item-title">@news.Title</h3>
+                                <p class="news-item-excerpt">
+                                    @(news.Content.Length > 150 ? news.Content.Substring(0, 150) + "..." : news.Content)
+                                </p>
+                                <div class="news-item-footer">
+                                    <span class="news-item-date">
+                                        <i class="bi bi-calendar3"></i>
+                                        @news.CreatedAt.ToString("yyyy/MM/dd")
+                                    </span>
+                                    <span class="read-more">
+                                        اقرأ المزيد
+                                        <i class="bi bi-arrow-left"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                }
             </div>
         }
-
-        <!-- أزرار التحكم -->
-        <button class="slider-prev" type="button" onclick="prevSlide()">
-            <i class="bi bi-chevron-right"></i>
-        </button>
-        <button class="slider-next" type="button" onclick="nextSlide()">
-            <i class="bi bi-chevron-left"></i>
-        </button>
-
-        <!-- مؤشرات -->
-        <div class="slider-dots">
-            @for (int i = 0; i < Model.Count(); i++)
+        else
+        {
+            <div class="no-news">
+                <i class="bi bi-newspaper"></i>
+                <h3>لا توجد أخبار</h3>
+                <p>سيتم إضافة الأخبار قريباً</p>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <!-- الصفحة الرئيسية مع السلايدر -->
+    <!-- السلايدر الرئيسي -->
+    @if (Model.Any())
+    {
+        <div class="featured-slider">
+            @for (int i = 0; i < Model.Take(5).Count(); i++)
             {
-                <button type="button" onclick="goToSlide(@i)"
-                        class="@(i==0 ? "active-dot" : "")"></button>
+                var news = Model.ElementAt(i);
+                <div class="slider-item @(i == 0 ? "active" : "")">
+                    <div class="row g-0">
+                        <div class="col-md-7">
+                            <div class="slider-image">
+                                @if (!string.IsNullOrEmpty(news.ImageUrl))
+                                {
+                                    <img src="@news.ImageUrl" alt="@news.Title"
+                                         onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\'bi bi-newspaper\' style=\'font-size:5rem;color:#9ca3af;\'></i>'">
+                                }
+                                else
+                                {
+                                    <i class="bi bi-newspaper" style="font-size:5rem; color:#9ca3af;"></i>
+                                }
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="slider-content">
+                                <h3>@news.Title</h3>
+                                <p>@(news.Content.Length > 200 ? news.Content.Substring(0, 200) + "..." : news.Content)</p>
+                                <div class="slider-meta">
+                                    <span>
+                                        <i class="bi bi-calendar me-2"></i>
+                                        @news.CreatedAt.ToString("yyyy/MM/dd")
+                                    </span>
+                                    <a href="@Url.Action("NewsDetails", "News", new { id = news.Id })" class="btn btn-primary btn-lg">
+                                        قراءة المزيد
+                                        <i class="bi bi-arrow-left ms-2"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            <!-- أزرار التحكم -->
+            <div class="slider-controls">
+                <button class="slider-arrow prev" onclick="prevSlide()">
+                    <i class="bi bi-chevron-right"></i>
+                </button>
+                @for (int i = 0; i < Model.Take(5).Count(); i++)
+                {
+                    <button class="slider-dot @(i == 0 ? "active" : "")"
+                            onclick="goToSlide(@i)"></button>
+                }
+                <button class="slider-arrow next" onclick="nextSlide()">
+                    <i class="bi bi-chevron-left"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- جميع الأخبار في الأسفل -->
+        <div class="main-news-section">
+            <div class="section-header">
+                <h2 class="section-title">أحدث الأخبار</h2>
+                <a href="?all=true" class="view-all-link">
+                    عرض الكل
+                    <i class="bi bi-arrow-left"></i>
+                </a>
+            </div>
+
+            <div class="news-list-vertical" id="newsList">
+                @{
+                    var newsList = Model.ToList();
+                    int initialCount = 5; // عدد الأخبار التي تظهر في البداية
+                }
+
+                @for (int i = 0; i < newsList.Count; i++)
+                {
+                    var news = newsList[i];
+                    <div class="news-item-horizontal @(i >= initialCount ? "extra-news" : "")">
+                        <a href="@Url.Action("NewsDetails", "News", new { id = news.Id })" class="news-item-link">
+                            <div class="news-item-image">
+                                @if (!string.IsNullOrEmpty(news.ImageUrl))
+                                {
+                                    <img src="@news.ImageUrl" alt="@news.Title"
+                                         onerror="this.onerror=null; this.innerHTML='<i class=\'bi bi-newspaper\'></i>'">
+                                }
+                                else
+                                {
+                                    <i class="bi bi-newspaper"></i>
+                                }
+                            </div>
+                            <div class="news-item-content">
+                                <h3 class="news-item-title">@news.Title</h3>
+                                <p class="news-item-excerpt">
+                                    @(news.Content.Length > 150 ? news.Content.Substring(0, 150) + "..." : news.Content)
+                                </p>
+                                <div class="news-item-footer">
+                                    <span class="news-item-date">
+                                        <i class="bi bi-calendar3"></i>
+                                        @news.CreatedAt.ToString("yyyy/MM/dd")
+                                    </span>
+                                    <span class="read-more">
+                                        اقرأ المزيد
+                                        <i class="bi bi-arrow-left"></i>
+                                    </span>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                }
+            </div>
+
+            @if (newsList.Count > 5)
+            {
+                <div class="load-more-container">
+                    <button class="btn-load-more" onclick="loadMoreNews()">
+                        تحميل المزيد من الأخبار
+                    </button>
+                </div>
             }
         </div>
     }
     else
     {
-        <div class="no-news-message">
+        <div class="no-news">
             <i class="bi bi-newspaper"></i>
-            <h4>لا توجد أخبار</h4>
+            <h3>لا توجد أخبار حالياً</h3>
             <p>سيتم إضافة الأخبار قريباً</p>
         </div>
     }
-</div>
-
-<!-- قسم الخدمات -->
-<div class="services-section">
-    <h3 class="services-title">خدماتنا المميزة</h3>
-    <div class="row">
-        <div class="col-md-4">
-            <div class="icon-card">
-                <i class="bi bi-lightning-charge"></i>
-                <h5>أخبار سريعة</h5>
-                <p>نوفر لكم آخر الأخبار بأسرع وقت ممكن مع تحديثات مستمرة على مدار الساعة</p>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="icon-card">
-                <i class="bi bi-shield-check"></i>
-                <h5>معلومات موثقة</h5>
-                <p>جميع الأخبار تخضع للتحقق والتوثق قبل النشر لضمان مصداقية المعلومات</p>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="icon-card">
-                <i class="bi bi-globe2"></i>
-                <h5>تغطية شاملة</h5>
-                <p>نغطي جميع محافظات العراق وأهم الأحداث العالمية المؤثرة</p>
-            </div>
-        </div>
-    </div>
-</div>
+}
 
 <script>
-    // دالة لمعالجة أخطاء الصور
-    function handleImageError(img, title) {
-        console.log('خطأ في تحميل الصورة:', title);
-        img.style.display = 'none';
-        const container = img.parentElement;
-
-        if (container) {
-            container.innerHTML = `
-                <div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#666;">
-                    <i class="bi bi-newspaper" style="font-size:60px;margin-bottom:20px;color:#adb5bd;"></i>
-                    <h4 style="color:#495057;margin-bottom:10px;font-size:1.5rem;text-align:center;">${title}</h4>
-                    <p style="color:#6c757d;font-size:14px;">لا توجد صورة</p>
-                </div>
-            `;
-        }
-    }
-
-    // المتغيرات للسلايدر
     let currentSlide = 0;
+    let slides = document.querySelectorAll('.slider-item');
+    let dots = document.querySelectorAll('.slider-dot');
     let slideInterval;
-    let slides = [];
-    let dots = [];
 
-    // تهيئة السلايدر عند تحميل الصفحة
-    document.addEventListener('DOMContentLoaded', function() {
-        initSlider();
-    });
-
-    // تهيئة السلايدر
-    function initSlider() {
-        slides = document.querySelectorAll('.slider-item');
-        dots = document.querySelectorAll('.slider-dots button');
-
-        if (slides.length > 0) {
-            showSlide(currentSlide);
-            startAutoSlide();
-        }
-    }
-
-    // عرض سلايد معين
     function showSlide(index) {
-        // إخفاء جميع السلايدات
-        slides.forEach(slide => {
-            slide.classList.remove('active');
-            slide.style.display = 'none';
-        });
+        if (!slides.length) return;
 
-        // إزالة النشاط من جميع المؤشرات
-        dots.forEach(dot => {
-            dot.classList.remove('active-dot');
-        });
+        slides.forEach(s => s.classList.remove('active'));
+        dots.forEach(d => d.classList.remove('active'));
 
-        // عرض السلايد الحالي
-        if (slides[index]) {
-            slides[index].classList.add('active');
-            slides[index].style.display = 'block';
-        }
-
-        // تفعيل المؤشر الحالي
-        if (dots[index]) {
-            dots[index].classList.add('active-dot');
-        }
-
+        slides[index].classList.add('active');
+        dots[index].classList.add('active');
         currentSlide = index;
     }
 
-    // السلايد التالي
     function nextSlide() {
-        if (slides.length === 0) return;
-
+        if (!slides.length) return;
         clearInterval(slideInterval);
-        let nextIndex = (currentSlide + 1) % slides.length;
-        showSlide(nextIndex);
+        showSlide((currentSlide + 1) % slides.length);
         startAutoSlide();
     }
 
-    // السلايد السابق
     function prevSlide() {
-        if (slides.length === 0) return;
-
+        if (!slides.length) return;
         clearInterval(slideInterval);
-        let prevIndex = (currentSlide - 1 + slides.length) % slides.length;
-        showSlide(prevIndex);
+        showSlide((currentSlide - 1 + slides.length) % slides.length);
         startAutoSlide();
     }
 
-    // الذهاب إلى سلايد محدد
     function goToSlide(index) {
-        if (slides.length === 0) return;
-
+        if (!slides.length) return;
         clearInterval(slideInterval);
-        if (index >= 0 && index < slides.length) {
-            showSlide(index);
-            startAutoSlide();
-        }
+        showSlide(index);
+        startAutoSlide();
     }
 
-    // بدء التبديل التلقائي
     function startAutoSlide() {
         if (slides.length > 1) {
-            clearInterval(slideInterval);
-            slideInterval = setInterval(() => {
-                nextSlide();
-            }, 5000); // التبديل كل 5 ثواني
+            slideInterval = setInterval(nextSlide, 5000);
         }
     }
 
-    // إضافة إمكانية السحب على الأجهزة المحمولة
+    function loadMoreNews() {
+        var extraNews = document.querySelectorAll('.extra-news');
+        var count = 0;
+
+        extraNews.forEach(function(news) {
+            if (!news.classList.contains('show') && count < 5) {
+                news.classList.add('show');
+                count++;
+            }
+        });
+
+        // إخفاء الزر إذا تم عرض كل الأخبار
+        var remainingNews = document.querySelectorAll('.extra-news:not(.show)');
+        if (remainingNews.length === 0) {
+            document.querySelector('.load-more-container').style.display = 'none';
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
-        const slider = document.getElementById('newsSlider');
-
-        if (slider) {
-            let startX = 0;
-            let endX = 0;
-
-            slider.addEventListener('touchstart', (e) => {
-                startX = e.touches[0].clientX;
-            });
-
-            slider.addEventListener('touchend', (e) => {
-                endX = e.changedTouches[0].clientX;
-                handleSwipe(startX, endX);
-            });
+        if (slides.length > 0) {
+            startAutoSlide();
         }
     });
-
-    function handleSwipe(startX, endX) {
-        const swipeThreshold = 50;
-
-        if (startX - endX > swipeThreshold) {
-            // سحب لليسار = التالي
-            nextSlide();
-        } else if (endX - startX > swipeThreshold) {
-            // سحب لليمين = السابق
-            prevSlide();
-        }
-    }
 </script>

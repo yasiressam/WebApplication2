@@ -1,18 +1,42 @@
 ﻿@model WebApplication2.Models.SuperAdminUserDetailsVM
 @{
-    ViewData["Title"] = "تفاصيل المستخدم";
+    
     Layout = "_Layout";
 }
 
+<style>
+    /* تغيير لون كتابة عنوان الصفحة إلى الأبيض */
+    .card-header {
+        color: white !important;
+    }
+
+        .card-header h4,
+        .card-header i,
+        .card-header .me-2 {
+            color: white !important;
+        }
+
+    .section-title {
+        border-bottom: 2px solid #dee2e6;
+        padding-bottom: 0.3rem;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+
+    .bg-pink {
+        background-color: #ffc0cb;
+        color: #000;
+    }
+</style>
+
 <div class="container mt-4">
-    <div class="card">
-        <div class="card-header bg-info text-white">
-            <h4 class="mb-0">
-                <i class="fas fa-user-circle"></i>
-                تفاصيل المستخدم
-            </h4>
+    <div class="card shadow-sm">
+        <div class="card-header bg-info text-white d-flex align-items-center">
+            <i class="fas fa-user-circle me-2"></i>
+            <h4 class="mb-0">تفاصيل المستخدم</h4>
         </div>
         <div class="card-body">
+
             @if (TempData["ErrorMessage"] != null)
             {
                 <div class="alert alert-danger">
@@ -21,229 +45,114 @@
                 </div>
             }
 
-            <div class="row">
-                <!-- معلومات الحساب -->
-                <div class="col-md-6">
-                    <h5 class="border-bottom pb-2 mb-3">
-                        <i class="fas fa-user-shield"></i> معلومات الحساب
-                    </h5>
-
-                    <div class="row mb-2">
-                        <div class="col-sm-4 fw-bold">البريد الإلكتروني:</div>
-                        <div class="col-sm-8">
-                            @Model.Email
-                            @if (Model.IsActive)
-                            {
-                                <span class="badge bg-success ms-2">مفعل</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-danger ms-2">معطل</span>
-                            }
-                        </div>
-                    </div>
-
-                    <div class="row mb-2">
-                        <div class="col-sm-4 fw-bold">رقم الهاتف:</div>
-                        <div class="col-sm-8">@Model.PhoneNumber</div>
-                    </div>
-
-                    <div class="row mb-2">
-                        <div class="col-sm-4 fw-bold">الأدوار:</div>
-                        <div class="col-sm-8">
-                            @if (!string.IsNullOrEmpty(Model.Roles))
-                            {
-                                if (Model.Roles.Contains("SuperAdmin"))
-                                {
-                                    <span class="badge bg-danger">سوبر أدمن</span>
-                                }
-                                if (Model.Roles.Contains("Admin"))
-                                {
-                                    <span class="badge bg-success">أدمن</span>
-                                }
-                                if (Model.Roles.Contains("User"))
-                                {
-                                    <span class="badge bg-secondary">مستخدم</span>
-                                }
-                            }
-                            else
-                            {
-                                <span class="text-muted">لا يوجد أدوار</span>
-                            }
-                        </div>
-                    </div>
-
-                    <div class="row mb-2">
-                        <div class="col-sm-4 fw-bold">معرف المستخدم:</div>
-                        <div class="col-sm-8">
-                            <small class="text-muted">@Model.UserId</small>
-                        </div>
-                    </div>
-
-                    @if (!string.IsNullOrEmpty(Model.ManagedGovernorate))
+            <!-- معلومات الحساب -->
+            <h5 class="section-title text-primary"><i class="fas fa-user-shield me-2"></i> معلومات الحساب</h5>
+            <div class="row mb-3">
+                <div class="col-md-4 fw-bold">البريد الإلكتروني:</div>
+                <div class="col-md-8">
+                    @Model.Email
+                    @if (Model.IsActive)
                     {
-                        <div class="row mb-2">
-                            <div class="col-sm-4 fw-bold">المحافظة المدارة:</div>
-                            <div class="col-sm-8">
-                                <span class="badge bg-warning text-dark">
-                                    <i class="fas fa-crown"></i> @Model.ManagedGovernorate
-                                </span>
-                            </div>
-                        </div>
+                        <span class="badge bg-success ms-2">مفعل</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger ms-2">معطل</span>
                     }
                 </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4 fw-bold">رقم الهاتف:</div>
+                <div class="col-md-8">@Model.PhoneNumber</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4 fw-bold">الأدوار:</div>
+                <div class="col-md-8">
+                    @if (!string.IsNullOrEmpty(Model.Roles))
+                    {
+                        if (Model.Roles.Contains("SuperAdmin"))
+                        {
+                            <span class="badge bg-danger">سوبر أدمن</span>
+                        }
+                        if (Model.Roles.Contains("Admin"))
+                        {
 
-                <!-- المعلومات الشخصية -->
-                <div class="col-md-6">
-                    <h5 class="border-bottom pb-2 mb-3">
-                        <i class="fas fa-id-card"></i> المعلومات الشخصية
-                    </h5>
+                            <span class="badge bg-success">أدمن</span>
+                        }
+                        if (Model.Roles.Contains("User"))
+                        {
 
-                    <div class="row mb-2">
-                        <div class="col-sm-4 fw-bold">الاسم الكامل:</div>
-                        <div class="col-sm-8">@Model.FullName</div>
-                    </div>
+                            <span class="badge bg-secondary">مستخدم</span>
+                        }
+                    }
+                    else
+                    {
 
-                    <div class="row mb-2">
-                        <div class="col-sm-4 fw-bold">اسم العائلة:</div>
-                        <div class="col-sm-8">@Model.LastName</div>
-                    </div>
-
-                    <div class="row mb-2">
-                        <div class="col-sm-4 fw-bold">اسم الأم:</div>
-                        <div class="col-sm-8">@Model.MotherName</div>
-                    </div>
-
-                    <div class="row mb-2">
-                        <div class="col-sm-4 fw-bold">الجنس:</div>
-                        <div class="col-sm-8">
-                            @if (Model.Gender == "ذكر")
-                            {
-                                <span class="badge bg-info">ذكر</span>
-                            }
-                            else if (Model.Gender == "أنثى")
-                            {
-                                <span class="badge bg-pink">أنثى</span>
-                            }
-                            else
-                            {
-                                <span class="text-muted">@Model.Gender</span>
-                            }
-                        </div>
-                    </div>
-
-                    <div class="row mb-2">
-                        <div class="col-sm-4 fw-bold">اللقب:</div>
-                        <div class="col-sm-8">@Model.MozakeName</div>
-                    </div>
-
-                    <div class="row mb-2">
-                        <div class="col-sm-4 fw-bold">المؤهل العلمي:</div>
-                        <div class="col-sm-8">@Model.Education</div>
-                    </div>
-
-                    <div class="row mb-2">
-                        <div class="col-sm-4 fw-bold">التخصص:</div>
-                        <div class="col-sm-8">@Model.Specialization</div>
-                    </div>
-
-                    <div class="row mb-2">
-                        <div class="col-sm-4 fw-bold">رقم البطاقة:</div>
-                        <div class="col-sm-8">@Model.IdentityCardN</div>
-                    </div>
-
-                    <div class="row mb-2">
-                        <div class="col-sm-4 fw-bold">تاريخ البطاقة:</div>
-                        <div class="col-sm-8">@Model.IdentityDate.ToString("yyyy/MM/dd")</div>
-                    </div>
-
-                    <div class="row mb-2">
-                        <div class="col-sm-4 fw-bold">تاريخ الميلاد:</div>
-                        <div class="col-sm-8">@Model.DateOfBirth.ToString("yyyy/MM/dd")</div>
-                    </div>
-
-                    <div class="row mb-2">
-                        <div class="col-sm-4 fw-bold">رقم البطاقة التموينية:</div>
-                        <div class="col-sm-8">@Model.RationN</div>
-                    </div>
-
-                    <div class="row mb-2">
-                        <div class="col-sm-4 fw-bold">مركز التوزيع:</div>
-                        <div class="col-sm-8">@Model.RationCenter</div>
-                    </div>
+                        <span class="text-muted">لا يوجد أدوار</span>
+                    }
                 </div>
             </div>
+            <div class="row mb-3">
+                <div class="col-md-4 fw-bold">معرف المستخدم:</div>
+                <div class="col-md-8"><small class="text-muted">@Model.UserId</small></div>
+            </div>
+
+            <!-- المعلومات الشخصية -->
+            <h5 class="section-title text-info mt-4"><i class="fas fa-id-card me-2"></i> المعلومات الشخصية</h5>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">الاسم الكامل:</div><div class="col-md-8">@Model.FullName</div></div>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">اسم العائلة:</div><div class="col-md-8">@Model.LastName</div></div>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">اسم الأم:</div><div class="col-md-8">@Model.MotherName</div></div>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">المزكي:</div><div class="col-md-8">@Model.MozakeName</div></div>
+            <div class="row mb-2">
+                <div class="col-md-4 fw-bold">الجنس:</div>
+                <div class="col-md-8">
+                    @if (Model.Gender == "ذكر")
+                    {
+                        <span class="badge bg-info">ذكر</span>
+                    }
+                    else if (Model.Gender == "أنثى")
+                    {
+
+                        <span class="badge bg-pink">أنثى</span>
+                    }
+                    else
+                    {
+
+                        <span class="text-muted">@Model.Gender</span>
+                    }
+                </div>
+            </div>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">المؤهل العلمي:</div><div class="col-md-8">@Model.Education</div></div>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">التخصص:</div><div class="col-md-8">@Model.Specialization</div></div>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">تاريخ الميلاد:</div><div class="col-md-8">@Model.DateOfBirth.ToString("yyyy/MM/dd")</div></div>
+
+            <!-- بيانات البطاقة الوطنية -->
+            <h5 class="section-title text-warning mt-4"><i class="fas fa-address-card me-2"></i> بيانات البطاقة الوطنية</h5>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">رقم البطاقة:</div><div class="col-md-8">@Model.IdentityCardN</div></div>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">تاريخ إصدار البطاقة:</div><div class="col-md-8">@Model.IdentityDate.ToString("yyyy/MM/dd")</div></div>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">رقم البطاقة التموينية:</div><div class="col-md-8">@Model.RationN</div></div>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">مركز التوزيع:</div><div class="col-md-8">@Model.RationCenter</div></div>
 
             <!-- معلومات العنوان -->
-            <div class="mt-4">
-                <h5 class="border-bottom pb-2 mb-3">
-                    <i class="fas fa-map-marker-alt"></i> معلومات العنوان
-                </h5>
-
-                @if (Model.Address != null)
+            <h5 class="section-title text-success mt-4"><i class="fas fa-map-marker-alt me-2"></i> معلومات العنوان</h5>
+            @if (Model.Address != null)
+            {
+                <div class="row mb-2"><div class="col-md-4 fw-bold">المحافظة:</div><div class="col-md-8">@Model.Address.Governorate</div></div>
+                <div class="row mb-2"><div class="col-md-4 fw-bold">القضاء/المنطقة:</div><div class="col-md-8">@Model.Address.District</div></div>
+                <div class="row mb-2"><div class="col-md-4 fw-bold">الناحية:</div><div class="col-md-8">@Model.Address.SubDistrict</div></div>
+                <div class="row mb-2"><div class="col-md-4 fw-bold">المحلة/الزقاق:</div><div class="col-md-8">@Model.Address.Alley</div></div>
+                <div class="row mb-2"><div class="col-md-4 fw-bold">الشارع:</div><div class="col-md-8">@Model.Address.Street</div></div>
+                <div class="row mb-2"><div class="col-md-4 fw-bold">المنزل:</div><div class="col-md-8">@Model.Address.House</div></div>
+                @if (!string.IsNullOrEmpty(Model.Address.NearestPoint))
                 {
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="row mb-2">
-                                <div class="col-sm-5 fw-bold">المحافظة:</div>
-                                <div class="col-sm-7">@Model.Address.Governorate</div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="row mb-2">
-                                <div class="col-sm-5 fw-bold">القضاء/المنطقة:</div>
-                                <div class="col-sm-7">@Model.Address.District</div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="row mb-2">
-                                <div class="col-sm-5 fw-bold">الناحية:</div>
-                                <div class="col-sm-7">@Model.Address.SubDistrict</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="row mb-2">
-                                <div class="col-sm-5 fw-bold">المحلة/الزقاق:</div>
-                                <div class="col-sm-7">@Model.Address.Alley</div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="row mb-2">
-                                <div class="col-sm-5 fw-bold">الشارع:</div>
-                                <div class="col-sm-7">@Model.Address.Street</div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="row mb-2">
-                                <div class="col-sm-5 fw-bold">المنزل:</div>
-                                <div class="col-sm-7">@Model.Address.House</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    @if (!string.IsNullOrEmpty(Model.Address.NearestPoint))
-                    {
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="row mb-2">
-                                    <div class="col-sm-2 fw-bold">أقرب نقطة دالة:</div>
-                                    <div class="col-sm-10">@Model.Address.NearestPoint</div>
-                                </div>
-                            </div>
-                        </div>
-                    }
+                    <div class="row mb-2"><div class="col-md-4 fw-bold">أقرب نقطة دالة:</div><div class="col-md-8">@Model.Address.NearestPoint</div></div>
                 }
-                else
-                {
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        لا يوجد عنوان مسجل لهذا المستخدم
-                    </div>
-                }
-            </div>
+            }
+            else
+            {
+                <div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> لا يوجد عنوان مسجل لهذا المستخدم</div>
+            }
+
         </div>
         <div class="card-footer">
             <a href="@Url.Action("Users", "SuperAdmin")" class="btn btn-secondary">
@@ -254,8 +163,11 @@
 </div>
 
 <style>
-    .border-bottom {
-        border-bottom: 2px solid #dee2e6 !important;
+    .section-title {
+        border-bottom: 2px solid #dee2e6;
+        padding-bottom: 0.3rem;
+        margin-bottom: 1rem;
+        font-weight: 600;
     }
 
     .bg-pink {

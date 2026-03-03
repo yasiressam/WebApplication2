@@ -2,7 +2,7 @@
 
 /* خلفية عامة لكل الصفحات */
 body {
-    background-image: url('/images/background.jpg');
+    background-image: url('/images/background1.jpg');
     background-size: cover;
     background-position: center center;
     background-attachment: fixed;
@@ -20,7 +20,7 @@ body {
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(255, 255, 255, 0.88);
+        background: rgba(255, 255, 255, 255);
         z-index: -1;
     }
 

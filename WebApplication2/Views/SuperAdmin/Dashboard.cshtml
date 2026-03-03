@@ -1,0 +1,623 @@
+﻿@using Microsoft.AspNetCore.Identity
+@inject UserManager<IdentityUser> UserManager
+@inject RoleManager<IdentityRole> RoleManager
+
+@{
+    ViewData["Title"] = "لوحة المعلومات";
+    Layout = "_Layout";
+
+    // جلب جميع المستخدمين
+    var users = UserManager.Users.ToList();
+    var totalUsers = users.Count();
+
+    // جلب المستخدمين النشطين (يمكنك تعديل الشرط حسب منطق التطبيق الخاص بك)
+    var activeUsers = users.Count(); // افترض أن جميع المستخدمين نشطين
+
+    // جلب الأدمنية
+    var admins = new List<IdentityUser>();
+    var superAdmins = new List<IdentityUser>();
+
+    foreach (var user in users)
+    {
+        var roles = await UserManager.GetRolesAsync(user);
+        if (roles.Contains("Admin"))
+        {
+            admins.Add(user);
+        }
+        if (roles.Contains("SuperAdmin"))
+        {
+            superAdmins.Add(user);
+        }
+    }
+
+    var adminCount = admins.Count();
+    var superAdminCount = superAdmins.Count();
+}
+
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - موقع الأخبار العراقي</title>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* ===== تصميم لوحة المعلومات ===== */
+        :root {
+            --primary: #1e3c72;
+            --primary-light: #2a5a9c;
+            --primary-soft: #e8f0fe;
+            --success: #0d9488;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-400: #94a3b8;
+            --gray-500: #64748b;
+            --gray-600: #475569;
+            --gray-700: #334155;
+            --gray-800: #1e293b;
+            --gray-900: #0f172a;
+            --white: #ffffff;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+        }
+
+        body {
+            background: linear-gradient(135deg, #f1f5f9, #e6ecf5);
+            min-height: 100vh;
+            font-family: 'Tajawal', sans-serif;
+        }
+
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        /* ===== العنوان الرئيسي ===== */
+        .page-header {
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+            .page-header h2 {
+                font-size: 2.5rem;
+                font-weight: 800;
+                color: var(--gray-900);
+                margin: 0;
+                display: flex;
+                align-items: center;
+                gap: 15px;
+                padding-bottom: 15px;
+                border-bottom: 4px solid var(--primary);
+            }
+
+                .page-header h2 i {
+                    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+                    padding: 15px;
+                    border-radius: 20px;
+                    color: white;
+                    font-size: 2rem;
+                    box-shadow: var(--shadow-lg);
+                }
+
+        /* ===== بطاقات الإحصائيات ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: var(--white);
+            border-radius: 24px;
+            padding: 25px;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--gray-200);
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+            .stat-card:hover {
+                transform: translateY(-5px) scale(1.02);
+                box-shadow: var(--shadow-xl);
+            }
+
+            .stat-card::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                right: -20%;
+                width: 200px;
+                height: 200px;
+                background: radial-gradient(circle, rgba(30,60,114,0.03) 0%, transparent 70%);
+                border-radius: 50%;
+            }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            font-size: 2rem;
+            color: white;
+            position: relative;
+            z-index: 2;
+        }
+
+            .stat-icon.users {
+                background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            }
+
+            .stat-icon.active {
+                background: linear-gradient(135deg, var(--success), #0f766e);
+            }
+
+            .stat-icon.admins {
+                background: linear-gradient(135deg, var(--info), #2563eb);
+            }
+
+            .stat-icon.super {
+                background: linear-gradient(135deg, var(--danger), #b91c1c);
+            }
+
+        .stat-content {
+            position: relative;
+            z-index: 2;
+        }
+
+            .stat-content h4 {
+                color: var(--gray-600);
+                font-size: 1rem;
+                font-weight: 600;
+                margin-bottom: 8px;
+                letter-spacing: 0.5px;
+            }
+
+            .stat-content h3 {
+                font-size: 2.5rem;
+                font-weight: 800;
+                color: var(--gray-900);
+                margin: 0;
+                line-height: 1.2;
+            }
+
+        /* ===== المخططات ===== */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
+        }
+
+        .chart-card {
+            background: var(--white);
+            border-radius: 24px;
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            border: 1px solid var(--gray-200);
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.5s ease-out;
+            animation-fill-mode: both;
+        }
+
+            .chart-card:nth-child(2) {
+                animation-delay: 0.2s;
+            }
+
+            .chart-card:hover {
+                transform: translateY(-5px);
+                box-shadow: var(--shadow-xl);
+            }
+
+        .chart-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            padding: 20px 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+            .chart-header i {
+                font-size: 1.8rem;
+                color: white;
+                background: rgba(255,255,255,0.2);
+                padding: 10px;
+                border-radius: 14px;
+            }
+
+            .chart-header h3 {
+                color: white;
+                font-size: 1.4rem;
+                font-weight: 700;
+                margin: 0;
+            }
+
+        .chart-body {
+            padding: 25px;
+            height: 350px;
+            position: relative;
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* ===== رسالة عند عدم وجود بيانات ===== */
+        .no-data {
+            grid-column: span 2;
+            text-align: center;
+            padding: 60px;
+            background: var(--white);
+            border-radius: 24px;
+            border: 2px dashed var(--gray-300);
+        }
+
+            .no-data i {
+                font-size: 4rem;
+                color: var(--gray-400);
+                margin-bottom: 20px;
+            }
+
+            .no-data h4 {
+                font-size: 1.5rem;
+                color: var(--gray-600);
+                margin-bottom: 10px;
+            }
+
+            .no-data p {
+                color: var(--gray-500);
+                font-size: 1.1rem;
+            }
+
+        /* ===== تذييل الصفحة ===== */
+        .dashboard-footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--gray-500);
+            font-size: 0.95rem;
+        }
+
+        .footer-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+            .footer-info i {
+                color: var(--primary);
+            }
+
+        /* ===== تحسينات الموبايل ===== */
+        @@media (max-width: 992px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .no-data {
+                grid-column: span 1;
+            }
+        }
+
+        @@media (max-width: 768px) {
+            .dashboard-container {
+                margin: 20px auto;
+            }
+
+            .page-header h2 {
+                font-size: 2rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .chart-body {
+                height: 300px;
+                padding: 15px;
+            }
+
+            .dashboard-footer {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+        }
+
+        /* ===== تأثيرات الحركة ===== */
+        @@keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- العنوان الرئيسي -->
+        <div class="page-header">
+            <h2>
+                <i class="fas fa-chart-pie"></i>
+                لوحة المعلومات
+            </h2>
+        </div>
+
+        <!-- بطاقات الإحصائيات -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon users">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-content">
+                    <h4>إجمالي المستخدمين</h4>
+                    <h3>@totalUsers</h3>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon active">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div class="stat-content">
+                    <h4>المستخدمين النشطين</h4>
+                    <h3>@activeUsers</h3>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon admins">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <div class="stat-content">
+                    <h4>عدد الأدمنية</h4>
+                    <h3>@adminCount</h3>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon super">
+                    <i class="fas fa-crown"></i>
+                </div>
+                <div class="stat-content">
+                    <h4>سوبر أدمن</h4>
+                    <h3>@superAdminCount</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- المخططات -->
+        <div class="charts-grid">
+            @if (totalUsers > 0)
+            {
+                <!-- مخطط توزيع المستخدمين -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <i class="fas fa-chart-bar"></i>
+                        <h3>توزيع المستخدمين حسب النوع</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="userDistributionChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- مخطط النسبة المئوية -->
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <i class="fas fa-chart-pie"></i>
+                        <h3>النسب المئوية</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="percentageChart"></canvas>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="no-data">
+                    <i class="fas fa-database"></i>
+                    <h4>لا توجد بيانات</h4>
+                    <p>لم يتم العثور على مستخدمين في النظام</p>
+                </div>
+            }
+        </div>
+
+        <!-- تذييل الصفحة -->
+        <div class="dashboard-footer">
+            <div class="footer-info">
+                <i class="fas fa-calendar-alt"></i>
+                <span>آخر تحديث: @DateTime.Now.ToString("dd MMMM yyyy - HH:mm")</span>
+            </div>
+            <div class="footer-info">
+                <i class="fas fa-database"></i>
+                <span>إجمالي المستخدمين: @totalUsers</span>
+            </div>
+        </div>
+    </div>
+
+    @if (totalUsers > 0)
+    {
+        <script>
+            // تهيئة المخططات
+            document.addEventListener('DOMContentLoaded', function() {
+                // بيانات المستخدمين
+                const totalUsers = @totalUsers;
+                const adminCount = @adminCount;
+                const superAdminCount = @superAdminCount;
+                const normalUsers = totalUsers - (adminCount + superAdminCount);
+
+                // الألوان المتناسقة مع التصميم
+                const colors = {
+                    primary: '#1e3c72',
+                    primaryLight: '#2a5a9c',
+                    success: '#0d9488',
+                    info: '#3b82f6',
+                    danger: '#ef4444',
+                    warning: '#f59e0b'
+                };
+
+                // مخطط توزيع المستخدمين (Bar Chart)
+                const ctx1 = document.getElementById('userDistributionChart').getContext('2d');
+                new Chart(ctx1, {
+                    type: 'bar',
+                    data: {
+                        labels: ['المستخدمين العاديين', 'الأدمنية', 'سوبر أدمن'],
+                        datasets: [{
+                            label: 'عدد المستخدمين',
+                            data: [normalUsers, adminCount, superAdminCount],
+                            backgroundColor: [
+                                colors.primary,
+                                colors.info,
+                                colors.danger
+                            ],
+                            borderColor: [
+                                colors.primaryLight,
+                                '#2563eb',
+                                '#b91c1c'
+                            ],
+                            borderWidth: 2,
+                            borderRadius: 8,
+                            barPercentage: 0.6,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                rtl: true,
+                                titleAlign: 'right',
+                                bodyAlign: 'right',
+                                backgroundColor: 'rgba(30, 60, 114, 0.9)',
+                                titleColor: 'white',
+                                bodyColor: 'white',
+                                padding: 12,
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: function(context) {
+                                        return `${context.raw} مستخدم`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(0,0,0,0.05)'
+                                },
+                                ticks: {
+                                    stepSize: 1,
+                                    callback: function(value) {
+                                        return value + ' مستخدم';
+                                    }
+                                }
+                            },
+                            x: {
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        },
+                        layout: {
+                            padding: {
+                                top: 20,
+                                bottom: 20
+                            }
+                        }
+                    }
+                });
+
+                // مخطط النسب المئوية (Pie Chart)
+                const ctx2 = document.getElementById('percentageChart').getContext('2d');
+                new Chart(ctx2, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['المستخدمين العاديين', 'الأدمنية', 'سوبر أدمن'],
+                        datasets: [{
+                            data: [normalUsers, adminCount, superAdminCount],
+                            backgroundColor: [
+                                colors.primary,
+                                colors.info,
+                                colors.danger
+                            ],
+                            borderColor: 'white',
+                            borderWidth: 3,
+                            hoverOffset: 15,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '60%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                rtl: true,
+                                labels: {
+                                    font: {
+                                        size: 12,
+                                        family: 'Tajawal'
+                                    },
+                                    padding: 20,
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
+                            },
+                            tooltip: {
+                                rtl: true,
+                                titleAlign: 'right',
+                                bodyAlign: 'right',
+                                backgroundColor: 'rgba(30, 60, 114, 0.9)',
+                                titleColor: 'white',
+                                bodyColor: 'white',
+                                padding: 12,
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: function(context) {
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((context.raw / total) * 100).toFixed(1);
+                                        return `${context.raw} مستخدم (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+        </script>
+    }
+</body>
+</html>

@@ -1,6 +1,6 @@
 ﻿@model IEnumerable<WebApplication2.Models.SuperAdminUserVM>
 @{
-    ViewData["Title"] = "إدارة المستخدمين";
+
     Layout = "_Layout";
 
     // جلب الإحصائيات
@@ -10,13 +10,613 @@
     var superAdmins = Model.Count(u => u.Roles.Contains("SuperAdmin"));
 }
 
+<style>
+    /* تحسينات بسيطة على التصميم */
+    :root {
+        --primary: #1e3c72;
+        --primary-light: #2a5a9c;
+        --primary-soft: #e8f0fe;
+    }
+
+    /* تحسين بطاقات الإحصائيات */
+    .stat-card {
+        border-radius: 15px !important;
+        transition: all 0.3s ease;
+        border: none !important;
+        overflow: hidden;
+    }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+        }
+
+        .stat-card .card-body {
+            padding: 1.5rem !important;
+        }
+
+        .stat-card h5 {
+            font-size: 0.95rem;
+            opacity: 0.9;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card h2 {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .stat-card i {
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover i {
+            transform: scale(1.1) rotate(5deg);
+            opacity: 0.7;
+        }
+
+    /* تنسيق بطاقة البحث - باللون الأبيض */
+    .filter-card {
+        border-radius: 15px !important;
+        border: none !important;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.05) !important;
+        margin-bottom: 25px;
+        background: white;
+    }
+
+        .filter-card .card-header {
+            background: white !important;
+            border-bottom: 2px solid #f0f2f5 !important;
+            padding: 1.2rem 1.5rem !important;
+        }
+
+            .filter-card .card-header h5 {
+                color: var(--primary);
+                font-size: 1.1rem;
+                font-weight: 700;
+                margin: 0;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .filter-card .card-header i {
+                color: var(--primary);
+                font-size: 1.2rem;
+            }
+
+        .filter-card .card-body {
+            background: white;
+            padding: 1.5rem !important;
+        }
+
+    /* تنسيق الحقول */
+    .form-label {
+        color: var(--primary);
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .input-group, .form-control, .form-select {
+        border-radius: 10px !important;
+        border: 1px solid #e0e4e9 !important;
+        padding: 0.6rem 1rem !important;
+        transition: all 0.3s;
+        background: white;
+    }
+
+        .input-group:focus-within,
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--primary) !important;
+            box-shadow: 0 0 0 3px rgba(30,60,114,0.1) !important;
+            outline: none;
+        }
+
+    .input-group-text {
+        background: white;
+        border: 1px solid #e0e4e9 !important;
+        border-right: none !important;
+        border-radius: 0 10px 10px 0 !important;
+        color: #6c757d;
+    }
+
+    /* تنسيق الأزرار */
+    .btn-group {
+        gap: 8px;
+    }
+
+    .btn-outline-primary {
+        border: 1px solid var(--primary) !important;
+        color: var(--primary) !important;
+        border-radius: 8px !important;
+        padding: 0.5rem 1.2rem !important;
+        font-weight: 600;
+        transition: all 0.3s;
+        background: white;
+    }
+
+        .btn-outline-primary:hover {
+            background: var(--primary) !important;
+            color: white !important;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(30,60,114,0.2);
+        }
+
+    .btn-outline-secondary {
+        border: 1px solid #dee2e6 !important;
+        color: #6c757d !important;
+        border-radius: 8px !important;
+        padding: 0.5rem 1.2rem !important;
+        font-weight: 600;
+        transition: all 0.3s;
+        background: white;
+    }
+
+        .btn-outline-secondary:hover {
+            background: #6c757d !important;
+            color: white !important;
+            transform: translateY(-2px);
+        }
+
+    /* تنسيق عداد النتائج */
+    .alert-info {
+        background: #e8f0fe !important;
+        border: 1px solid var(--primary) !important;
+        border-radius: 20px !important;
+        color: var(--primary) !important;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0.5rem 1.5rem !important;
+    }
+
+        .alert-info i {
+            font-size: 1rem;
+        }
+
+    /* تحسين الجدول */
+    .table-card {
+        border-radius: 15px !important;
+        border: none !important;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.05) !important;
+    }
+
+        .table-card .card-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light)) !important;
+            padding: 1.2rem 1.5rem !important;
+            border: none !important;
+        }
+
+            .table-card .card-header div {
+                color: white;
+                font-size: 1.1rem;
+                font-weight: 700;
+            }
+
+            .table-card .card-header .badge {
+                background: rgba(255,255,255,0.2) !important;
+                color: white !important;
+                font-size: 0.9rem;
+                padding: 0.4rem 0.8rem;
+                border-radius: 20px;
+            }
+
+    .table {
+        margin-bottom: 0;
+    }
+
+        .table thead th {
+            background: #f8f9fa;
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 0.9rem;
+            padding: 1rem;
+            border: none;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .table tbody tr {
+            transition: all 0.3s;
+        }
+
+            .table tbody tr:hover {
+                background: #f8f9fa;
+            }
+
+        .table tbody td {
+            padding: 1rem;
+            vertical-align: middle;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+    /* تحسين الأفاتار */
+    .avatar div {
+        width: 35px;
+        height: 35px;
+        font-size: 0.9rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    /* تحسين البادجات */
+    .badge {
+        padding: 0.5rem 0.8rem;
+        font-weight: 600;
+        font-size: 0.8rem;
+        border-radius: 20px;
+    }
+
+        .badge.bg-warning {
+            background: #fff3cd !important;
+            color: #856404 !important;
+        }
+
+        .badge.bg-secondary {
+            background: #e9ecef !important;
+            color: #495057 !important;
+        }
+
+    /* تحسين أزرار الإجراءات */
+    .btn-group .btn {
+        border-radius: 8px !important;
+        padding: 0.3rem 0.8rem !important;
+        font-size: 0.85rem;
+        margin: 0 2px;
+        transition: all 0.3s;
+        cursor: pointer;
+        border: 1px solid transparent;
+    }
+
+        .btn-group .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+    .btn-outline-info {
+        border: 1px solid #17a2b8 !important;
+        color: #17a2b8 !important;
+        background: white;
+    }
+
+        .btn-outline-info:hover {
+            background: #17a2b8 !important;
+            color: white !important;
+        }
+
+    .btn-outline-primary {
+        border: 1px solid var(--primary) !important;
+        color: var(--primary) !important;
+        background: white;
+    }
+
+        .btn-outline-primary:hover {
+            background: var(--primary) !important;
+            color: white !important;
+        }
+
+    .btn-outline-warning {
+        border: 1px solid #ffc107 !important;
+        color: #856404 !important;
+        background: white;
+    }
+
+        .btn-outline-warning:hover {
+            background: #ffc107 !important;
+            color: #212529 !important;
+        }
+
+    .btn-outline-success {
+        border: 1px solid #28a745 !important;
+        color: #28a745 !important;
+        background: white;
+    }
+
+        .btn-outline-success:hover {
+            background: #28a745 !important;
+            color: white !important;
+        }
+
+    /* زر الحذف الجديد */
+    .btn-outline-danger {
+        border: 1px solid #dc3545 !important;
+        color: #dc3545 !important;
+        background: white;
+    }
+
+        .btn-outline-danger:hover {
+            background: #dc3545 !important;
+            color: white !important;
+        }
+
+    /* تحسين تذييل الجدول */
+    .card-footer {
+        background: white !important;
+        border-top: 2px solid #f0f2f5 !important;
+        padding: 1rem 1.5rem !important;
+    }
+
+    .pagination {
+        margin: 0;
+        gap: 3px;
+    }
+
+    .page-link {
+        border-radius: 8px !important;
+        border: 1px solid #dee2e6 !important;
+        color: var(--primary);
+        padding: 0.4rem 0.8rem;
+        font-size: 0.9rem;
+        transition: all 0.3s;
+    }
+
+        .page-link:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+    .page-item.active .page-link {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+
+    .text-muted {
+        color: #6c757d !important;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* تحسين المودال */
+    .modal-content {
+        border-radius: 15px !important;
+        border: none !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .modal-header {
+        background: linear-gradient(135deg, var(--primary), var(--primary-light)) !important;
+        padding: 1.2rem 1.5rem !important;
+        border: none !important;
+    }
+
+        .modal-header .btn-close {
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            padding: 0.5rem;
+        }
+
+    .modal-body {
+        padding: 1.5rem !important;
+    }
+
+    .modal-footer {
+        border-top: 2px solid #f0f2f5 !important;
+        padding: 1rem 1.5rem !important;
+        background: #f8f9fa;
+    }
+
+    .alert-info {
+        background: #e8f0fe !important;
+        border: 1px solid var(--primary) !important;
+        border-radius: 10px !important;
+        color: var(--primary) !important;
+        padding: 1rem !important;
+    }
+
+    .form-check {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        transition: all 0.3s;
+        margin-bottom: 0.5rem !important;
+    }
+
+        .form-check:hover {
+            background: white;
+            border-color: var(--primary);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+    .form-check-input {
+        width: 1.1rem;
+        height: 1.1rem;
+        border-radius: 5px !important;
+        border: 2px solid #dee2e6;
+        cursor: pointer;
+    }
+
+        .form-check-input:checked {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+
+    .form-check-label {
+        font-weight: 600;
+        color: #495057;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+    }
+
+        .form-check-label i {
+            color: var(--primary);
+            font-size: 1rem;
+        }
+
+    .alert-warning {
+        background: #fff3cd !important;
+        border: 1px solid #ffc107 !important;
+        border-radius: 10px !important;
+        color: #856404 !important;
+        padding: 1rem !important;
+        margin-top: 1rem;
+    }
+
+    /* تحسينات الموبايل */
+    @@media (max-width: 768px) {
+        .stat-card h2 {
+            font-size: 1.5rem;
+        }
+
+        .btn-group {
+            width: 100%;
+        }
+
+            .btn-group .btn {
+                flex: 1;
+            }
+
+        .alert-info {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .table thead {
+            display: none;
+        }
+
+        .table tbody tr {
+            display: block;
+            margin-bottom: 1rem;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 0.5rem;
+        }
+
+        .table tbody td {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem;
+            border: none;
+            border-bottom: 1px dashed #dee2e6;
+        }
+
+            .table tbody td:last-child {
+                border-bottom: none;
+            }
+
+            .table tbody td::before {
+                content: attr(data-label);
+                font-weight: 700;
+                color: var(--primary);
+                min-width: 100px;
+                font-size: 0.85rem;
+            }
+
+        .btn-group {
+            flex-wrap: wrap;
+        }
+
+            .btn-group .btn {
+                flex: 1 0 auto;
+                margin: 2px;
+            }
+
+        .card-footer .row {
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .text-end {
+            text-align: center !important;
+        }
+    }
+
+    /* تحسين عمود الرقم ليكون متناسق مع الجدول */
+    .table tbody td:first-child {
+        font-weight: 700;
+        color: var(--primary);
+        font-size: 1rem;
+        text-align: center;
+        vertical-align: middle;
+        background: linear-gradient(135deg, rgba(30,60,114,0.02), transparent);
+        width: 60px;
+        padding: 1rem 0.5rem;
+    }
+
+    .num-wrapper {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: var(--primary-soft);
+        border-radius: 8px;
+        color: var(--primary);
+        font-weight: 700;
+        font-size: 0.95rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(30,60,114,0.1);
+    }
+
+    tr:hover .num-wrapper {
+        transform: scale(1.05);
+        background: var(--primary);
+        color: white;
+        box-shadow: 0 4px 10px rgba(30,60,114,0.2);
+    }
+
+    /* إضافة فاصل بسيط بين الأعمدة */
+    .table tbody td:first-child::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 25%;
+        height: 50%;
+        width: 1px;
+        background: linear-gradient(to bottom, transparent, var(--primary), transparent);
+        opacity: 0.2;
+    }
+
+    /* تحسين عرض الجدول */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* تنسيق زر إضافة مستخدم جديد */
+    .btn-add-user {
+        background: rgba(255,255,255,0.2) !important;
+        border: 1px solid rgba(255,255,255,0.3) !important;
+        color: white !important;
+        padding: 0.6rem 1.5rem !important;
+        border-radius: 50px !important;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+        backdrop-filter: blur(10px);
+        font-size: 0.95rem;
+    }
+
+        .btn-add-user:hover {
+            background: white !important;
+            color: var(--primary) !important;
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .btn-add-user i {
+            font-size: 1.1rem;
+        }
+</style>
+
 <div class="container mt-4">
     <h3 class="mb-4">👑 إدارة المستخدمين</h3>
 
     <!-- بطاقات الإحصائيات -->
     <div class="row mb-4">
         <div class="col-md-3 col-sm-6 mb-3">
-            <div class="card bg-primary text-white">
+            <div class="card stat-card bg-primary text-white">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -29,7 +629,7 @@
             </div>
         </div>
         <div class="col-md-3 col-sm-6 mb-3">
-            <div class="card bg-success text-white">
+            <div class="card stat-card bg-success text-white">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -42,7 +642,7 @@
             </div>
         </div>
         <div class="col-md-3 col-sm-6 mb-3">
-            <div class="card bg-info text-white">
+            <div class="card stat-card bg-info text-white">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -55,7 +655,7 @@
             </div>
         </div>
         <div class="col-md-3 col-sm-6 mb-3">
-            <div class="card bg-danger text-white">
+            <div class="card stat-card bg-danger text-white">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -69,9 +669,9 @@
         </div>
     </div>
 
-    <!-- بطاقة البحث والفلاتر -->
-    <div class="card mb-4">
-        <div class="card-header bg-light">
+    <!-- بطاقة البحث والفلاتر - باللون الأبيض -->
+    <div class="filter-card">
+        <div class="card-header">
             <h5 class="mb-0">
                 <i class="fas fa-filter"></i> البحث والتصفية
             </h5>
@@ -160,15 +760,15 @@
     </div>
 
     <!-- جدول المستخدمين -->
-    <div class="card">
+    <div class="table-card">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <div>
                 <i class="fas fa-users"></i> جميع المستخدمين
                 <span class="badge bg-light text-dark ms-2">@totalUsers</span>
             </div>
-            <button class="btn btn-light btn-sm" id="exportBtn">
-                <i class="fas fa-download"></i> تصدير
-            </button>
+            <a asp-action="CreateUserByAdmin" asp-controller="Account" class="btn-add-user">
+                <i class="fas fa-user-plus"></i> إضافة مستخدم جديد
+            </a>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -194,8 +794,10 @@
                                 data-role="@user.Roles.ToLower()"
                                 data-governorate="@(user.ManagedGovernorate?.ToLower() ?? user.Governorate?.ToLower() ?? "")"
                                 data-status="@(user.IsActive ? "active" : "inactive")">
-                                <td class="text-muted">@(i + 1)</td>
-                                <td>
+                                <td data-label="#">
+                                    <span class="num-wrapper">@(i + 1)</span>
+                                </td>
+                                <td data-label="البريد">
                                     <div class="d-flex align-items-center">
                                         <div class="avatar me-2">
                                             <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
@@ -209,7 +811,7 @@
                                         </div>
                                     </div>
                                 </td>
-                                <td>
+                                <td data-label="الاسم">
                                     <div class="fw-bold">@user.FullName</div>
                                     @if (!string.IsNullOrEmpty(user.ManagedGovernorate))
                                     {
@@ -218,7 +820,7 @@
                                         </small>
                                     }
                                 </td>
-                                <td>
+                                <td data-label="المحافظة">
                                     @if (!string.IsNullOrEmpty(user.ManagedGovernorate))
                                     {
                                         <span class="badge bg-warning text-dark">
@@ -230,7 +832,7 @@
                                         <span class="badge bg-secondary">@user.Governorate</span>
                                     }
                                 </td>
-                                <td>
+                                <td data-label="الأدوار">
                                     @if (user.Roles.Contains("SuperAdmin"))
                                     {
                                         <span class="badge bg-danger">
@@ -250,7 +852,7 @@
                                         </span>
                                     }
                                 </td>
-                                <td>
+                                <td data-label="الحالة">
                                     @if (user.IsActive)
                                     {
                                         <span class="badge bg-success">
@@ -264,7 +866,7 @@
                                         </span>
                                     }
                                 </td>
-                                <td>
+                                <td data-label="الإجراءات">
                                     <div class="btn-group btn-group-sm" role="group">
                                         <!-- زر عرض التفاصيل -->
                                         <a href="@Url.Action("UserDetails", "SuperAdmin", new { id = user.Id })"
@@ -290,6 +892,16 @@
                                                 title="@(user.IsActive ? "تعطيل" : "تفعيل")">
                                             <i class="fas fa-power-off"></i>
                                             <span class="d-none d-md-inline"> @(user.IsActive ? "تعطيل" : "تفعيل")</span>
+                                        </button>
+
+                                        <!-- زر حذف المستخدم -->
+                                        <button class="btn btn-outline-danger delete-user-btn"
+                                                data-user-id="@user.Id"
+                                                data-user-email="@user.Email"
+                                                data-user-name="@user.FullName"
+                                                title="حذف المستخدم">
+                                            <i class="fas fa-trash-alt"></i>
+                                            <span class="d-none d-md-inline"> حذف</span>
                                         </button>
                                     </div>
                                 </td>
@@ -337,21 +949,21 @@
                 <input type="hidden" id="modalUserId">
 
                 <div class="mb-3">
-                    <label class="form-label fw-bold">اختر الأدوار:</label>
+                    <label class="form-label fw-bold">اختر الدور:</label>
                     <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" id="roleUser" value="User">
+                        <input class="form-check-input" type="radio" name="roleOption" id="roleUser" value="User">
                         <label class="form-check-label" for="roleUser">
                             <i class="fas fa-user"></i> مستخدم عادي
                         </label>
                     </div>
                     <div class="form-check mb-2">
-                        <input class="form-check-input" type="checkbox" id="roleAdmin" value="Admin">
+                        <input class="form-check-input" type="radio" name="roleOption" id="roleAdmin" value="Admin">
                         <label class="form-check-label" for="roleAdmin">
                             <i class="fas fa-user-shield"></i> أدمن (سيرى مستخدمي محافظته فقط)
                         </label>
                     </div>
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="roleSuperAdmin" value="SuperAdmin">
+                        <input class="form-check-input" type="radio" name="roleOption" id="roleSuperAdmin" value="SuperAdmin">
                         <label class="form-check-label" for="roleSuperAdmin">
                             <i class="fas fa-crown"></i> سوبر أدمن (يرى جميع المستخدمين)
                         </label>
@@ -375,74 +987,44 @@
     </div>
 </div>
 
-@section Styles {
-    <style>
-        /* تنسيقات الأزرار */
-        .btn-group .btn {
-            border-radius: 4px;
-            margin: 0 2px;
-            transition: all 0.3s ease;
-        }
+<!-- Modal تأكيد الحذف -->
+<div class="modal fade" id="deleteConfirmModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle"></i> تأكيد الحذف
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-4">
+                    <i class="fas fa-user-slash fa-4x text-danger mb-3"></i>
+                    <h5>هل أنت متأكد من حذف هذا المستخدم؟</h5>
+                </div>
 
-            .btn-group .btn:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            }
+                <div id="deleteUserInfo" class="alert alert-warning">
+                    <!-- سيتم تعبئته بالجافاسكريبت -->
+                </div>
 
-        .btn-outline-info:hover {
-            background-color: #17a2b8;
-            color: white;
-        }
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <strong>تحذير:</strong> هذا الإجراء لا يمكن التراجع عنه. سيتم حذف جميع بيانات المستخدم بما في ذلك ملفه الشخصي وعنوانه.
+                </div>
 
-        .btn-outline-primary:hover {
-            background-color: #007bff;
-            color: white;
-        }
-
-        .btn-outline-warning:hover {
-            background-color: #ffc107;
-            color: black;
-        }
-
-        .btn-outline-success:hover {
-            background-color: #28a745;
-            color: white;
-        }
-
-        /* تنسيق الجدول */
-        .table-hover tbody tr:hover {
-            background-color: rgba(0, 123, 255, 0.05);
-            cursor: pointer;
-        }
-
-        .avatar {
-            display: inline-flex;
-        }
-
-        /* تنسيق البطاقات */
-        .card {
-            border: none;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .card-header {
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-
-        /* تنسيق الأيقونات */
-        .fa-3x {
-            font-size: 2.5rem;
-        }
-
-        /* تنسيق الباجات */
-        .badge {
-            padding: 0.5em 0.8em;
-            font-weight: 500;
-        }
-    </style>
-}
+                <input type="hidden" id="deleteUserId">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> إلغاء
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="fas fa-trash-alt"></i> نعم، احذف المستخدم
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
     <script>
@@ -457,6 +1039,17 @@
         function initializeFilter() {
             const allRows = document.querySelectorAll('#usersTable tbody tr[data-user]');
             filteredRows = Array.from(allRows);
+
+            // تخزين الأرقام الأصلية
+            filteredRows.forEach((row, index) => {
+                const originalNumber = index + 1;
+                const numWrapper = row.querySelector('.num-wrapper');
+                if (numWrapper) {
+                    numWrapper.textContent = originalNumber;
+                }
+                row.setAttribute('data-original-index', originalNumber);
+            });
+
             updateTable();
         }
 
@@ -518,8 +1111,12 @@
             // عرض الصفوف للصفحة الحالية
             currentRows.forEach((row, index) => {
                 row.style.display = '';
-                // تحديث رقم التسلسل
-                row.querySelector('td:first-child').textContent = startIndex + index + 1;
+
+                // تحديث رقم التسلسل مع الحفاظ على التنسيق
+                const numWrapper = row.querySelector('.num-wrapper');
+                if (numWrapper) {
+                    numWrapper.textContent = startIndex + index + 1;
+                }
             });
 
             // تحديث العداد
@@ -607,16 +1204,11 @@
             applyFilter();
         });
 
-        // زر التصدير
-        document.getElementById('exportBtn').addEventListener('click', function() {
-            alert('📊 سيتم تصدير البيانات قريبًا...');
-            // هنا يمكنك إضافة منطق التصدير إلى Excel أو PDF
-        });
-
         // 1. عند النقر على زر تعديل الأدوار
         document.querySelectorAll('.edit-roles-btn').forEach(btn => {
             btn.addEventListener('click', async function(e) {
                 e.stopPropagation();
+                console.log('تم النقر على زر تعديل الأدوار'); // للتأكد
 
                 selectedUserId = this.dataset.userId;
                 selectedUserEmail = this.dataset.userEmail;
@@ -633,16 +1225,16 @@
                     const data = await response.json();
 
                     if (data.success) {
-                        // تفريغ الخانات
-                        ['User', 'Admin', 'SuperAdmin'].forEach(role => {
-                            document.getElementById(`role${role}`).checked = false;
+                        // إلغاء تحديد جميع الخيارات
+                        document.querySelectorAll('input[name="roleOption"]').forEach(radio => {
+                            radio.checked = false;
                         });
 
-                        // تحديد الأدوار الحالية
+                        // تحديد الدور الحالي
                         if (data.data.CurrentRoles) {
                             data.data.CurrentRoles.forEach(role => {
-                                const checkbox = document.getElementById(`role${role}`);
-                                if (checkbox) checkbox.checked = true;
+                                const radio = document.getElementById(`role${role}`);
+                                if (radio) radio.checked = true;
                             });
                         }
                     }
@@ -651,15 +1243,20 @@
                     alert('حدث خطأ في جلب البيانات');
                 }
 
-                // إظهار/إخفاء تحذير الأدمن
-                document.getElementById('roleAdmin').addEventListener('change', function() {
-                    document.getElementById('adminWarning').style.display =
-                        this.checked ? 'block' : 'none';
-                });
-
                 // فتح الـ Modal
                 const modal = new bootstrap.Modal(document.getElementById('rolesModal'));
                 modal.show();
+            });
+        });
+
+        // إظهار/إخفاء تحذير الأدمن عند اختيار دور الأدمن
+        document.querySelectorAll('input[name="roleOption"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'Admin') {
+                    document.getElementById('adminWarning').style.display = 'block';
+                } else {
+                    document.getElementById('adminWarning').style.display = 'none';
+                }
             });
         });
 
@@ -670,11 +1267,15 @@
                 return;
             }
 
-            // جمع الأدوار المختارة
-            const selectedRoles = [];
-            if (document.getElementById('roleUser').checked) selectedRoles.push('User');
-            if (document.getElementById('roleAdmin').checked) selectedRoles.push('Admin');
-            if (document.getElementById('roleSuperAdmin').checked) selectedRoles.push('SuperAdmin');
+            // الحصول على الدور المختار
+            const selectedRole = document.querySelector('input[name="roleOption"]:checked');
+
+            if (!selectedRole) {
+                alert('❌ الرجاء اختيار دور للمستخدم');
+                return;
+            }
+
+            const selectedRoles = [selectedRole.value];
 
             // إرسال الطلب
             try {
@@ -712,8 +1313,10 @@
                 e.stopPropagation();
 
                 const userId = this.dataset.userId;
-                const isCurrentlyActive = this.closest('tr').querySelector('.badge').textContent.includes('مفعل');
-                const action = isCurrentlyActive ? 'تعطيل' : 'تفعيل';
+
+                // التحقق من كلاس الزر لمعرفة الحالة الحالية
+                const isActive = this.classList.contains('btn-outline-warning');
+                const action = isActive ? 'تعطيل' : 'تفعيل';
 
                 if (confirm(`هل تريد ${action} هذا المستخدم؟`)) {
                     try {
@@ -731,7 +1334,9 @@
                         const result = await response.json();
 
                         if (result.success) {
-                            alert('✅ ' + result.message);
+                            // تغيير هذه الرسالة
+                            let successMessage = isActive ? '✅ تم تعطيل هذا الحساب' : '✅ تم تفعيل هذا الحساب';
+                            alert(successMessage);
                             setTimeout(() => window.location.reload(), 1000);
                         } else {
                             alert('❌ ' + result.message);
@@ -744,7 +1349,64 @@
             });
         });
 
-        // 4. عند النقر على صف الجدول (للانتقال للتفاصيل)
+        // 4. زر حذف المستخدم
+        document.querySelectorAll('.delete-user-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+
+                const userId = this.dataset.userId;
+                const userEmail = this.dataset.userEmail;
+                const userName = this.dataset.userName;
+
+                // عرض معلومات المستخدم
+                document.getElementById('deleteUserInfo').innerHTML =
+                    `<i class="fas fa-user"></i> <strong>${userName}</strong><br>
+                     <small class="text-muted">${userEmail}</small>`;
+
+                document.getElementById('deleteUserId').value = userId;
+
+                // فتح الـ Modal
+                const modal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+                modal.show();
+            });
+        });
+
+        // 5. تأكيد حذف المستخدم
+        document.getElementById('confirmDeleteBtn').addEventListener('click', async function() {
+            const userId = document.getElementById('deleteUserId').value;
+
+            if (!userId) {
+                alert('❌ لم يتم اختيار مستخدم');
+                return;
+            }
+
+            try {
+                const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+                const response = await fetch('/SuperAdmin/DeleteUser', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': csrfToken
+                    },
+                    body: JSON.stringify({ UserId: userId })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ ' + result.message);
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            } catch (error) {
+                console.error('خطأ:', error);
+                alert('❌ حدث خطأ في الاتصال');
+            }
+        });
+
+        // 6. عند النقر على صف الجدول (للانتقال للتفاصيل)
         document.querySelectorAll('#usersTable tbody tr[data-user]').forEach(row => {
             row.addEventListener('click', function(e) {
                 // منع الانتقال إذا كان النقر على زر
@@ -758,7 +1420,7 @@
             });
         });
 
-        // 5. إضافة تأثير عند التمرير على الأزرار
+        // 7. إضافة تأثير عند التمرير على الأزرار
         document.querySelectorAll('.btn-group .btn').forEach(btn => {
             btn.addEventListener('mouseenter', function() {
                 this.style.transform = 'translateY(-2px)';

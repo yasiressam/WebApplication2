@@ -1,8 +1,318 @@
 ﻿@model WebApplication2.Models.News
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<IdentityUser> UserManager
 
 @{
-    ViewData["Title"] = "تعديل الخبر";
+   
+
+    // جلب اسم الكاتب إذا كان معرف الكاتب موجوداً
+    string authorName = "غير معروف";
+    if (!string.IsNullOrEmpty(Model.AuthorId))
+    {
+        var author = await UserManager.FindByIdAsync(Model.AuthorId);
+        if (author != null)
+        {
+            authorName = author.UserName ?? author.Email;
+        }
+    }
 }
+
+<style>
+    /* تحسينات التصميم - نفس الألوان السابقة */
+    .card {
+        border-radius: 20px !important;
+        overflow: hidden;
+        transition: transform 0.3s ease;
+        border: none !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
+    }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(30, 60, 114, 0.15) !important;
+        }
+
+    .card-header {
+        background: linear-gradient(135deg, #1e3c72, #2a5a9c) !important;
+        padding: 1.5rem 2rem !important;
+        border: none !important;
+    }
+
+        .card-header h4 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+        }
+
+        .card-header i {
+            font-size: 2rem;
+            background: rgba(255,255,255,0.2);
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+        }
+
+    .card-body {
+        padding: 2rem !important;
+        background: #ffffff;
+    }
+
+    /* تحسين الحقول */
+    .form-label {
+        font-weight: 700;
+        color: #1e3c72;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+        .form-label .text-danger {
+            font-size: 1.2rem;
+            margin-right: 3px;
+        }
+
+    .form-control {
+        border-radius: 16px !important;
+        padding: 0.8rem 1.2rem !important;
+        border: 2px solid #e2e8f0 !important;
+        transition: all 0.3s;
+        font-size: 1rem;
+    }
+
+        .form-control:focus {
+            border-color: #1e3c72 !important;
+            box-shadow: 0 0 0 4px rgba(30, 60, 114, 0.1) !important;
+            outline: none;
+        }
+
+    textarea.form-control {
+        min-height: 200px;
+        line-height: 1.8;
+    }
+
+    /* تحسين معاينة الصورة */
+    .img-thumbnail {
+        border-radius: 16px !important;
+        padding: 5px !important;
+        background: linear-gradient(135deg, #f8fafc, #ffffff);
+        border: 2px solid #e2e8f0 !important;
+        max-height: 150px;
+        width: auto;
+        transition: transform 0.3s;
+    }
+
+        .img-thumbnail:hover {
+            transform: scale(1.05);
+        }
+
+    /* تحسين خيار حذف الصورة */
+    .form-check {
+        background: #fee2e2;
+        padding: 1rem !important;
+        border-radius: 14px;
+        border: 1px solid #fecaca;
+    }
+
+    .form-check-input {
+        width: 1.2rem;
+        height: 1.2rem;
+        border-radius: 6px !important;
+        border: 2px solid #dc2626;
+        margin-left: 0.5rem;
+    }
+
+        .form-check-input:checked {
+            background-color: #dc2626;
+            border-color: #dc2626;
+        }
+
+    .form-check-label {
+        color: #dc2626;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    /* تحسين رفع الصورة */
+    input[type="file"] {
+        padding: 0.6rem !important;
+        background: #f8fafc;
+        border: 2px dashed #1e3c72 !important;
+        cursor: pointer;
+    }
+
+        input[type="file"]:hover {
+            background: #ffffff;
+            border-color: #2a5a9c !important;
+        }
+
+    .form-text {
+        color: #64748b;
+        margin-top: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+        .form-text::before {
+            content: '📎';
+            font-size: 1rem;
+        }
+
+    /* تحسين معاينة الصورة الجديدة */
+    #imagePreview {
+        border-radius: 16px;
+        border: 3px solid #1e3c72;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        margin-top: 1rem;
+    }
+
+    /* تحسين معلومات الخبر */
+    .alert-info {
+        background: linear-gradient(135deg, #f8fafc, #f1f5f9) !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 20px !important;
+        padding: 1.5rem !important;
+        margin-top: 2rem !important;
+    }
+
+        .alert-info h6 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #1e3c72;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 1rem;
+        }
+
+            .alert-info h6 i {
+                font-size: 1.3rem;
+                color: #1e3c72;
+            }
+
+    .info-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0.5rem;
+        border-bottom: 1px solid rgba(30, 60, 114, 0.1);
+    }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+    .info-label {
+        font-weight: 600;
+        color: #1e3c72;
+        min-width: 100px;
+    }
+
+    .info-value {
+        color: #2c3e50;
+        background: #ffffff;
+        padding: 0.4rem 1rem;
+        border-radius: 30px;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        border: 1px solid #e2e8f0;
+    }
+
+    /* بادج الكاتب */
+    .author-badge {
+        background: linear-gradient(135deg, #1e3c72, #2a5a9c);
+        color: white;
+        padding: 0.4rem 1.2rem;
+        border-radius: 30px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 5px 15px rgba(30, 60, 114, 0.3);
+    }
+
+    /* تحسين الأزرار */
+    .d-flex.gap-2 {
+        margin-top: 2rem !important;
+        gap: 1rem !important;
+        flex-wrap: wrap;
+    }
+
+    .btn {
+        border-radius: 50px !important;
+        padding: 0.8rem 2rem !important;
+        font-weight: 600 !important;
+        transition: all 0.3s !important;
+        border: none !important;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2) !important;
+        }
+
+    .btn-success {
+        background: linear-gradient(135deg, #059669, #047857) !important;
+    }
+
+    .btn-info {
+        background: linear-gradient(135deg, #1e3c72, #2a5a9c) !important;
+    }
+
+    .btn-secondary {
+        background: linear-gradient(135deg, #64748b, #475569) !important;
+    }
+
+    /* تحسينات الموبايل */
+    @@media (max-width: 768px) {
+        .card-header h4 {
+            font-size: 1.5rem;
+        }
+
+        .card-body {
+            padding: 1.5rem !important;
+        }
+
+        .d-flex.gap-2 {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+        }
+
+        .row {
+            flex-direction: column;
+        }
+
+        .col-md-4 {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        .col-md-8 {
+            width: 100%;
+        }
+
+        .form-check {
+            margin-top: 1rem;
+        }
+    }
+</style>
 
 <div class="container mt-4">
     <div class="card shadow-sm border-0">
@@ -18,7 +328,7 @@
                 <input type="hidden" asp-for="Id" />
 
                 <!-- عنوان الخبر -->
-                <div class="mb-3">
+                <div class="mb-4">
                     <label asp-for="Title" class="form-label fw-bold">
                         <span class="text-danger">*</span> عنوان الخبر
                     </label>
@@ -29,7 +339,7 @@
                 </div>
 
                 <!-- محتوى الخبر -->
-                <div class="mb-3">
+                <div class="mb-4">
                     <label asp-for="Content" class="form-label fw-bold">
                         <span class="text-danger">*</span> محتوى الخبر
                     </label>
@@ -43,41 +353,51 @@
 
                 <!-- الصورة الحالية -->
                 <div class="mb-4">
-                    <label class="form-label fw-bold">الصورة الحالية</label>
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-image"></i> الصورة الحالية
+                    </label>
                     @if (!string.IsNullOrEmpty(Model.ImageUrl))
                     {
                         <div class="mb-3">
-                            <div class="row">
+                            <div class="row align-items-center">
                                 <div class="col-md-4">
                                     <img src="@Model.ImageUrl" class="img-thumbnail" />
                                 </div>
                                 <div class="col-md-8">
-                                    <div class="form-check mt-2">
+                                    <div class="form-check">
                                         <input class="form-check-input" type="checkbox" id="removeImage" name="removeImage" value="true">
-                                        <label class="form-check-label text-danger" for="removeImage">
+                                        <label class="form-check-label" for="removeImage">
                                             <i class="bi bi-trash"></i> حذف الصورة الحالية
                                         </label>
                                     </div>
-                                    <small class="text-muted d-block mt-2">اختر هذه الخانة إذا أردت حذف الصورة الحالية</small>
+                                    <small class="text-muted d-block mt-2">
+                                        <i class="bi bi-info-circle"></i>
+                                        اختر هذه الخانة إذا أردت حذف الصورة الحالية
+                                    </small>
                                 </div>
                             </div>
                         </div>
                     }
                     else
                     {
-                        <p class="text-muted">لا توجد صورة مرفقة حالياً</p>
+                        <p class="text-muted">
+                            <i class="bi bi-info-circle"></i>
+                            لا توجد صورة مرفقة حالياً
+                        </p>
                     }
                 </div>
 
                 <!-- رفع صورة جديدة -->
                 <div class="mb-4">
-                    <label class="form-label fw-bold">تغيير الصورة (اختياري)</label>
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-cloud-upload"></i> تغيير الصورة (اختياري)
+                    </label>
                     <input type="file"
                            name="ImageFile"
                            class="form-control"
                            accept="image/*"
                            onchange="previewImage(event)" />
-                    <div class="form-text">اختياري - يمكنك رفع صورة جديدة للخبر</div>
+                    <div class="form-text">يمكنك رفع صورة جديدة للخبر</div>
                 </div>
 
                 <!-- معاينة الصورة الجديدة -->
@@ -89,16 +409,28 @@
                 </div>
 
                 <!-- معلومات الخبر -->
-                <div class="alert alert-info mb-4">
+                <div class="alert-info">
                     <h6><i class="bi bi-info-circle"></i> معلومات الخبر:</h6>
-                    <p class="mb-1">
-                        <strong>تم الإنشاء:</strong> @Model.CreatedAt.ToString("yyyy-MM-dd HH:mm")
-                    </p>
+                    <div class="info-row">
+                        <span class="info-label">
+                            <i class="bi bi-calendar"></i> تم الإنشاء:
+                        </span>
+                        <span class="info-value">
+                            <i class="bi bi-calendar3 me-1"></i> @Model.CreatedAt.ToString("yyyy/MM/dd")
+                            <i class="bi bi-clock ms-2 me-1"></i> @Model.CreatedAt.ToString("HH:mm")
+                        </span>
+                    </div>
                     @if (!string.IsNullOrEmpty(Model.AuthorId))
                     {
-                        <p class="mb-0">
-                            <strong>معرف الكاتب:</strong> @Model.AuthorId
-                        </p>
+                        <div class="info-row">
+                            <span class="info-label">
+                                <i class="bi bi-person"></i> الكاتب:
+                            </span>
+                            <span class="author-badge">
+                                <i class="bi bi-pencil-fill"></i>
+                                @authorName
+                            </span>
+                        </div>
                     }
                 </div>
 

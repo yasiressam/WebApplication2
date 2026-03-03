@@ -1,0 +1,320 @@
+﻿@model WebApplication2.Models.PersonalProfileViewModel
+
+<style>
+    /* ===== نفس تصميم صفحة تفاصيل المستخدم السابقة ===== */
+    .card-header {
+        color: white !important;
+    }
+
+        .card-header h4,
+        .card-header i,
+        .card-header .me-2 {
+            color: white !important;
+        }
+
+    .section-title {
+        border-bottom: 2px solid #dee2e6;
+        padding-bottom: 0.3rem;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+
+    .bg-pink {
+        background-color: #ffc0cb;
+        color: #000;
+    }
+
+    /* تنسيق البطاقة الرئيسية */
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border: none;
+    }
+
+    .card-header {
+        background-color: #17a2b8 !important;
+        padding: 1rem 1.5rem;
+        border-bottom: none;
+    }
+
+    .card-body {
+        padding: 2rem;
+    }
+
+    /* تنسيق الصفوف */
+    .row {
+        margin-bottom: 0.75rem;
+    }
+
+    .col-md-4 {
+        color: #495057;
+    }
+
+    .col-md-8 {
+        color: #212529;
+    }
+
+    /* تنسيق البادجات */
+    .badge {
+        padding: 0.5rem 0.8rem;
+        font-weight: 500;
+        font-size: 0.85rem;
+        border-radius: 4px;
+    }
+
+        .badge.bg-success {
+            background-color: #28a745 !important;
+        }
+
+        .badge.bg-danger {
+            background-color: #dc3545 !important;
+        }
+
+        .badge.bg-info {
+            background-color: #17a2b8 !important;
+        }
+
+        .badge.bg-warning {
+            background-color: #ffc107 !important;
+            color: #212529 !important;
+        }
+
+        .badge.bg-secondary {
+            background-color: #6c757d !important;
+        }
+
+    /* تنسيق التنبيهات */
+    .alert {
+        border-radius: 5px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        border: none;
+        border-left: 4px solid;
+    }
+
+    .alert-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+        border-left-color: #dc3545;
+    }
+
+    .alert-warning {
+        background-color: #fff3cd;
+        color: #856404;
+        border-left-color: #ffc107;
+    }
+
+    /* تنسيق الفوتر */
+    .card-footer {
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        padding: 1rem 1.5rem;
+    }
+
+    .btn-secondary {
+        background-color: #6c757d;
+        border: none;
+        padding: 0.5rem 1.5rem;
+        border-radius: 4px;
+        color: white;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: background-color 0.2s;
+    }
+
+        .btn-secondary:hover {
+            background-color: #5a6268;
+            color: white;
+        }
+
+    /* تنسيق النصوص */
+    .fw-bold {
+        font-weight: 600 !important;
+    }
+
+    .text-muted {
+        color: #6c757d !important;
+        font-size: 0.9rem;
+    }
+
+    .text-primary {
+        color: #17a2b8 !important;
+    }
+
+    .text-info {
+        color: #17a2b8 !important;
+    }
+
+    .text-warning {
+        color: #ffc107 !important;
+    }
+
+    .text-success {
+        color: #28a745 !important;
+    }
+
+    /* تحسينات للموبايل */
+    @@media (max-width: 768px) {
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .row {
+            flex-direction: column;
+            margin-bottom: 1rem;
+        }
+
+        .col-md-4, .col-md-8 {
+            width: 100%;
+            padding: 0.25rem 0;
+        }
+
+        .badge {
+            display: inline-block;
+            margin: 0.25rem 0;
+        }
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-info text-white d-flex align-items-center">
+            <i class="fas fa-user-circle me-2"></i>
+            <h4 class="mb-0">الملف الشخصي</h4>
+        </div>
+        <div class="card-body">
+
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> @TempData["SuccessMessage"]
+                </div>
+            }
+
+            <!-- معلومات الحساب -->
+            <h5 class="section-title text-primary"><i class="fas fa-user-shield me-2"></i> معلومات الحساب</h5>
+            <div class="row mb-3">
+                <div class="col-md-4 fw-bold">البريد الإلكتروني:</div>
+                <div class="col-md-8">@Model.Email</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4 fw-bold">الدور:</div>
+                <div class="col-md-8">
+                    <span class="badge bg-info">@Model.UserRole</span>
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4 fw-bold">حالة الحساب:</div>
+                <div class="col-md-8">
+                    @if (Model.IsEmailConfirmed)
+                    {
+                        <span class="badge bg-success">مفعل</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-warning">غير مفعل</span>
+                    }
+                </div>
+            </div>
+            @if (Model.RegistrationDate.HasValue)
+            {
+                <div class="row mb-3">
+                    <div class="col-md-4 fw-bold">تاريخ التسجيل:</div>
+                    <div class="col-md-8">@Model.RegistrationDate.Value.ToString("yyyy/MM/dd")</div>
+                </div>
+            }
+
+            <!-- المعلومات الشخصية -->
+            <h5 class="section-title text-info mt-4"><i class="fas fa-id-card me-2"></i> المعلومات الشخصية</h5>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">الاسم الكامل:</div><div class="col-md-8">@Model.FullName</div></div>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">اللقب:</div><div class="col-md-8">@(!string.IsNullOrEmpty(Model.LastName) ? Model.LastName : "—")</div></div>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">اسم الأم:</div><div class="col-md-8">@(!string.IsNullOrEmpty(Model.MotherName) ? Model.MotherName : "—")</div></div>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">المزكي:</div><div class="col-md-8">@(!string.IsNullOrEmpty(Model.MozakeName) ? Model.MozakeName : "—")</div></div>
+            <div class="row mb-2">
+                <div class="col-md-4 fw-bold">الجنس:</div>
+                <div class="col-md-8">
+                    @if (Model.Gender == "ذكر")
+                    {
+                        <span class="badge bg-info">ذكر</span>
+                    }
+                    else if (Model.Gender == "أنثى")
+                    {
+                        <span class="badge bg-pink">أنثى</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">@Model.Gender</span>
+                    }
+                </div>
+            </div>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">تاريخ الميلاد:</div><div class="col-md-8">@Model.DateOfBirth.ToString("yyyy/MM/dd")</div></div>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">رقم الهاتف:</div><div class="col-md-8">@Model.PhoneNumber</div></div>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">المؤهل العلمي:</div><div class="col-md-8">@(!string.IsNullOrEmpty(Model.Education) ? Model.Education : "—")</div></div>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">التخصص:</div><div class="col-md-8">@(!string.IsNullOrEmpty(Model.Specialization) ? Model.Specialization : "—")</div></div>
+
+            <!-- بيانات البطاقة الوطنية -->
+            <h5 class="section-title text-warning mt-4"><i class="fas fa-address-card me-2"></i> بيانات البطاقة الوطنية</h5>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">رقم البطاقة:</div><div class="col-md-8">@Model.IdentityCardN</div></div>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">تاريخ الإصدار:</div><div class="col-md-8">@Model.IdentityDate.ToString("yyyy/MM/dd")</div></div>
+            @if (Model.RationN > 0)
+            {
+                <div class="row mb-2"><div class="col-md-4 fw-bold">رقم البطاقة التموينية:</div><div class="col-md-8">@Model.RationN</div></div>
+            }
+            @if (Model.RationCenter > 0)
+            {
+                <div class="row mb-2"><div class="col-md-4 fw-bold">مركز التوزيع:</div><div class="col-md-8">@Model.RationCenter</div></div>
+            }
+
+            <!-- العنوان -->
+            <h5 class="section-title text-success mt-4"><i class="fas fa-map-marker-alt me-2"></i> العنوان</h5>
+            <div class="row mb-2"><div class="col-md-4 fw-bold">المحافظة:</div><div class="col-md-8">@Model.Governorate</div></div>
+
+            @if (!string.IsNullOrEmpty(Model.District))
+            {
+                <div class="row mb-2"><div class="col-md-4 fw-bold">القضاء/المنطقة:</div><div class="col-md-8">@Model.District</div></div>
+            }
+            @if (!string.IsNullOrEmpty(Model.SubDistrict))
+            {
+                <div class="row mb-2"><div class="col-md-4 fw-bold">الناحية:</div><div class="col-md-8">@Model.SubDistrict</div></div>
+            }
+            @if (!string.IsNullOrEmpty(Model.Alley))
+            {
+                <div class="row mb-2"><div class="col-md-4 fw-bold">المحلة/الزقاق:</div><div class="col-md-8">@Model.Alley</div></div>
+            }
+            @if (!string.IsNullOrEmpty(Model.Street))
+            {
+                <div class="row mb-2"><div class="col-md-4 fw-bold">الشارع:</div><div class="col-md-8">@Model.Street</div></div>
+            }
+            @if (!string.IsNullOrEmpty(Model.House))
+            {
+                <div class="row mb-2"><div class="col-md-4 fw-bold">المنزل:</div><div class="col-md-8">@Model.House</div></div>
+            }
+            @if (!string.IsNullOrEmpty(Model.NearestPoint))
+            {
+                <div class="row mb-2"><div class="col-md-4 fw-bold">أقرب نقطة دالة:</div><div class="col-md-8">@Model.NearestPoint</div></div>
+            }
+
+        </div>
+        <div class="card-footer">
+            <a href="@Url.Action("Index", "Home")" class="btn btn-secondary">
+                <i class="fas fa-arrow-right"></i> العودة للرئيسية
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .section-title {
+        border-bottom: 2px solid #dee2e6;
+        padding-bottom: 0.3rem;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+
+    .bg-pink {
+        background-color: #ffc0cb;
+        color: #000;
+    }
+</style>

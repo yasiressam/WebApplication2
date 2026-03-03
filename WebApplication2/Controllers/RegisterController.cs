@@ -220,47 +220,8 @@ namespace WebApplication2.Controllers
 
             if (existingProfile != null)
             {
-                // إذا كان الملف موجوداً، نملأ النموذج بالبيانات الحالية
-                var model = new PersonalProfileViewModel
-                {
-                    UserId = userId,
-                    // بيانات Identify
-                    FullName = existingProfile.FullName ?? "",
-                    LastName = existingProfile.LastName ?? "",
-                    MotherName = existingProfile.MotherName ?? "",
-                    DateOfBirth = existingProfile.Date,
-                    Gender = existingProfile.Gender ?? "ذكر",
-                    MozakeName = existingProfile.MozakeName ?? "",
-                    Education = existingProfile.Education ?? "",
-                    Specialization = existingProfile.Specialization ?? "",
-                    PhoneNumber = existingProfile.PhoneNumber ?? "",
-                    IdentityCardN = existingProfile.IdentityCardN,
-                    IdentityDate = existingProfile.identityDate,
-                    RationN = existingProfile.RationN,
-                    RationCenter = existingProfile.RationCenter,
-
-                    // بيانات Address
-                    Governorate = existingProfile.Address?.Governorate ?? "بغداد",
-                    District = existingProfile.Address?.District ?? "",
-                    SubDistrict = existingProfile.Address?.SubDistrict ?? "",
-                    Alley = existingProfile.Address?.Alley ?? "",
-                    Street = existingProfile.Address?.Street ?? "",
-                    House = existingProfile.Address?.House ?? "",
-                    NearestPoint = existingProfile.Address?.NearestPoint ?? "",
-
-                    // بيانات للعرض فقط
-                    Email = user.Email,
-                    UserRole = roles.FirstOrDefault() ?? "User",
-                    IsEmailConfirmed = user.EmailConfirmed,
-                    RegistrationDate = existingProfile.Date,
-
-                    // قوائم الاختيار
-                    Governorates = GetGovernorates(),
-                    Genders = new List<string> { "ذكر", "أنثى" },
-                    Educations = GetEducations()
-                };
-
-                return View(model);
+                // إذا كان الملف موجوداً، نوجه المستخدم إلى صفحة عرض التفاصيل
+                return RedirectToAction("ProfileDetails");
             }
 
             // إذا لم يكن الملف موجوداً، ننشئ نموذجاً جديداً
@@ -470,7 +431,9 @@ namespace WebApplication2.Controllers
                 _logger.LogInformation("🎉 تم حفظ جميع البيانات بنجاح!");
 
                 TempData["SuccessMessage"] = "✅ تم حفظ ملفك الشخصي بنجاح!";
-                return RedirectToAction("Index", "Home");
+
+                // بعد الحفظ الناجح، انتقل إلى صفحة عرض التفاصيل
+                return RedirectToAction("ProfileDetails");
             }
             catch (DbUpdateException dbEx)
             {
@@ -491,6 +454,77 @@ namespace WebApplication2.Controllers
 
             // في حالة الخطأ
             return View(model);
+        }
+
+        // GET: /Register/ProfileDetails
+        [HttpGet]
+        [Authorize]
+        public async Task<IActionResult> ProfileDetails()
+        {
+            var userId = _userManager.GetUserId(User);
+
+            if (string.IsNullOrEmpty(userId))
+            {
+                TempData["ErrorMessage"] = "يجب تسجيل الدخول أولاً.";
+                return RedirectToAction("Login", "Account");
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            var roles = await _userManager.GetRolesAsync(user);
+
+            var profile = await _context.Identifies
+                .Include(i => i.Address)
+                .FirstOrDefaultAsync(i => i.UserId == userId);
+
+            if (profile == null)
+            {
+                // إذا لم يكن هناك ملف شخصي، وجه المستخدم إلى صفحة إنشاء ملف جديد
+                return RedirectToAction("CompleteProfile");
+            }
+
+            // إنشاء ViewModel لعرض التفاصيل
+            var viewModel = new PersonalProfileViewModel
+            {
+                UserId = userId,
+                // بيانات للعرض فقط
+                Email = user.Email,
+                UserRole = roles.FirstOrDefault() ?? "User",
+                IsEmailConfirmed = user.EmailConfirmed,
+
+                // بيانات من Identify
+                FullName = profile.FullName ?? "",
+                LastName = profile.LastName ?? "",
+                MotherName = profile.MotherName ?? "",
+                DateOfBirth = profile.Date,
+                Gender = profile.Gender ?? "ذكر",
+                MozakeName = profile.MozakeName ?? "",
+                Education = profile.Education ?? "",
+                Specialization = profile.Specialization ?? "",
+                PhoneNumber = profile.PhoneNumber ?? "",
+                IdentityCardN = profile.IdentityCardN,
+                IdentityDate = profile.identityDate,
+                RationN = profile.RationN,
+                RationCenter = profile.RationCenter,
+
+                // بيانات من Address
+                Governorate = profile.Address?.Governorate ?? "بغداد",
+                District = profile.Address?.District ?? "",
+                SubDistrict = profile.Address?.SubDistrict ?? "",
+                Alley = profile.Address?.Alley ?? "",
+                Street = profile.Address?.Street ?? "",
+                House = profile.Address?.House ?? "",
+                NearestPoint = profile.Address?.NearestPoint ?? "",
+
+                // تاريخ التسجيل
+                RegistrationDate = profile.Date,
+
+                // قوائم الاختيار (لن تستخدم في العرض ولكن موجودة لتجنب الأخطاء)
+                Governorates = GetGovernorates(),
+                Genders = new List<string> { "ذكر", "أنثى" },
+                Educations = GetEducations()
+            };
+
+            return View(viewModel);
         }
 
         private List<string> GetGovernorates()

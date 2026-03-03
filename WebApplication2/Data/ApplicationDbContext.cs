@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using WebApplication2.Models;
 
 namespace WebApplication2.Data
@@ -16,6 +17,11 @@ namespace WebApplication2.Data
         public DbSet<Address> Addresses { get; set; }
         public DbSet<SiteSettings> SiteSettings { get; set; }
 
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            optionsBuilder.ConfigureWarnings(warnings =>
+                warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
+        }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -26,6 +32,7 @@ namespace WebApplication2.Data
                 new IdentityRole { Id = "2", Name = "Admin", NormalizedName = "ADMIN" },
                 new IdentityRole { Id = "3", Name = "User", NormalizedName = "USER" }
             );
+
            
 
 

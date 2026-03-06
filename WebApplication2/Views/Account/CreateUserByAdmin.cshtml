@@ -1,7 +1,5 @@
 ﻿@model WebApplication2.Models.RegisterViewModel
 
-
-
 <style>
     /* تغيير لون كتابة العنوان إلى الأبيض */
     .card-header {
@@ -16,11 +14,12 @@
 
 <div class="row justify-content-center mt-4">
     <div class="col-md-6">
-        <div class="card shadow">
-            <div class="card-header bg-primary text-white">
+        <!-- استخدم custom-card بدلاً من card -->
+        <div class="custom-card">
+            <div class="custom-card-header">
                 <h4 class="mb-0"><i class="fas fa-user-plus"></i> اضافة مستخدم جديد</h4>
             </div>
-            <div class="card-body">
+            <div class="custom-card-body">
                 @if (TempData["SuccessMessage"] != null)
                 {
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -32,59 +31,49 @@
                 <form asp-action="CreateUserByAdmin" method="post">
                     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
+                    <!-- إخفاء حقل الدور (سيتم تعيين User افتراضياً) -->
+                    <input type="hidden" asp-for="Role" value="User" />
+
+                    <!-- إخفاء حقل المحافظة -->
+                    <input type="hidden" asp-for="ManagedGovernorate" value="" />
+
                     <div class="form-group mb-3">
-                        <label asp-for="Email" class="form-label"></label>
+                        <label asp-for="Email" class="form-label">
+                            <i class="fas fa-envelope me-1" style="color: #3498db;"></i> البريد الإلكتروني
+                        </label>
                         <input asp-for="Email" class="form-control" placeholder="example@email.com" />
                         <span asp-validation-for="Email" class="text-danger"></span>
                     </div>
 
                     <div class="form-group mb-3">
-                        <label asp-for="Password" class="form-label"></label>
-                        <input asp-for="Password" class="form-control" />
+                        <label asp-for="Password" class="form-label">
+                            <i class="fas fa-lock me-1" style="color: #3498db;"></i> كلمة المرور
+                        </label>
+                        <input asp-for="Password" type="password" class="form-control" />
                         <small class="form-text text-muted">يجب أن تكون كلمة المرور على الأقل 6 أحرف</small>
                         <span asp-validation-for="Password" class="text-danger"></span>
                     </div>
 
                     <div class="form-group mb-3">
-                        <label asp-for="ConfirmPassword" class="form-label"></label>
-                        <input asp-for="ConfirmPassword" class="form-control" />
+                        <label asp-for="ConfirmPassword" class="form-label">
+                            <i class="fas fa-lock me-1" style="color: #3498db;"></i> تأكيد كلمة المرور
+                        </label>
+                        <input asp-for="ConfirmPassword" type="password" class="form-control" />
                         <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
                     </div>
 
-                    <div class="form-group mb-3">
-                        <label asp-for="Role" class="form-label"></label>
-                        <select asp-for="Role" class="form-control">
-                            <option value="User">مستخدم عادي</option>
-                            @if (User.IsInRole(WebApplication2.Models.clsRoles.SuperAdmin))
-                            {
-                                <option value="Admin">أدمن</option>
-                            }
-                        </select>
-                        <span asp-validation-for="Role" class="text-danger"></span>
-                    </div>
-
-                    <div class="form-group mb-3" id="governorateField" style="display: none;">
-                        <label asp-for="ManagedGovernorate" class="form-label"></label>
-                        <select asp-for="ManagedGovernorate" class="form-control">
-                            <option value="">-- اختر المحافظة --</option>
-                            @foreach (var gov in ViewBag.Governorates)
-                            {
-                                <option value="@gov">@gov</option>
-                            }
-                        </select>
-                        <span asp-validation-for="ManagedGovernorate" class="text-danger"></span>
-                    </div>
+                    
 
                     <div class="form-group mb-3 text-center">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-user-plus"></i> إنشاء المستخدم
+                        <button type="submit" class="custom-btn-primary">
+                            <i class="fas fa-user-plus me-2"></i> إنشاء المستخدم
                         </button>
                     </div>
                 </form>
             </div>
-            <div class="card-footer text-muted">
+            <div class="custom-card-footer">
                 <small>
-                    <i class="fas fa-info-circle"></i>
+                    <i class="fas fa-info-circle me-1"></i>
                     المستخدم الجديد سيكون بإمكانه تسجيل الدخول مباشرة بدون حاجة لتأكيد البريد الإلكتروني.
                 </small>
             </div>

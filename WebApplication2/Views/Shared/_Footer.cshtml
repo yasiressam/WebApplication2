@@ -27,194 +27,220 @@
 }
 
 <style>
-    /* ===== فوتر أنيق ومصغر ===== */
+    /* ===== فوتر بنفس ألوان Login مع !important قوي ===== */
     .footer {
-        background: linear-gradient(135deg, #1a2530 0%, #2c3e50 100%);
-        color: #fff;
-        padding: 0.8rem 0 0.4rem !important;
-        margin-top: auto;
-        width: 100%;
-        position: relative;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        z-index: 100;
-        border-top: 2px solid #3498db;
-        min-height: 100px !important; /* أصغر من السابق */
-        font-family: 'Tajawal', sans-serif;
+        background: linear-gradient(135deg, #3498db, #2c3e50) !important;
+        color: #fff !important;
+        padding: 0.8rem 0 0.4rem !important; /* تم التعديل - أصغر من السابق */
+        margin-top: auto !important;
+        width: 100% !important;
+        position: relative !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 100 !important;
+        border-top: 3px solid #3498db !important;
+        min-height: 100px !important; /* تم التعديل - أصغر من السابق */
+        font-family: 'Tajawal', sans-serif !important;
     }
 
     .footer-container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 15px;
+        max-width: 1200px !important;
+        margin: 0 auto !important;
+        padding: 0 15px !important;
     }
 
     .footer-main {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 0.5rem;
-        gap: 30px;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        margin-bottom: 0.5rem !important;
+        gap: 30px !important;
     }
 
     .footer-section {
-        flex: 1;
+        flex: 1 !important;
     }
 
     .site-info {
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.5rem !important;
     }
 
     .site-name {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: #fff;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 0.3rem;
+        font-size: 1.1rem !important; /* تم التعديل - أصغر */
+        font-weight: 700 !important;
+        color: #fff !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        margin-bottom: 0.3rem !important;
     }
 
+        .site-name i {
+            color: #fff !important;
+            font-size: 1.1rem !important;
+        }
+
     .site-description {
-        color: #bdc3c7;
-        font-size: 0.85rem;
-        line-height: 1.4;
-        opacity: 0.9;
+        color: rgba(255, 255, 255, 0.8) !important;
+        font-size: 0.85rem !important; /* تم التعديل - أصغر */
+        line-height: 1.4 !important;
+        opacity: 1 !important;
     }
 
     .footer-social {
-        display: flex;
-        gap: 10px;
-        margin-top: 0.5rem;
+        display: flex !important;
+        gap: 10px !important;
+        margin-top: 0.5rem !important;
     }
 
     .social-icon {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(255, 255, 255, 0.1);
-        color: white;
-        text-decoration: none;
-        transition: all 0.3s;
-        font-size: 0.9rem;
+        width: 32px !important; /* تم التعديل - أصغر */
+        height: 32px !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: rgba(255, 255, 255, 0.15) !important;
+        color: white !important;
+        text-decoration: none !important;
+        transition: all 0.3s !important;
+        font-size: 0.9rem !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
     }
 
         .social-icon:hover {
-            background: rgba(52, 152, 219, 0.9);
-            transform: translateY(-2px);
+            background: #fff !important;
+            color: #3498db !important;
+            transform: translateY(-2px) !important;
+            border-color: #fff !important;
         }
 
     .footer-contact {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
     }
 
     .contact-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: #ecf0f1;
-        font-size: 0.85rem;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        color: #fff !important;
+        font-size: 0.85rem !important; /* تم التعديل - أصغر */
     }
 
     .contact-icon {
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(52, 152, 219, 0.15);
-        color: #3498db;
-        flex-shrink: 0;
-        font-size: 0.85rem;
+        width: 28px !important; /* تم التعديل - أصغر */
+        height: 28px !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: rgba(255, 255, 255, 0.15) !important;
+        color: #fff !important;
+        flex-shrink: 0 !important;
+        font-size: 0.85rem !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
     }
 
     .contact-details {
-        display: flex;
-        flex-direction: column;
+        display: flex !important;
+        flex-direction: column !important;
     }
 
     .contact-label {
-        font-size: 0.75rem;
-        color: #95a5a6;
-        margin-bottom: 1px;
+        font-size: 0.75rem !important; /* تم التعديل - أصغر */
+        color: rgba(255, 255, 255, 0.7) !important;
+        margin-bottom: 1px !important;
     }
 
     .contact-value {
-        font-weight: 500;
-        color: #ecf0f1;
-        font-size: 0.85rem;
+        font-weight: 500 !important;
+        color: #fff !important;
+        font-size: 0.85rem !important;
     }
 
     .footer-bottom {
-        padding-top: 0.5rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 0.5rem !important; /* تم التعديل - أصغر */
+        border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
     }
 
     .footer-bottom-content {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 10px;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        flex-wrap: wrap !important;
+        gap: 10px !important;
     }
 
     .copyright {
-        font-size: 0.8rem;
-        color: #ecf0f1;
-        opacity: 0.9;
-        display: flex;
-        align-items: center;
-        gap: 5px;
+        font-size: 0.8rem !important; /* تم التعديل - أصغر */
+        color: rgba(255, 255, 255, 0.8) !important;
+        opacity: 1 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 5px !important;
     }
 
+        .copyright i {
+            color: #fff !important;
+        }
+
     .footer-links {
-        display: flex;
-        align-items: center;
-        gap: 15px;
+        display: flex !important;
+        align-items: center !important;
+        gap: 15px !important;
     }
 
     .footer-link {
-        color: #bdc3c7;
-        text-decoration: none;
-        font-size: 0.8rem;
-        transition: all 0.3s;
+        color: rgba(255, 255, 255, 0.8) !important;
+        text-decoration: none !important;
+        font-size: 0.8rem !important; /* تم التعديل - أصغر */
+        transition: all 0.3s !important;
     }
 
         .footer-link:hover {
-            color: #3498db;
+            color: #fff !important;
+            text-decoration: underline !important;
         }
 
     .update-info {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 0.75rem;
-        color: #95a5a6;
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        font-size: 0.75rem !important; /* تم التعديل - أصغر */
+        color: rgba(255, 255, 255, 0.7) !important;
+        background: rgba(0, 0, 0, 0.1) !important;
+        padding: 0.3rem 0.6rem !important;
+        border-radius: 20px !important;
     }
+
+        .update-info i {
+            color: #fff !important;
+            font-size: 0.75rem !important;
+        }
 
     /* تصميم متجاوب */
     @@media (max-width: 992px) {
         .footer-main {
-            flex-direction: column;
-            gap: 20px;
-            align-items: flex-start;
+            flex-direction: column !important;
+            gap: 20px !important;
+            align-items: flex-start !important;
         }
 
         .footer-section {
-            width: 100%;
+            width: 100% !important;
         }
 
         .footer-bottom-content {
-            flex-direction: column;
-            gap: 8px;
-            text-align: center;
+            flex-direction: column !important;
+            gap: 8px !important;
+            text-align: center !important;
+        }
+
+        .footer-links {
+            justify-content: center !important;
         }
     }
 
@@ -225,30 +251,30 @@
         }
 
         .site-name {
-            font-size: 1rem;
+            font-size: 1rem !important;
         }
 
         .site-description {
-            font-size: 0.8rem;
+            font-size: 0.8rem !important;
         }
 
         .footer-social {
-            gap: 8px;
+            gap: 8px !important;
         }
 
         .social-icon {
-            width: 30px;
-            height: 30px;
-            font-size: 0.85rem;
+            width: 30px !important;
+            height: 30px !important;
+            font-size: 0.85rem !important;
         }
 
         .contact-item {
-            font-size: 0.8rem;
+            font-size: 0.8rem !important;
         }
 
         .contact-icon {
-            width: 26px;
-            height: 26px;
+            width: 26px !important;
+            height: 26px !important;
         }
     }
 
@@ -258,22 +284,22 @@
         }
 
         .footer-main {
-            gap: 15px;
+            gap: 15px !important;
         }
 
         .footer-links {
-            flex-direction: column;
-            gap: 8px;
+            flex-direction: column !important;
+            gap: 8px !important;
         }
 
         .footer-bottom-content {
-            gap: 5px;
+            gap: 5px !important;
         }
 
         .copyright,
         .footer-link,
         .update-info {
-            font-size: 0.75rem;
+            font-size: 0.75rem !important;
         }
     }
 </style>
@@ -359,7 +385,6 @@
 
                 <div class="footer-links">
                     <a href="/Home/Privacy" class="footer-link">الخصوصية</a>
-                    
                 </div>
 
                 <div class="update-info">

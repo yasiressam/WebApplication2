@@ -154,10 +154,17 @@
             }
 
         </div>
-        <div class="card-footer">
+        <div class="card-footer d-flex justify-content-between">
             <a href="@Url.Action("Users", "SuperAdmin")" class="btn btn-secondary">
                 <i class="fas fa-arrow-right"></i> العودة للقائمة
             </a>
+
+            @if (User.IsInRole("SuperAdmin"))
+            {
+                <a href="/WhatsApp/Send?phone=@Model.PhoneNumber" class="btn btn-info">
+                    <i class="fab fa-whatsapp"></i> ارسال OTP
+                </a>
+            }
         </div>
     </div>
 </div>

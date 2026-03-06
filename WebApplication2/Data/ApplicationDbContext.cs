@@ -16,6 +16,8 @@ namespace WebApplication2.Data
         public DbSet<Identify> Identifies { get; set; }
         public DbSet<Address> Addresses { get; set; }
         public DbSet<SiteSettings> SiteSettings { get; set; }
+        public DbSet<Notification> Notifications { get; set; } // أضف هذا السطر
+        public DbSet<UserDevice> UserDevices { get; set; } // 👈 أضف هذا السطر
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

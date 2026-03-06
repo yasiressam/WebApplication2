@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebApplication2.Data;
 
@@ -11,9 +12,11 @@ using WebApplication2.Data;
 namespace WebApplication2.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260306142710_ص")]
+    partial class ص
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -52,21 +55,21 @@ namespace WebApplication2.Migrations
                         new
                         {
                             Id = "1",
-                            ConcurrencyStamp = "97ee8b63-b5e3-40fb-8dab-38116757f531",
+                            ConcurrencyStamp = "9b654ac4-6769-49be-9c78-863f4b7cf812",
                             Name = "SuperAdmin",
                             NormalizedName = "SUPERADMIN"
                         },
                         new
                         {
                             Id = "2",
-                            ConcurrencyStamp = "bdfd949a-7f47-43e2-b0d6-fbcfe5913c3f",
+                            ConcurrencyStamp = "80bc201b-303b-429c-9ff9-0c77949d8cb5",
                             Name = "Admin",
                             NormalizedName = "ADMIN"
                         },
                         new
                         {
                             Id = "3",
-                            ConcurrencyStamp = "3cc284a8-d3ac-40ae-bba2-4ffaf1cc97a0",
+                            ConcurrencyStamp = "268638f0-12a4-494e-8e71-6abac4b25ac8",
                             Name = "User",
                             NormalizedName = "USER"
                         });
@@ -299,10 +302,6 @@ namespace WebApplication2.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Education")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 

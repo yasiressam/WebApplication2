@@ -17,6 +17,8 @@ namespace WebApplication2.Models
         public string Education { get; set; }
         public string Specialization { get; set; }
         public string PhoneNumber { get; set; }
+        public string Email { get; set; }
+
         public int IdentityCardN { get; set; }
         public DateTime identityDate { get; set; }
         public int RationN { get; set; }

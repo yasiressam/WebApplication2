@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using WebApplication2.Data;
 using WebApplication2.Models;
+using WebApplication2.Services;
 
 namespace WebApplication2.Controllers
 {
@@ -16,13 +17,19 @@ namespace WebApplication2.Controllers
     {
         private readonly UserManager<IdentityUser> _userManager;
         private readonly ApplicationDbContext _context;
+        private readonly INotificationService _notificationService;
+        private readonly ILogger<SuperAdminController> _logger;
 
         public SuperAdminController(
             UserManager<IdentityUser> userManager,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            INotificationService notificationService,
+            ILogger<SuperAdminController> logger)
         {
             _userManager = userManager;
             _context = context;
+            _notificationService = notificationService;
+            _logger = logger;
         }
 
         // GET: عرض جميع المستخدمين
@@ -43,7 +50,6 @@ namespace WebApplication2.Controllers
 
                 if (userProfile != null)
                 {
-                    // 👇 **هنا التعديل: إذا كان أدمن، نعرض المحافظة التي يديرها**
                     if (roles.Contains(clsRoles.Admin) && !string.IsNullOrEmpty(userProfile.ManagedGovernorate))
                     {
                         managedGovernorate = userProfile.ManagedGovernorate;
@@ -68,6 +74,128 @@ namespace WebApplication2.Controllers
             }
 
             return View(list);
+        }
+
+        // GET: /SuperAdmin/SendNotification
+        [HttpGet]
+        public async Task<IActionResult> SendNotification(string? userId = null)
+        {
+            var users = await _userManager.Users.ToListAsync();
+            ViewBag.Users = users.Select(u => new
+            {
+                u.Id,
+                u.Email,
+                FullName = _context.Identifies.FirstOrDefault(i => i.UserId == u.Id)?.FullName ?? u.Email
+            }).ToList();
+
+            if (!string.IsNullOrEmpty(userId))
+            {
+                var targetUser = await _userManager.FindByIdAsync(userId);
+                if (targetUser != null)
+                {
+                    ViewBag.TargetUserId = userId;
+                    ViewBag.TargetUserEmail = targetUser.Email;
+                    ViewBag.TargetUserName = _context.Identifies
+                        .FirstOrDefault(i => i.UserId == userId)?.FullName ?? targetUser.Email;
+                }
+            }
+
+            return View();
+        }
+
+        // POST: /SuperAdmin/SendNotification
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SendNotification(SendNotificationViewModel model)
+        {
+            try
+            {
+                // التحقق من صحة البيانات
+                if (string.IsNullOrEmpty(model.Title) || string.IsNullOrEmpty(model.Message))
+                {
+                    TempData["ErrorMessage"] = "❌ العنوان والرسالة مطلوبان";
+                    return RedirectToAction("SendNotification");
+                }
+
+                _logger.LogInformation("🚀 بدء إرسال إشعار جديد");
+                _logger.LogInformation($"📝 العنوان: {model.Title}");
+                _logger.LogInformation($"📝 الرسالة: {model.Message}");
+                _logger.LogInformation($"👤 المستلم: {model.TargetUserId ?? "الكل"}");
+
+                // 1. إنشاء الإشعار في قاعدة البيانات
+                var notification = await _notificationService.CreateNotification(
+                    model.Title,
+                    model.Message,
+                    model.TargetUserId,
+                    model.Icon ?? "bi-bell",
+                    model.ClickUrl
+                );
+
+                _logger.LogInformation($"✅ تم إنشاء الإشعار في قاعدة البيانات: ID = {notification.Id}");
+
+                // 2. إرسال عبر OneSignal
+                bool oneSignalResult = false;
+                string oneSignalMessage = "";
+
+                try
+                {
+                    if (!string.IsNullOrEmpty(model.TargetUserId))
+                    {
+                        // إرسال لمستخدم معين
+                        _logger.LogInformation($"📱 البحث عن أجهزة للمستخدم: {model.TargetUserId}");
+
+                        var playerIds = await _context.UserDevices
+                            .Where(d => d.UserId == model.TargetUserId && d.IsSubscribed)
+                            .Select(d => d.PlayerId)
+                            .ToListAsync();
+
+                        _logger.LogInformation($"📱 تم العثور على {playerIds.Count} جهاز");
+
+                        if (playerIds.Any())
+                        {
+                            oneSignalResult = await _notificationService.SendToOneSignal(notification, playerIds);
+                            oneSignalMessage = $"تم الإرسال إلى {playerIds.Count} جهاز";
+                        }
+                        else
+                        {
+                            _logger.LogInformation("👤 لا توجد أجهزة مسجلة، إرسال باستخدام external_user_id");
+                            oneSignalResult = await _notificationService.SendToOneSignal(notification, null, model.TargetUserId);
+                            oneSignalMessage = "تم الإرسال باستخدام معرف المستخدم";
+                        }
+                    }
+                    else
+                    {
+                        // إرسال للجميع
+                        _logger.LogInformation("🌍 إرسال للجميع");
+                        oneSignalResult = await _notificationService.SendToOneSignal(notification);
+                        oneSignalMessage = "تم الإرسال لجميع المستخدمين";
+                    }
+
+                    if (oneSignalResult)
+                    {
+                        _logger.LogInformation("✅ تم إرسال الإشعار عبر OneSignal بنجاح");
+                        TempData["SuccessMessage"] = $"✅ تم إرسال الإشعار بنجاح. {oneSignalMessage}";
+                    }
+                    else
+                    {
+                        _logger.LogWarning("⚠️ فشل إرسال الإشعار عبر OneSignal");
+                        TempData["WarningMessage"] = "⚠️ تم حفظ الإشعار في قاعدة البيانات ولكن فشل الإرسال عبر OneSignal. يرجى التحقق من إعدادات OneSignal.";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ خطأ في إرسال OneSignal");
+                    TempData["WarningMessage"] = $"⚠️ تم حفظ الإشعار ولكن حدث خطأ في الإرسال: {ex.Message}";
+                }
+
+                return RedirectToAction("Users");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ خطأ عام في إرسال الإشعار");
+                TempData["ErrorMessage"] = $"❌ حدث خطأ: {ex.Message}";
+                return RedirectToAction("SendNotification");
+            }
         }
 
         // GET: جلب أدوار المستخدم
@@ -122,10 +250,8 @@ namespace WebApplication2.Controllers
                         message = $"المستخدم غير موجود. ID: {request.UserId}"
                     });
 
-                // الحصول على الأدوار الحالية
                 var currentRoles = await _userManager.GetRolesAsync(user);
 
-                // إزالة الأدوار الحالية
                 if (currentRoles.Any())
                 {
                     var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
@@ -136,7 +262,6 @@ namespace WebApplication2.Controllers
                     }
                 }
 
-                // إضافة الأدوار الجديدة
                 if (request.SelectedRoles != null && request.SelectedRoles.Any())
                 {
                     var addResult = await _userManager.AddToRolesAsync(user, request.SelectedRoles);
@@ -147,7 +272,6 @@ namespace WebApplication2.Controllers
                     }
                 }
 
-                // 👇 **إذا أصبح أدمن، نعطيه محافظته تلقائيًا**
                 var isAdminNow = request.SelectedRoles != null && request.SelectedRoles.Contains(clsRoles.Admin);
                 if (isAdminNow)
                 {
@@ -159,14 +283,12 @@ namespace WebApplication2.Controllers
                     {
                         string governorate = null;
 
-                        // الحصول على محافظة المستخدم من عنوانه
                         if (userProfile.Address != null && !string.IsNullOrEmpty(userProfile.Address.Governorate))
                         {
                             governorate = userProfile.Address.Governorate;
                         }
                         else
                         {
-                            // إذا لم يكن له عنوان، نعطيه محافظة افتراضية
                             governorate = "بغداد";
                         }
 
@@ -176,7 +298,6 @@ namespace WebApplication2.Controllers
                     }
                     else
                     {
-                        // إذا لم يكن له ملف شخصي، ننشئ واحدًا
                         userProfile = new Identify
                         {
                             UserId = request.UserId,
@@ -194,7 +315,6 @@ namespace WebApplication2.Controllers
                 }
                 else if (request.SelectedRoles != null && !request.SelectedRoles.Contains(clsRoles.Admin))
                 {
-                    // 👇 **إذا لم يعد أدمن، نحذف محافظته**
                     var userProfile = await _context.Identifies
                         .FirstOrDefaultAsync(i => i.UserId == request.UserId);
 
@@ -206,7 +326,6 @@ namespace WebApplication2.Controllers
                     }
                 }
 
-                // الحصول على الأدوار النهائية
                 var finalRoles = await _userManager.GetRolesAsync(user);
 
                 return Json(new
@@ -223,7 +342,7 @@ namespace WebApplication2.Controllers
             }
         }
 
-        // GET: عرض تفاصيل مستخدم (للسوبر أدمن)
+        // GET: عرض تفاصيل مستخدم
         public async Task<IActionResult> UserDetails(string id)
         {
             try
@@ -234,7 +353,6 @@ namespace WebApplication2.Controllers
                     return RedirectToAction(nameof(Users));
                 }
 
-                // الحصول على المستخدم من Identity
                 var user = await _userManager.FindByIdAsync(id);
                 if (user == null)
                 {
@@ -242,15 +360,12 @@ namespace WebApplication2.Controllers
                     return RedirectToAction(nameof(Users));
                 }
 
-                // الحصول على الملف الشخصي
                 var userProfile = await _context.Identifies
                     .Include(i => i.Address)
                     .FirstOrDefaultAsync(i => i.UserId == id);
 
-                // الحصول على الأدوار
                 var roles = await _userManager.GetRolesAsync(user);
 
-                // ViewModel للعرض
                 var viewModel = new SuperAdminUserDetailsVM
                 {
                     UserId = user.Id,
@@ -258,8 +373,6 @@ namespace WebApplication2.Controllers
                     PhoneNumber = user.PhoneNumber ?? "",
                     IsActive = user.EmailConfirmed,
                     Roles = string.Join(", ", roles),
-
-                    // المعلومات الشخصية
                     FullName = userProfile?.FullName ?? "غير مكتمل",
                     LastName = userProfile?.LastName ?? "",
                     MotherName = userProfile?.MotherName ?? "",
@@ -272,11 +385,7 @@ namespace WebApplication2.Controllers
                     IdentityDate = userProfile?.identityDate ?? DateTime.MinValue,
                     RationN = userProfile?.RationN ?? 0,
                     RationCenter = userProfile?.RationCenter ?? 0,
-
-                    // معلومات العنوان
                     Address = userProfile?.Address,
-
-                    // المحافظة المدارة (إذا كان أدمن)
                     ManagedGovernorate = userProfile?.ManagedGovernorate
                 };
 
@@ -284,11 +393,11 @@ namespace WebApplication2.Controllers
             }
             catch (Exception ex)
             {
-                // Log the error
                 TempData["ErrorMessage"] = "حدث خطأ في تحميل البيانات";
                 return RedirectToAction(nameof(Users));
             }
         }
+
         // POST: حذف مستخدم
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -303,32 +412,26 @@ namespace WebApplication2.Controllers
                 if (user == null)
                     return Json(new { success = false, message = "المستخدم غير موجود" });
 
-                // التحقق من أن المستخدم ليس سوبر أدمن (لا يمكن حذف سوبر أدمن)
                 var roles = await _userManager.GetRolesAsync(user);
                 if (roles.Contains(clsRoles.SuperAdmin))
                 {
                     return Json(new { success = false, message = "لا يمكن حذف حساب سوبر أدمن" });
                 }
 
-                // حذف الملف الشخصي المرتبط أولاً
                 var userProfile = await _context.Identifies
                     .Include(i => i.Address)
                     .FirstOrDefaultAsync(i => i.UserId == request.UserId);
 
                 if (userProfile != null)
                 {
-                    // حذف العنوان إذا كان موجوداً
                     if (userProfile.Address != null)
                     {
                         _context.Addresses.Remove(userProfile.Address);
                     }
-
-                    // حذف الملف الشخصي
                     _context.Identifies.Remove(userProfile);
                     await _context.SaveChangesAsync();
                 }
 
-                // حذف المستخدم من نظام Identity
                 var result = await _userManager.DeleteAsync(user);
 
                 if (result.Succeeded)
@@ -347,12 +450,6 @@ namespace WebApplication2.Controllers
             {
                 return Json(new { success = false, message = $"❌ حدث خطأ: {ex.Message}" });
             }
-        }
-
-        // إضافة كلاس الطلب في نهاية الملف (قبل الأقواس الأخيرة)
-        public class DeleteUserRequest
-        {
-            public string UserId { get; set; }
         }
 
         // POST: تفعيل/تعطيل المستخدم
@@ -391,17 +488,4 @@ namespace WebApplication2.Controllers
             }
         }
     }
-
-    public class UpdateRolesRequest
-    {
-        public string UserId { get; set; }
-        public List<string> SelectedRoles { get; set; }
-    }
-
-    public class ToggleStatusRequest
-    {
-        public string UserId { get; set; }
-    }
-
-
 }

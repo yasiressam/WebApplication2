@@ -4,151 +4,186 @@
 
 <header>
     <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container">
-            <!-- الشعار -->
-            <a class="navbar-brand d-flex align-items-center" asp-controller="Home" asp-action="Index">
+        <div class="container position-relative">
+            <!-- القائمة - في أقصى اليمين -->
+            <div class="d-flex align-items-center">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="navbarMain">
+                    <ul class="navbar-nav">
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="menuDropdown" role="button"
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-list fs-5"></i> القائمة
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="menuDropdown">
+                                <li>
+                                    <a class="dropdown-item" asp-controller="Home" asp-action="Index">
+                                        <i class="bi bi-house-door me-2"></i> الرئيسية
+                                    </a>
+                                </li>
+                                @if (SignInManager.IsSignedIn(User) && User.IsInRole(clsRoles.Admin))
+                                {
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="dropdown-header">لوحة الأدمن</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Admin" asp-action="Users">
+                                            <i class="bi bi-people me-2"></i> مستخدمي محافظتي
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Account" asp-action="CreateUserByAdmin">
+                                            <i class="bi bi-person-plus me-2"></i> اضافة مستخدم جديد
+                                        </a>
+                                    </li>
+                                }
+                                @if (SignInManager.IsSignedIn(User) && User.IsInRole(clsRoles.SuperAdmin))
+                                {
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="dropdown-header">لوحة السوبر أدمن</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="News" asp-action="Index">
+                                            <i class="bi bi-newspaper me-2"></i> إدارة الأخبار
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="News" asp-action="Create">
+                                            <i class="bi bi-plus-circle me-2"></i> إضافة خبر
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="SuperAdmin" asp-action="Users">
+                                            <i class="bi bi-people me-2"></i> إدارة المستخدمين
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Account" asp-action="CreateUserByAdmin">
+                                            <i class="bi bi-person-plus me-2"></i> اضافة مستخدم جديد
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="SiteSettings" asp-action="Index">
+                                            <i class="bi bi-gear me-2"></i> إعدادات الموقع
+                                        </a>
+                                    </li>
+                                }
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- الشعار - في المنتصف تماماً -->
+            <a class="navbar-brand position-absolute start-50 translate-middle-x" asp-controller="Home" asp-action="Index">
                 <i class="bi bi-newspaper fs-4 me-2"></i>
                 <span class="fs-5 fw-bold">موقع الأخبار العراقي</span>
             </a>
 
-            <!-- زر القائمة للهواتف -->
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
-            <!-- عناصر التنقل -->
-            <div class="collapse navbar-collapse" id="navbarMain">
-                <!-- القائمة الرئيسية -->
-                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <!-- رابط الرئيسية -->
-                    <li class="nav-item">
-                        <a class="nav-link" asp-controller="Home" asp-action="Index">
-                            <i class="bi bi-house-door me-1"></i> الرئيسية
-                        </a>
-                    </li>
-
-                    <!-- 🔥 روابط خاصة بالأدمن (فقط "مستخدمي محافظتي") -->
-                    @if (SignInManager.IsSignedIn(User) && User.IsInRole(clsRoles.Admin))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Admin" asp-action="Users">
-                                <i class="bi bi-people me-1"></i> مستخدمي محافظتي
-                            </a>
-                        </li>
-
-                        <!-- 🔥 رابط جديد: إنشاء مستخدم جديد -->
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Account" asp-action="CreateUserByAdmin">
-                                <i class="bi bi-person-plus me-1"></i> اضافة مستخدم جديد
-                            </a>
-                        </li>
-                        <!-- تم حذف: الإحصائيات -->
-                    }
-
-                    <!-- روابط إدارة الأخبار (فقط لـ SuperAdmin فقط) -->
-                    @if (SignInManager.IsSignedIn(User) && User.IsInRole(clsRoles.SuperAdmin))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="News" asp-action="Index">
-                                <i class="bi bi-newspaper me-1"></i> إدارة الأخبار
-                            </a>
-                        </li>
-
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="News" asp-action="Create">
-                                <i class="bi bi-plus-circle me-1"></i> إضافة خبر
-                            </a>
-                        </li>
-                    }
-
-                    <!-- روابط إدارة المستخدمين (فقط لـ SuperAdmin) -->
-                    <!-- روابط إدارة المستخدمين (فقط لـ SuperAdmin) -->
-                    @if (SignInManager.IsSignedIn(User) && User.IsInRole(clsRoles.SuperAdmin))
-                    {
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="SuperAdmin" asp-action="Users">
-                                <i class="bi bi-people me-1"></i> إدارة المستخدمين
-                            </a>
-                        </li>
-
-                        <!-- 🔥 رابط جديد: إنشاء مستخدم جديد -->
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Account" asp-action="CreateUserByAdmin">
-                                <i class="bi bi-person-plus me-1"></i> اضافة مستخدم جديد
-                            </a>
-                        </li>
-
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="SiteSettings" asp-action="Index">
-                                <i class="bi bi-gear me-1"></i> إعدادات الموقع
-                            </a>
-                        </li>
-                    }
-                </ul>
-
-
-                <!-- عناصر جانبية -->
-                <ul class="navbar-nav align-items-center">
-                    @if (SignInManager.IsSignedIn(User))
-                    {
-                        <!-- Dropdown للمستخدم فقط -->
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown"
-                               role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <!-- أيقونة المستخدم -->
-                                <div class="user-avatar me-2">
+            <!-- العناصر الجانبية - في أقصى اليسار -->
+            <div class="d-flex align-items-center ms-auto">
+                @if (SignInManager.IsSignedIn(User))
+                {
+                    <!-- 1️⃣ الحساب (اسم المستخدم) - أول عنصر -->
+                    <div class="dropdown me-1">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center p-2" href="#" id="userDropdown"
+                           role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <div class="user-avatar me-2">
+                                @{
+                                    var userName = User.Identity?.Name;
+                                    var initials = !string.IsNullOrEmpty(userName) ? userName.Substring(0, 1).ToUpper() : "U";
+                                }
+                                @initials
+                            </div>
+                            <div class="d-none d-lg-block text-end">
+                                <div class="fw-bold text-white small">@User.Identity?.Name</div>
+                                <small class="text-light opacity-75" style="font-size: 11px;">
                                     @{
-                                        var userName = User.Identity?.Name;
-                                        var initials = !string.IsNullOrEmpty(userName) ? userName.Substring(0, 1).ToUpper() : "U";
+                                        var user = await UserManager.GetUserAsync(User);
+                                        var roles = await UserManager.GetRolesAsync(user);
+                                        var role = roles.FirstOrDefault() ?? "User";
                                     }
-                                    @initials
-                                </div>
-                                <!-- اسم المستخدم والدور -->
-                                <div class="d-none d-lg-block">
-                                    <div class="fw-bold text-white small">@User.Identity?.Name</div>
-                                    <small class="text-light opacity-75" style="font-size: 11px;">
-                                        @{
-                                            var user = await UserManager.GetUserAsync(User);
-                                            var roles = await UserManager.GetRolesAsync(user);
-                                            var role = roles.FirstOrDefault() ?? "User";
-                                        }
-                                        <span class="badge bg-success" style="font-size: 10px;">@role</span>
-                                    </small>
-                                </div>
-                            </a>
+                                    <span class="badge bg-success" style="font-size: 10px;">@role</span>
+                                </small>
+                            </div>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li>
+                                <a class="dropdown-item py-2" asp-controller="Register" asp-action="CompleteProfile">
+                                    <i class="bi bi-person-badge me-2" style="color: #1e3c72;"></i> الملف الشخصي
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider my-1"></li>
+                            <li>
+                                <form asp-area="Identity" asp-page="/Account/Logout" method="post" class="dropdown-item p-0"
+                                      onsubmit="return confirm('هل أنت متأكد من تسجيل الخروج؟');">
+                                    <button type="submit" class="dropdown-item py-2 logout-btn">
+                                        <i class="bi bi-box-arrow-right me-2"></i> تسجيل الخروج
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
 
-                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                                <li>
-                                    <a class="dropdown-item small" asp-controller="Register" asp-action="CompleteProfile">
-                                        <i class="bi bi-person-badge me-2"></i> الملف الشخصي
-                                    </a>
-                                </li>
-
-                                <!-- 🔥 تم حذف: رابط "محافظتي" من Dropdown -->
-
-                                <li><hr class="dropdown-divider my-1"></li>
-                                <li>
-                                    <form asp-area="Identity" asp-page="/Account/Logout" method="post" class="dropdown-item p-0"
-                                          onsubmit="return confirm('هل أنت متأكد من تسجيل الخروج؟');">
-                                        <button type="submit" class="btn d-flex align-items-center justify-content-center w-100"
-                                                style="height: 32px; font-size: 14px; font-weight: bold; background: transparent; color: #dc3545; border-radius: 5px; border: none;">
-                                            <i class="bi bi-box-arrow-right me-2" style="color: #dc3545;"></i> تسجيل الخروج
-                                        </button>
-                                    </form>
-                                </li>
-                            </ul>
-                        </li>
-                    }
-                    else
+                    <!-- 2️⃣ إرسال إشعار - عنصر واجهة المستخدم الثاني -->
+                    @if (User.IsInRole(clsRoles.SuperAdmin))
                     {
-                        <!-- المستخدم غير مسجل دخول -->
-                        <li class="nav-item me-2">
-                            <a class="nav-link btn btn-outline-light btn-sm" asp-area="Identity" asp-page="/Account/Login">
-                                <i class="bi bi-box-arrow-in-right me-1"></i> تسجيل معنا
-                            </a>
-                        </li>
+                        <a class="nav-link btn btn-outline-warning btn-sm me-1"
+                           asp-controller="SuperAdmin"
+                           asp-action="SendNotification"
+                           title="إرسال إشعار جديد">
+                            <i class="bi bi-send fs-6"></i>
+                            <span class="d-none d-lg-inline">إرسال</span>
+                        </a>
                     }
-                </ul>
+
+                    <!-- 3️⃣ الجرس - آخر عنصر في أقصى اليسار -->
+                    <div class="dropdown">
+                        <a class="nav-link p-2 position-relative" href="#" id="notificationsDropdown"
+                           role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-bell fs-5"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                                  id="notificationsCount" style="font-size: 10px; display: none;">
+                                0
+                            </span>
+                        </a>
+
+                        <div class="dropdown-menu dropdown-menu-end notifications-dropdown"
+                             aria-labelledby="notificationsDropdown" style="width: 320px;">
+                            <div class="dropdown-header d-flex justify-content-between align-items-center py-2 px-3">
+                                <span class="fw-bold">الإشعارات</span>
+                                <button class="btn btn-sm btn-link p-0" onclick="markAllAsRead()">
+                                    تحديد الكل كمقروء
+                                </button>
+                            </div>
+                            <div class="dropdown-divider m-0"></div>
+                            <div id="notificationsList" class="notifications-list" style="max-height: 400px; overflow-y: auto;">
+                                <div class="text-center text-muted py-4">
+                                    <i class="bi bi-bell-slash fs-3 d-block mb-2"></i>
+                                    <p class="mb-0 small">لا توجد إشعارات جديدة</p>
+                                </div>
+                            </div>
+                            <div class="dropdown-divider m-0"></div>
+                            <div class="text-center p-2">
+                                <a href="/Notifications" class="btn btn-sm btn-primary w-100">
+                                    عرض كل الإشعارات
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <a class="nav-link btn btn-outline-light btn-sm" asp-area="Identity" asp-page="/Account/Login">
+                        <i class="bi bi-box-arrow-in-right me-1"></i> تسجيل معنا
+                    </a>
+                    @* <li class="nav-item">
+                        <a class="nav-link btn btn-outline-success btn-sm" asp-controller="PhoneOtp" asp-action="Index">
+                            <i class="bi bi-whatsapp"></i> تسجيل برقم الهاتف
+                        </a>
+                    </li> *@
+                }
             </div>
         </div>
     </nav>
@@ -158,7 +193,6 @@
         <div class="container">
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0 small">
-                    <!-- الرئيسية في breadcrumb -->
                     <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">الرئيسية</a></li>
                     @if (!string.IsNullOrEmpty(ViewData["Title"] as string))
                     {
@@ -171,20 +205,75 @@
 </header>
 
 <style>
-    /* تخصيص حجم الشعار والهيدر */
+    /* ===== التصميم الأساسي ===== */
     .navbar {
         min-height: 60px;
         padding-top: 5px;
         padding-bottom: 5px;
+        background: linear-gradient(135deg, #1e3c72, #2a5a9c);
     }
 
     .navbar-brand {
         padding: 8px 0;
+        color: white !important;
+        white-space: nowrap;
     }
 
     .nav-link {
         font-size: 0.9rem;
         padding: 8px 12px !important;
+        color: rgba(255,255,255,0.9) !important;
+        transition: all 0.3s;
+    }
+
+        .nav-link:hover {
+            color: white !important;
+            transform: translateY(-1px);
+        }
+
+    /* ===== تنسيق القائمة ===== */
+    #menuDropdown {
+        background: rgba(255,255,255,0.1);
+        border-radius: 20px;
+        padding: 0.5rem 1.2rem !important;
+    }
+
+        #menuDropdown:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+    .dropdown-menu {
+        font-size: 0.9rem;
+        border-radius: 10px;
+        border: none;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        padding: 0.5rem 0;
+        min-width: 220px;
+        z-index: 1000;
+    }
+
+    .dropdown-header {
+        font-weight: 700;
+        color: #1e3c72;
+        padding: 0.5rem 1rem;
+    }
+
+    .dropdown-item {
+        padding: 0.5rem 1rem;
+        transition: all 0.2s;
+    }
+
+        .dropdown-item:hover {
+            background-color: #e8f0fe;
+            transform: translateX(5px);
+        }
+
+        .dropdown-item i {
+            color: #1e3c72;
+        }
+
+    .dropdown-divider {
+        margin: 0.3rem 0;
     }
 
     .user-avatar {
@@ -198,15 +287,111 @@
         color: white;
         font-weight: bold;
         font-size: 14px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
 
-    .dropdown-menu {
-        font-size: 0.875rem;
+    /* ===== زر إرسال الإشعارات ===== */
+    .btn-outline-warning {
+        border: 1px solid #ffc107 !important;
+        color: #ffc107 !important;
+        background: transparent;
+        transition: all 0.3s;
+        white-space: nowrap;
     }
 
-    .dropdown-item {
-        padding: 6px 16px;
+        .btn-outline-warning:hover {
+            background: #ffc107 !important;
+            color: #1e3c72 !important;
+            transform: translateY(-2px);
+        }
+
+    /* ===== تنسيق قائمة الإشعارات ===== */
+    .notifications-dropdown {
+        border-radius: 10px;
+        border: none;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        padding: 0;
+        min-width: 320px;
     }
+
+    .notifications-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .notification-item {
+        padding: 12px 15px;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background-color 0.2s;
+        cursor: pointer;
+    }
+
+        .notification-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .notification-item.unread {
+            background-color: #e8f0fe;
+        }
+
+    .notification-icon {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+
+    .notification-time {
+        font-size: 10px;
+        color: #6c757d;
+    }
+
+    .badge.bg-danger {
+        animation: pulse 2s infinite;
+        font-size: 10px;
+        padding: 0.25rem 0.5rem;
+        min-width: 18px;
+    }
+
+    @@keyframes pulse {
+        0% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.1);
+        }
+
+        100% {
+            transform: scale(1);
+        }
+    }
+
+    .logout-btn {
+        color: #dc3545 !important;
+        font-weight: 600;
+        width: 100%;
+        text-align: right;
+        background: none;
+        border: none;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+
+        .logout-btn i {
+            color: #dc3545 !important;
+        }
+
+        .logout-btn:hover {
+            background: linear-gradient(135deg, #fee, #fff5f5) !important;
+            color: #c82333 !important;
+        }
 
     .btn-sm {
         padding: 4px 12px;
@@ -224,11 +409,67 @@
     }
 
         .breadcrumb-item a:hover {
-            color: #0d6efd;
+            color: #1e3c72;
         }
 
     .py-2 {
         padding-top: 0.5rem !important;
         padding-bottom: 0.5rem !important;
     }
+
+    /* ===== المسافات ===== */
+    .me-1 {
+        margin-right: 0.25rem !important;
+    }
+
+    /* ===== تحسينات الموبايل ===== */
+    @@media (max-width: 768px) {
+        .notifications-dropdown {
+            width: 280px !important;
+            min-width: 280px;
+        }
+
+        .notification-item {
+            padding: 10px;
+        }
+
+        .notification-icon {
+            width: 32px;
+            height: 32px;
+            font-size: 14px;
+        }
+
+        .navbar-brand {
+            font-size: 0.9rem;
+            position: static !important;
+            transform: none !important;
+            margin: 0 auto;
+        }
+
+            .navbar-brand span {
+                font-size: 0.9rem !important;
+            }
+
+        .user-avatar {
+            width: 28px;
+            height: 28px;
+            font-size: 12px;
+        }
+
+        .btn-sm {
+            padding: 2px 8px;
+            font-size: 0.8rem;
+        }
+
+        .d-flex.align-items-center {
+            gap: 2px;
+        }
+
+        .position-relative {
+            padding-right: 0 !important;
+        }
+    }
 </style>
+
+<!-- ربط ملف JavaScript الخارجي -->
+<script src="~/js/notifications.js"></script>

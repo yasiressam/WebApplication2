@@ -14,41 +14,44 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
 
-    <!-- أنماط مخصصة -->
     <style>
-        /* ===== تعديل الخلفية لتكون واضحة جداً ===== */
-        .site-background {
-            position: fixed;
-            top: var(--header-height);
-            left: 0;
-            width: 100%; /* يغطي كامل العرض */
-            height: calc(100vh - var(--header-height) - var(--footer-height)); /* من أسفل الهيدر حتى أعلى الفوتر */
-            background-color: white; /* خلفية بيضاء لملء الفراغ */
-            background-image: url('/images/background1.jpg');
-            background-size: contain; /* تظهر الصورة بالكامل طولاً وعرضاً */
-            background-position: center top; /* تبدأ من الأعلى وتبقى في المنتصف عرضياً */
-            background-repeat: no-repeat;
-            opacity: 0.85;
-            z-index: -1;
-            pointer-events: none;
-            filter: brightness(0.95);
-        }
-        .site-background::after {
-    content: "";
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background-color: rgba(255,255,255,0.2); /* تعديل الشفافية */
-}
-
-        /* تعديل خلفية المحتوى لتكون أقل شفافية (أكثر إعتاماً) */
         :root {
             --header-height: 60px;
             --footer-height: 130px;
             --content-bg: rgba(255, 255, 255, 0.85);
             --card-bg: rgba(255, 255, 255, 0.9);
             --shadow-color: rgba(0, 0, 0, 0.2);
+            --primary-blue: #3498db;
+            --primary-dark: #2c3e50;
+            --primary-gradient: linear-gradient(135deg, #3498db, #2c3e50);
         }
+
+        .site-background {
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            width: 100%;
+            height: calc(100vh - var(--header-height) - var(--footer-height));
+            background-color: white;
+            background-image: url('/images/background1.jpg');
+            background-size: contain;
+            background-position: center top;
+            background-repeat: no-repeat;
+            opacity: 0.85;
+            z-index: -1;
+            pointer-events: none;
+            filter: brightness(0.95);
+        }
+
+            .site-background::after {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(255,255,255,0.2);
+            }
 
         body {
             min-height: 100vh;
@@ -99,7 +102,6 @@
             border: 1px solid rgba(255, 255, 255, 0.6);
         }
 
-        /* تحسين النماذج والأزرار - أقل شفافية */
         .form-control {
             background-color: rgba(255, 255, 255, 0.95);
             border: 1px solid #ced4da;
@@ -127,7 +129,6 @@
                 background-color: rgba(41, 128, 185, 0.95);
             }
 
-        /* تحسين الجداول - أقل شفافية */
         .table {
             background-color: var(--card-bg);
             border-radius: 10px;
@@ -146,7 +147,6 @@
                 background-color: rgba(52, 152, 219, 0.15);
             }
 
-        /* تحسين التنبيهات - أقل شفافية */
         .alert {
             font-size: 1.05rem;
             background-color: rgba(255, 255, 255, 0.95);
@@ -154,49 +154,6 @@
             box-shadow: 0 4px 12px var(--shadow-color);
         }
 
-        .alert-success {
-            background-color: rgba(213, 245, 227, 0.95);
-            border-color: #28a745;
-        }
-
-        .alert-danger {
-            background-color: rgba(248, 215, 218, 0.95);
-            border-color: #dc3545;
-        }
-
-        /* تحسين البطاقات - أقل شفافية */
-        .card {
-            background-color: var(--card-bg);
-            border: 1px solid rgba(0,0,0,0.15);
-            box-shadow: 0 4px 15px var(--shadow-color);
-        }
-
-        /* تحسين الروابط */
-        a {
-            color: #2980b9;
-            font-weight: 500;
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
-
-            a:hover {
-                color: #1a5276;
-                text-decoration: underline;
-            }
-
-        /* تحسين العناوين */
-        h1, h2, h3, h4, h5, h6 {
-            color: #2c3e50;
-            font-weight: 700;
-        }
-
-        /* تحسين القوائم - أقل شفافية */
-        .list-group-item {
-            background-color: rgba(255, 255, 255, 0.95);
-            border: 1px solid rgba(0,0,0,0.15);
-        }
-
-        /* مؤشر التقدم */
         .progress-indicator {
             position: fixed;
             top: 0;
@@ -209,7 +166,6 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
 
-        /* تحسين شريط التمرير */
         ::-webkit-scrollbar {
             width: 10px;
         }
@@ -227,7 +183,6 @@
                 background: rgba(41, 128, 185, 0.9);
             }
 
-        /* تأثيرات إضافية للوضوح */
         .text-muted {
             color: #6c757d !important;
         }
@@ -240,12 +195,10 @@
             background-color: rgba(255, 255, 255, 0.95) !important;
         }
 
-        /* تحسين الأيقونات */
         .bi {
             text-shadow: 0px 0px 2px rgba(255, 255, 255, 0.8);
         }
 
-        /* تحسينات إضافية للوضوح */
         .text-dark {
             color: #2c3e50 !important;
         }
@@ -253,21 +206,190 @@
         .border {
             border-color: rgba(0, 0, 0, 0.15) !important;
         }
+
+        /* ===== تنسيقات الكارد بنفس ألوان Login ===== */
+        .custom-card {
+            border: none !important;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+            border-radius: 15px !important;
+            overflow: hidden !important;
+            background: white !important;
+        }
+
+        .custom-card-header {
+            background: linear-gradient(135deg, #3498db, #2c3e50) !important;
+            color: white !important;
+            padding: 1.2rem 1.5rem !important;
+            border-bottom: none !important;
+        }
+
+            .custom-card-header h1,
+            .custom-card-header h2,
+            .custom-card-header h3,
+            .custom-card-header h4,
+            .custom-card-header h5,
+            .custom-card-header h6 {
+                color: white !important;
+                margin-bottom: 0 !important;
+            }
+
+            .custom-card-header p {
+                color: rgba(255, 255, 255, 0.9) !important;
+                margin-bottom: 0 !important;
+            }
+
+            .custom-card-header i {
+                color: white !important;
+            }
+
+        .custom-card-body {
+            padding: 1.5rem !important;
+            background: white !important;
+        }
+
+        .custom-card-footer {
+            background: #f8f9fa !important;
+            border-top: 1px solid rgba(52, 152, 219, 0.2) !important;
+            padding: 1rem 1.5rem !important;
+            color: #6c757d !important;
+        }
+
+            .custom-card-footer i {
+                color: #3498db !important;
+            }
+
+        /* تنسيق الأزرار داخل الكارد */
+        .custom-btn-primary {
+            background: linear-gradient(135deg, #3498db, #2c3e50) !important;
+            border: none !important;
+            color: white !important;
+            font-weight: 600 !important;
+            padding: 0.6rem 1.5rem !important;
+            border-radius: 8px !important;
+            transition: opacity 0.2s !important;
+            display: inline-block !important;
+            text-align: center !important;
+            width: auto !important;
+        }
+
+            .custom-btn-primary:hover {
+                opacity: 0.9 !important;
+                background: linear-gradient(135deg, #3498db, #2c3e50) !important;
+                transform: translateY(-2px) !important;
+                box-shadow: 0 0.5rem 1rem rgba(52, 152, 219, 0.3) !important;
+            }
+
+            .custom-btn-primary:active {
+                transform: translateY(0) !important;
+            }
+
+            .custom-btn-primary:disabled {
+                opacity: 0.65 !important;
+            }
+
+        /* تنسيق الحقول داخل الكارد */
+        .custom-card-body .form-control,
+        .custom-card-body .form-select {
+            border-radius: 8px !important;
+            border: 1px solid #ced4da !important;
+            padding: 0.6rem 1rem !important;
+            transition: all 0.2s !important;
+        }
+
+            .custom-card-body .form-control:focus,
+            .custom-card-body .form-select:focus {
+                border-color: #3498db !important;
+                box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25) !important;
+                outline: none !important;
+            }
+
+        .custom-card-body .form-label {
+            color: #2c3e50 !important;
+            font-weight: 600 !important;
+            margin-bottom: 0.4rem !important;
+        }
+
+        .custom-card-body .input-group-text {
+            background: #f8f9fa !important;
+            border: 1px solid #ced4da !important;
+            border-radius: 8px 0 0 8px !important;
+            color: #2c3e50 !important;
+        }
+
+        /* تنسيق التنبيهات داخل الكارد */
+        .custom-card-body .alert {
+            border-radius: 8px !important;
+            border: none !important;
+            padding: 1rem !important;
+        }
+
+        .custom-card-body .alert-info {
+            background-color: rgba(52, 152, 219, 0.1) !important;
+            border-right: 4px solid #3498db !important;
+            color: #2c3e50 !important;
+        }
+
+        .custom-card-body .alert-success {
+            background: linear-gradient(135deg, #3498db, #2c3e50) !important;
+            color: white !important;
+        }
+
+        .custom-card-body .alert-danger {
+            background-color: rgba(220, 53, 69, 0.1) !important;
+            border-right: 4px solid #dc3545 !important;
+            color: #721c24 !important;
+        }
+
+        .custom-card-body .alert-warning {
+            background-color: rgba(255, 193, 7, 0.1) !important;
+            border-right: 4px solid #ffc107 !important;
+            color: #856404 !important;
+        }
+
+        /* تنسيق الروابط داخل الكارد */
+        .custom-card-body a:not(.btn) {
+            color: #3498db !important;
+            text-decoration: none !important;
+            transition: color 0.2s !important;
+        }
+
+            .custom-card-body a:not(.btn):hover {
+                color: #2c3e50 !important;
+                text-decoration: underline !important;
+            }
+
+        /* تنسيق القوائم داخل الكارد */
+        .custom-card-body ul,
+        .custom-card-body ol {
+            padding-right: 1.5rem !important;
+        }
+
+        .custom-card-body li {
+            margin-bottom: 0.3rem !important;
+        }
+
+        /* تنسيق الحدود الفاصلة */
+        .custom-card-body .border-top {
+            border-top: 1px solid rgba(52, 152, 219, 0.2) !important;
+        }
+
+        .custom-card-body .border-bottom {
+            border-bottom: 1px solid rgba(52, 152, 219, 0.2) !important;
+        }
+
+        /* تنسيق الخانات الاختيارية */
+        .custom-card-body small.text-muted {
+            color: #6c757d !important;
+            font-size: 0.85rem !important;
+        }
     </style>
 
     @RenderSection("Styles", required: false)
 </head>
 <body>
-    <!-- ===== الخلفية واضحة جداً ===== -->
     <div class="site-background"></div>
-
-    <!-- مؤشر التقدم -->
     <div class="progress-indicator" id="progressIndicator"></div>
-
-    <!-- رسائل عائمة -->
     <partial name="_FloatingAlerts" />
-
-    <!-- الرأس والقائمة -->
     <partial name="_Header" />
 
     <main class="main-content">
@@ -280,7 +402,6 @@
                 </h1>
             }
 
-            <!-- رسائل محتوى الصفحة -->
             @if (ViewBag.ErrorMessage != null)
             {
                 <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -315,15 +436,15 @@
         </div>
     </main>
 
-    <!-- الفوتر -->
     <partial name="_Footer" />
 
-    <!-- JavaScript Files -->
+    <!-- JavaScript Files - الترتيب مهم جداً -->
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script src="~/js/notifications.js"></script>
 
-    <!-- إعدادات عامة -->
     <script>
         feather.replace();
 
@@ -357,6 +478,15 @@
                     this.style.boxShadow = '0 2px 5px rgba(0,0,0,0.1)';
                 });
             });
+
+            document.querySelectorAll('label[for]').forEach(label => {
+                const inputId = label.getAttribute('for');
+                const input = document.getElementById(inputId);
+                if (input && input.hasAttribute('required')) {
+                    label.classList.add('required-field');
+                    label.innerHTML += ' <span class="text-danger">*</span>';
+                }
+            });
         });
 
         window.addEventListener('beforeunload', function() {
@@ -372,21 +502,107 @@
             }
         });
 
-        document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('label[for]').forEach(label => {
-                const inputId = label.getAttribute('for');
-                const input = document.getElementById(inputId);
-                if (input && input.hasAttribute('required')) {
-                    label.classList.add('required-field');
-                    label.innerHTML += ' <span class="text-danger">*</span>';
-                }
-            });
-        });
-    </script>
-    <script>
         window.getCsrfToken = function() {
             return document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
         };
+    </script>
+
+    <!-- OneSignal SDK - مفعل بالكود الصحيح -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+
+        // تهيئة OneSignal
+        window.OneSignalDeferred.push(function(OneSignal) {
+            OneSignal.init({
+                appId: "880334b8-c814-42b1-8bd1-61087237bc61",
+                serviceWorkerPath: "OneSignalSDKWorker.js",
+                notifyButton: {
+                    enable: true,
+                },
+            });
+            console.log("✅ OneSignal initialized");
+        });
+
+        // تسجيل الجهاز بعد التهيئة
+        window.OneSignalDeferred.push(async function(OneSignal) {
+            try {
+                // انتظار قليل للتأكد من اكتمال التهيئة
+                await new Promise(resolve => setTimeout(resolve, 7000));
+
+                // محاولة الحصول على User ID بالطريقة الصحيحة للإصدار الحديث
+                let userId = null;
+
+                try {
+                    // الطريقة الصحيحة للإصدار الحديث من OneSignal
+                    if (OneSignal && OneSignal.User && OneSignal.User.PushSubscription) {
+                        const subscription = await OneSignal.User.PushSubscription;
+                        userId = subscription?.id || null;
+                        console.log("✅ OneSignal Subscription:", subscription);
+                    }
+                } catch (innerError) {
+                    console.log("⚠️ لم نتمكن من الحصول على User ID:", innerError.message);
+                }
+
+                if (userId) {
+                    console.log("✅ OneSignal User ID:", userId);
+
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+
+                    if (token) {
+                        console.log("📤 جاري تسجيل جهاز OneSignal...");
+
+                        const response = await fetch('/api/notifications/register-device', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'RequestVerificationToken': token
+                            },
+                            body: JSON.stringify({
+                                playerId: userId,
+                                deviceType: 'web',
+                                browser: navigator.userAgent,
+                                operatingSystem: navigator.platform
+                            })
+                        });
+
+                        const data = await response.json();
+                        console.log("✅ تم تسجيل الجهاز في OneSignal:", data);
+                    } else {
+                        console.log("⚠️ CSRF token غير موجود");
+                    }
+                } else {
+                    console.log("⚠️ لم يتم الحصول على OneSignal User ID - قد يحتاج المستخدم للموافقة على الإشعارات أولاً");
+                }
+            } catch (e) {
+                console.error("❌ خطأ في تسجيل OneSignal:", e);
+            }
+        });
+
+        // طلب إذن الإشعارات من المتصفح
+        if (Notification.permission === "default") {
+            Notification.requestPermission().then(permission => {
+                console.log("✅ Notification permission:", permission);
+            });
+        }
+
+        // طلب إذن الإشعارات من OneSignal (يظهر النافذة المنبثقة)
+        window.OneSignalDeferred.push(function(OneSignal) {
+            // تأخير قليل قبل عرض النافذة
+            setTimeout(() => {
+                OneSignal.Notifications.requestPermission().then(accepted => {
+                    console.log("✅ تم عرض طلب الإشعارات - المستخدم وافق:", accepted);
+                    if (accepted) {
+                        // إذا وافق المستخدم، حاول تسجيل الجهاز مرة أخرى
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    }
+                }).catch(err => {
+                    console.log("⚠️ لم يتم عرض طلب الإشعارات:", err);
+                });
+            }, 6000);
+        });
     </script>
 
     @await RenderSectionAsync("Scripts", required: false)

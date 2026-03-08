@@ -1,7 +1,5 @@
 ﻿@model WebApplication2.Models.PersonalProfileViewModel
 
-
-
 <div class="container mt-4">
     <div class="row justify-content-center">
         <div class="col-md-10">
@@ -52,7 +50,7 @@
                         </div>
                     }
 
-                    <!-- 🔥 عرض رسائل الخطأ العامة -->
+                    <!-- عرض رسائل الخطأ العامة -->
                     @if (!string.IsNullOrEmpty(ViewBag.ErrorMessage))
                     {
                         <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -62,7 +60,7 @@
                         </div>
                     }
 
-                    <!-- 🔥 عرض أخطاء التحقق التفصيلية -->
+                    <!-- عرض أخطاء التحقق التفصيلية -->
                     @if (ViewBag.ValidationErrors != null)
                     {
                         <div class="alert alert-warning">
@@ -76,7 +74,7 @@
                         </div>
                     }
 
-                    <!-- 🔥 رسائل النجاح -->
+                    <!-- رسائل النجاح -->
                     @if (!string.IsNullOrEmpty(ViewBag.SuccessMessage))
                     {
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -93,7 +91,7 @@
                     <form asp-action="CompleteProfile" method="post" id="profileForm" class="needs-validation" novalidate>
                         @Html.AntiForgeryToken()
 
-                        <input type="hidden" asp-for="UserId" id="UserId" />
+                        <input type="hidden" asp-for="UserId" />
                         <input type="hidden" asp-for="Email" />
                         <input type="hidden" asp-for="UserRole" />
 
@@ -119,7 +117,7 @@
                                     <!-- اسم العائلة -->
                                     <div class="col-md-6">
                                         <label asp-for="LastName" class="form-label fw-bold">اللقب</label>
-                                        <input asp-for="LastName" class="form-control" placeholder="اللقب  (اختياري)" />
+                                        <input asp-for="LastName" class="form-control" placeholder="اللقب (اختياري)" />
                                         <span asp-validation-for="LastName" class="text-danger"></span>
                                     </div>
 
@@ -130,7 +128,7 @@
                                         <span asp-validation-for="MotherName" class="text-danger"></span>
                                     </div>
 
-                                    <!-- اللقب -->
+                                    <!-- المزكي -->
                                     <div class="col-md-6">
                                         <label asp-for="MozakeName" class="form-label fw-bold">المزكي</label>
                                         <input asp-for="MozakeName" class="form-control" placeholder="المزكي (اختياري)" />
@@ -234,14 +232,18 @@
                                     <!-- رقم البطاقة التموينية -->
                                     <div class="col-md-6">
                                         <label asp-for="RationN" class="form-label fw-bold">رقم البطاقة التموينية</label>
-                                        <input asp-for="RationN" class="form-control" placeholder="رقم البطاقة التموينية (اختياري)" />
+                                        <input asp-for="RationN" class="form-control"
+                                               placeholder="رقم البطاقة التموينية (اختياري)"
+                                               type="number" min="0" step="1" />
                                         <span asp-validation-for="RationN" class="text-danger"></span>
                                     </div>
 
                                     <!-- مركز التوزيع -->
                                     <div class="col-md-6">
                                         <label asp-for="RationCenter" class="form-label fw-bold">مركز التوزيع</label>
-                                        <input asp-for="RationCenter" class="form-control" placeholder="مركز التوزيع (اختياري)" />
+                                        <input asp-for="RationCenter" class="form-control"
+                                               placeholder="مركز التوزيع (اختياري)"
+                                               type="number" min="0" step="1" />
                                         <span asp-validation-for="RationCenter" class="text-danger"></span>
                                     </div>
                                 </div>
@@ -325,11 +327,7 @@
                             <a href="@Url.Action("Index", "Home")" class="btn btn-secondary btn-lg">
                                 <i class="fas fa-home"></i> العودة للرئيسية
                             </a>
-
-                          
                         </div>
-
-                        
                     </form>
                 </div>
             </div>
@@ -343,14 +341,10 @@
     }
 
     <script>
-        // تفعيل تحقق الـ Bootstrap
+        // تفعيل تحقق Bootstrap
         (function () {
             'use strict'
-
-            // جلب جميع النماذج التي نريد تطبيق التحقق عليها
             var forms = document.querySelectorAll('.needs-validation')
-
-            // التحقق قبل الإرسال
             Array.prototype.slice.call(forms)
                 .forEach(function (form) {
                     form.addEventListener('submit', function (event) {
@@ -358,15 +352,14 @@
                             event.preventDefault()
                             event.stopPropagation()
                         }
-
                         form.classList.add('was-validated')
                     }, false)
                 })
         })()
 
-        // تعيين القيم الافتراضية إذا كانت فارغة
+        // تعيين القيم الافتراضية
         document.addEventListener('DOMContentLoaded', function() {
-            // تعيين تاريخ الميلاد إذا كان فارغاً
+            // تاريخ الميلاد
             var dobField = document.getElementById('DateOfBirth');
             if (!dobField.value) {
                 var today = new Date();
@@ -374,27 +367,21 @@
                 dobField.value = birthDate.toISOString().split('T')[0];
             }
 
-            // تعيين تاريخ البطاقة إذا كان فارغاً
+            // تاريخ البطاقة
             var idDateField = document.getElementById('IdentityDate');
             if (!idDateField.value) {
                 var today = new Date();
                 idDateField.value = today.toISOString().split('T')[0];
             }
 
-            // تعيين المحافظة الافتراضية
+            // المحافظة
             var governorateSelect = document.getElementById('governorateSelect');
             if (!governorateSelect.value) {
                 governorateSelect.value = 'بغداد';
             }
-
-            // إضافة رقم افتراضي للبطاقة إذا كان 0
-            var cardNumberField = document.querySelector('input[asp-for="IdentityCardN"]');
-            if (cardNumberField && cardNumberField.value == '0') {
-                cardNumberField.value = '100000';
-            }
         });
 
-        // عرض رسالة تحميل أثناء الحفظ
+        // منع الإرسال المزدوج
         var profileForm = document.getElementById('profileForm');
         if (profileForm) {
             profileForm.addEventListener('submit', function() {
@@ -402,68 +389,31 @@
                 if (submitBtn) {
                     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
                     submitBtn.disabled = true;
-
-                    // منع النقر المتعدد
-                    setTimeout(function() {
-                        submitBtn.disabled = false;
-                    }, 3000);
                 }
             });
         }
 
-        // تحقق من صحة رقم الهاتف
+        // تحقق من رقم الهاتف
         var phoneField = document.querySelector('input[asp-for="PhoneNumber"]');
         if (phoneField) {
             phoneField.addEventListener('blur', function() {
                 var phone = this.value;
                 if (phone && !/^07[0-9]{9}$/.test(phone)) {
                     this.classList.add('is-invalid');
-                    var feedback = this.nextElementSibling;
-                    while (feedback && !feedback.classList.contains('invalid-feedback')) {
-                        feedback = feedback.nextElementSibling;
-                    }
-                    if (feedback) {
-                        feedback.textContent = 'رقم الهاتف غير صحيح. يجب أن يبدأ بـ 07 ويحتوي على 11 رقم';
-                    }
                 }
             });
         }
 
-        // تحقق من صحة رقم البطاقة
+        // تحقق من رقم البطاقة
         var cardField = document.querySelector('input[asp-for="IdentityCardN"]');
         if (cardField) {
             cardField.addEventListener('blur', function() {
                 var cardNum = parseInt(this.value);
                 if (cardNum < 100000) {
                     this.classList.add('is-invalid');
-                    var feedback = this.nextElementSibling;
-                    while (feedback && !feedback.classList.contains('invalid-feedback')) {
-                        feedback = feedback.nextElementSibling;
-                    }
-                    if (feedback) {
-                        feedback.textContent = 'رقم البطاقة الوطنية غير صحيح. يجب أن يكون 6 أرقام على الأقل';
-                    }
                 }
             });
         }
-
-        // تحديث ألوان الحقول المطلوبة
-        document.querySelectorAll('label[class*="fw-bold"]').forEach(function(label) {
-            if (label.innerHTML.includes('text-danger')) {
-                var inputId = label.getAttribute('for');
-                if (inputId) {
-                    var input = document.getElementById(inputId);
-                    if (input) {
-                        input.classList.add('required-field');
-                    }
-                }
-            }
-        });
-
-        // إضافة تلميحات للمستخدم
-        document.querySelectorAll('input[placeholder*="اختياري"]').forEach(function(input) {
-            input.title = 'هذا الحقل اختياري، يمكنك تركه فارغاً';
-        });
     </script>
 
     <style>

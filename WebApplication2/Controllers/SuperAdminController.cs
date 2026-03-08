@@ -110,7 +110,6 @@ namespace WebApplication2.Controllers
         {
             try
             {
-                // التحقق من صحة البيانات
                 if (string.IsNullOrEmpty(model.Title) || string.IsNullOrEmpty(model.Message))
                 {
                     TempData["ErrorMessage"] = "❌ العنوان والرسالة مطلوبان";
@@ -122,7 +121,6 @@ namespace WebApplication2.Controllers
                 _logger.LogInformation($"📝 الرسالة: {model.Message}");
                 _logger.LogInformation($"👤 المستلم: {model.TargetUserId ?? "الكل"}");
 
-                // 1. إنشاء الإشعار في قاعدة البيانات
                 var notification = await _notificationService.CreateNotification(
                     model.Title,
                     model.Message,
@@ -133,7 +131,6 @@ namespace WebApplication2.Controllers
 
                 _logger.LogInformation($"✅ تم إنشاء الإشعار في قاعدة البيانات: ID = {notification.Id}");
 
-                // 2. إرسال عبر OneSignal
                 bool oneSignalResult = false;
                 string oneSignalMessage = "";
 
@@ -141,7 +138,6 @@ namespace WebApplication2.Controllers
                 {
                     if (!string.IsNullOrEmpty(model.TargetUserId))
                     {
-                        // إرسال لمستخدم معين
                         _logger.LogInformation($"📱 البحث عن أجهزة للمستخدم: {model.TargetUserId}");
 
                         var playerIds = await _context.UserDevices
@@ -165,7 +161,6 @@ namespace WebApplication2.Controllers
                     }
                     else
                     {
-                        // إرسال للجميع
                         _logger.LogInformation("🌍 إرسال للجميع");
                         oneSignalResult = await _notificationService.SendToOneSignal(notification);
                         oneSignalMessage = "تم الإرسال لجميع المستخدمين";
@@ -244,11 +239,7 @@ namespace WebApplication2.Controllers
 
                 var user = await _userManager.FindByIdAsync(request.UserId);
                 if (user == null)
-                    return Json(new
-                    {
-                        success = false,
-                        message = $"المستخدم غير موجود. ID: {request.UserId}"
-                    });
+                    return Json(new { success = false, message = $"المستخدم غير موجود." });
 
                 var currentRoles = await _userManager.GetRolesAsync(user);
 
@@ -281,17 +272,7 @@ namespace WebApplication2.Controllers
 
                     if (userProfile != null)
                     {
-                        string governorate = null;
-
-                        if (userProfile.Address != null && !string.IsNullOrEmpty(userProfile.Address.Governorate))
-                        {
-                            governorate = userProfile.Address.Governorate;
-                        }
-                        else
-                        {
-                            governorate = "بغداد";
-                        }
-
+                        string governorate = userProfile.Address?.Governorate ?? "بغداد";
                         userProfile.ManagedGovernorate = governorate;
                         _context.Update(userProfile);
                         await _context.SaveChangesAsync();
@@ -307,7 +288,9 @@ namespace WebApplication2.Controllers
                             Gender = "ذكر",
                             PhoneNumber = "",
                             IdentityCardN = 0,
-                            identityDate = DateTime.Now
+                            identityDate = DateTime.Now,
+                            RationN = 0,
+                            RationCenter = 0
                         };
                         _context.Identifies.Add(userProfile);
                         await _context.SaveChangesAsync();
@@ -383,8 +366,11 @@ namespace WebApplication2.Controllers
                     Specialization = userProfile?.Specialization ?? "",
                     IdentityCardN = userProfile?.IdentityCardN ?? 0,
                     IdentityDate = userProfile?.identityDate ?? DateTime.MinValue,
+
+                    // ✅ int إلى int
                     RationN = userProfile?.RationN ?? 0,
                     RationCenter = userProfile?.RationCenter ?? 0,
+
                     Address = userProfile?.Address,
                     ManagedGovernorate = userProfile?.ManagedGovernorate
                 };
@@ -393,6 +379,7 @@ namespace WebApplication2.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "خطأ في عرض تفاصيل المستخدم");
                 TempData["ErrorMessage"] = "حدث خطأ في تحميل البيانات";
                 return RedirectToAction(nameof(Users));
             }

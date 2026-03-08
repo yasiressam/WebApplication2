@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebApplication2.Data;
 
@@ -11,9 +12,11 @@ using WebApplication2.Data;
 namespace WebApplication2.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260307025519_InitialCreatee")]
+    partial class InitialCreatee
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -52,21 +55,21 @@ namespace WebApplication2.Migrations
                         new
                         {
                             Id = "1",
-                            ConcurrencyStamp = "f73dbcff-8617-485f-95b6-52ad6a3380b3",
+                            ConcurrencyStamp = "1abb62f5-f37d-4902-a865-1823fcaae27d",
                             Name = "SuperAdmin",
                             NormalizedName = "SUPERADMIN"
                         },
                         new
                         {
                             Id = "2",
-                            ConcurrencyStamp = "321dcdc9-c1f2-4735-891d-796616a54cca",
+                            ConcurrencyStamp = "473adac0-a8a2-4082-84f5-d1e789a98418",
                             Name = "Admin",
                             NormalizedName = "ADMIN"
                         },
                         new
                         {
                             Id = "3",
-                            ConcurrencyStamp = "8a5ed826-4a3e-4ce5-9d02-027ac2b9883f",
+                            ConcurrencyStamp = "78f32718-0c57-4ede-80df-f875700c5681",
                             Name = "User",
                             NormalizedName = "USER"
                         });
@@ -302,10 +305,6 @@ namespace WebApplication2.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -336,10 +335,10 @@ namespace WebApplication2.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("RationCenter")
+                    b.Property<int>("RationCenter")
                         .HasColumnType("int");
 
-                    b.Property<int?>("RationN")
+                    b.Property<int>("RationN")
                         .HasColumnType("int");
 
                     b.Property<string>("Specialization")
@@ -621,7 +620,8 @@ namespace WebApplication2.Migrations
 
             modelBuilder.Entity("WebApplication2.Models.Address", b =>
                 {
-                    b.Navigation("Identify");
+                    b.Navigation("Identify")
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

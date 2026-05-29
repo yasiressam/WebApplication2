@@ -1,0 +1,73 @@
+﻿@page
+@model LoginModel
+
+<div class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="card shadow p-4" style="max-width: 450px; width: 100%;">
+        <div class="card-header text-center text-white" style="background: linear-gradient(135deg, #3498db, #2c3e50); border-radius: 15px 15px 0 0;">
+            <h2>🔐 تسجيل الدخول</h2>
+        </div>
+        <div class="card-body">
+            <form id="loginForm" method="post">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                <!-- البريد الإلكتروني أو رقم الواتساب -->
+                <div class="mb-3">
+                    <label asp-for="Input.Email" class="form-label fw-bold">البريد الإلكتروني أو رقم الواتساب</label>
+                    <input asp-for="Input.Email" class="form-control" autocomplete="username" placeholder="example@email.com أو 07XXXXXXXXX" />
+                    <span asp-validation-for="Input.Email" class="text-danger"></span>
+                </div>
+
+                <!-- كلمة المرور -->
+                <div class="mb-3">
+                    <label asp-for="Input.Password" class="form-label fw-bold">كلمة المرور</label>
+                    <input asp-for="Input.Password" type="password" class="form-control" autocomplete="current-password" placeholder="********" />
+                    <span asp-validation-for="Input.Password" class="text-danger"></span>
+                </div>
+
+                <!-- تذكرني -->
+                <div class="form-check mb-3">
+                    <input asp-for="Input.RememberMe" class="form-check-input" id="rememberMe" />
+                    <label class="form-check-label" asp-for="Input.RememberMe">تذكرني</label>
+                </div>
+
+                <!-- زر تسجيل الدخول -->
+                <button type="submit" class="btn btn-primary w-100 mb-3" style="background: linear-gradient(135deg, #3498db, #2c3e50); font-weight: 600;">تسجيل الدخول</button>
+
+                <!-- روابط مساعدة -->
+                <div class="text-center">
+                    <p><a asp-page="./ForgotPassword">نسيت كلمة المرور؟</a></p>
+                    <p>
+                        ليس لديك حساب؟
+                        <a asp-controller="Register" asp-action="Index">إنشاء حساب جديد</a>
+                    </p>
+
+                    <p><a asp-page="./ResendEmailConfirmation">إعادة إرسال تأكيد البريد</a></p>
+                </div>
+            </form>
+
+            <!-- تسجيل الدخول عبر خدمات أخرى -->
+            @if ((Model.ExternalLogins?.Count ?? 0) > 0)
+            {
+                <hr />
+                <div class="text-center">
+                    <h5>تسجيل الدخول عبر خدمة أخرى</h5>
+                    <div class="d-grid gap-2 mt-2">
+                        @foreach (var provider in Model.ExternalLogins!)
+                        {
+                            <form method="post" asp-page="./ExternalLogin" asp-route-returnUrl="@Model.ReturnUrl">
+                                <button type="submit" name="provider" value="@provider.Name" class="btn btn-outline-primary w-100 mb-2">
+                                    تسجيل الدخول باستخدام @provider.DisplayName
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

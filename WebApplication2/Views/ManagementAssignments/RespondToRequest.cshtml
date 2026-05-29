@@ -1,0 +1,165 @@
+@model WebApplication2.Models.Profile.ManagementAssignmentRequestResponseViewModel
+
+@{
+    ViewData["Title"] = "استمارة التكليف الإداري";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4" dir="rtl">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-header text-white rounded-top-4" style="background: linear-gradient(135deg, #3498db, #2c3e50);">
+                    <h4 class="mb-0">
+                        <i class="bi bi-file-earmark-text-fill me-2"></i>
+                        استمارة طلب تكليف كـ @Model.RequestedAssignmentArabic
+                    </h4>
+                </div>
+
+                <div class="card-body">
+                    <div class="alert alert-info rounded-3">
+                        يرجى تعبئة بيانات الانتساب المطلوبة. بعد الإرسال سيصل الطلب إلى السوبر أدمن للموافقة النهائية.
+                    </div>
+
+                    @if (!ViewData.ModelState.IsValid && ViewData.ModelState.ErrorCount > 0)
+                    {
+                        <div asp-validation-summary="All" class="alert alert-danger"></div>
+                    }
+
+                    <form asp-action="RespondToRequest" method="post">
+                        @Html.AntiForgeryToken()
+                        <input asp-for="RequestId" type="hidden" />
+                        <input asp-for="UserId" type="hidden" />
+                        <input asp-for="AssignmentRole" type="hidden" />
+                        <input asp-for="ManagementLevel" type="hidden" />
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">الاسم</label>
+                                <input class="form-control" value="@Model.FullName" readonly />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">البريد الإلكتروني</label>
+                                <input class="form-control" value="@Model.Email" readonly />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">المحافظة</label>
+                                <input class="form-control" value="@Model.Governorate" readonly />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">نوع التكليف</label>
+                                <input class="form-control" value="@Model.RequestedRoleArabic" readonly />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">مستوى المسؤولية المحدد</label>
+                                <input class="form-control" value="@Model.ManagementLevelArabic" readonly />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="AffiliationEntityId" class="form-label fw-bold"></label>
+                                <select asp-for="AffiliationEntityId" asp-items="Model.AffiliationEntities" class="form-select" id="entitySelect">
+                                    <option value="">-- اختر جهة الانتساب --</option>
+                                </select>
+                                <span asp-validation-for="AffiliationEntityId" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="DivisionId" class="form-label fw-bold"></label>
+                                <select asp-for="DivisionId" asp-items="Model.Divisions" class="form-select" id="divisionSelect">
+                                    <option value="">-- اختر القسم --</option>
+                                </select>
+                                <small class="text-muted">@(Model.ManagementLevel == "Division" || Model.ManagementLevel == "Section" || Model.ManagementLevel == "Group" ? "مطلوب لهذا التكليف" : "اختياري")</small>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label asp-for="SectionId" class="form-label fw-bold"></label>
+                                <select asp-for="SectionId" asp-items="Model.Sections" class="form-select" id="sectionSelect">
+                                    <option value="">-- اختر الشعبة --</option>
+                                </select>
+                                <small class="text-muted">@(Model.ManagementLevel == "Section" || Model.ManagementLevel == "Group" ? "مطلوب لهذا التكليف" : "اختياري")</small>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">الوحدة</label>
+                                <select asp-for="GroupId" asp-items="Model.Groups" class="form-select" id="groupSelect">
+                                    <option value="">-- اختر الوحدة --</option>
+                                </select>
+                                <small class="text-muted">@(Model.ManagementLevel == "Group" ? "مطلوب لهذا التكليف" : "اختياري")</small>
+                            </div>
+
+                        </div>
+
+                        <div class="mt-4 d-flex gap-2 flex-wrap">
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-send-check-fill me-1"></i>
+                                إرسال إلى السوبر أدمن
+                            </button>
+                            <a asp-controller="Home" asp-action="Index" class="btn btn-secondary">
+                                <i class="bi bi-arrow-right-circle me-1"></i>
+                                رجوع
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        const entitySelect = document.getElementById('entitySelect');
+        const divisionSelect = document.getElementById('divisionSelect');
+        const sectionSelect = document.getElementById('sectionSelect');
+        const groupSelect = document.getElementById('groupSelect');
+
+        function resetSelect(select, placeholder) {
+            select.innerHTML = `<option value="">${placeholder}</option>`;
+        }
+
+        function fillSelect(select, items, placeholder) {
+            resetSelect(select, placeholder);
+            items.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.id;
+                option.textContent = item.name;
+                select.appendChild(option);
+            });
+        }
+
+        entitySelect?.addEventListener('change', async function () {
+            resetSelect(divisionSelect, '-- اختر القسم --');
+            resetSelect(sectionSelect, '-- اختر الشعبة --');
+            resetSelect(groupSelect, '-- اختر الوحدة --');
+
+            if (!this.value) return;
+
+            const response = await fetch(`/ManagementAssignments/GetDivisionsByEntity?entityId=${this.value}`);
+            const data = await response.json();
+            fillSelect(divisionSelect, data, '-- اختر القسم --');
+        });
+
+        divisionSelect?.addEventListener('change', async function () {
+            resetSelect(sectionSelect, '-- اختر الشعبة --');
+            resetSelect(groupSelect, '-- اختر الوحدة --');
+
+            if (!this.value) return;
+
+            const response = await fetch(`/ManagementAssignments/GetSectionsByDivision?divisionId=${this.value}`);
+            const data = await response.json();
+            fillSelect(sectionSelect, data, '-- اختر الشعبة --');
+        });
+
+        sectionSelect?.addEventListener('change', async function () {
+            resetSelect(groupSelect, '-- اختر الوحدة --');
+
+            if (!this.value) return;
+
+            const response = await fetch(`/ManagementAssignments/GetGroupsBySection?sectionId=${this.value}`);
+            const data = await response.json();
+            fillSelect(groupSelect, data, '-- اختر الوحدة --');
+        });
+    </script>
+}

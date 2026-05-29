@@ -1,0 +1,238 @@
+@model IEnumerable<WebApplication2.Models.SuperAdminUserVM>
+
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "المسؤولين والمعاونين";
+    var totalManagers = Model.Count(u => string.Equals(u.AssignmentRole, "Manager", StringComparison.OrdinalIgnoreCase));
+    var totalAssistants = Model.Count(u => string.Equals(u.AssignmentRole, "Assistant", StringComparison.OrdinalIgnoreCase));
+}
+
+<style>
+    .admin-table-page {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+    }
+
+    .admin-table-header {
+        padding: 16px 18px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .admin-table-header h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        color: #1f2937;
+        font-weight: 700;
+    }
+
+    .summary-pills {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .summary-pill {
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        padding: 5px 10px;
+        font-size: 0.85rem;
+        color: #374151;
+        background: #f9fafb;
+    }
+
+    .table {
+        margin-bottom: 0;
+        font-size: 0.88rem;
+    }
+
+    .table thead th {
+        background: #f3f4f6;
+        color: #374151;
+        border-bottom: 1px solid #d1d5db;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .table td {
+        vertical-align: middle;
+    }
+
+    .role-badge {
+        display: inline-block;
+        min-width: 70px;
+        text-align: center;
+        border-radius: 6px;
+        padding: 4px 8px;
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+
+    .role-manager {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .role-assistant {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .table-filters {
+        padding: 14px 18px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #fafafa;
+    }
+</style>
+
+<div class="admin-table-page mt-3" dir="rtl">
+    <div class="admin-table-header">
+        <h3><i class="bi bi-person-badge me-2"></i> المسؤولين والمعاونين</h3>
+        <div class="summary-pills">
+            <span class="summary-pill">الإجمالي: @Model.Count()</span>
+            <span class="summary-pill">المسؤولين: @totalManagers</span>
+            <span class="summary-pill">المعاونين: @totalAssistants</span>
+        </div>
+    </div>
+
+    <div class="table-filters">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label fw-bold">البحث بالاسم أو البريد</label>
+                <input type="text" class="form-control" id="managerSearchInput" placeholder="اكتب الاسم أو البريد...">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold">المحافظة</label>
+                <select class="form-select" id="governorateFilter">
+                    <option value="">كل المحافظات</option>
+                    @foreach (var governorate in Model.Select(u => u.WorkGovernorate).Where(g => !string.IsNullOrWhiteSpace(g)).Distinct().OrderBy(g => g))
+                    {
+                        <option value="@governorate">@governorate</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-outline-secondary w-100" id="clearManagerFilters">مسح</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>الاسم</th>
+                    <th>البريد</th>
+                    <th>الأدوار</th>
+                    <th>الصفة</th>
+                    <th>المستوى</th>
+                    <th>الجهة / القسم / الشعبة / الوحدة</th>
+                    <th>المحافظة</th>
+                    <th>الحالة</th>
+                    <th>تفاصيل</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{
+                    var index = 1;
+                }
+                @foreach (var user in Model)
+                {
+                    var isAssistant = string.Equals(user.AssignmentRole, "Assistant", StringComparison.OrdinalIgnoreCase);
+                    <tr class="manager-row"
+                        data-name="@user.FullName.ToLower()"
+                        data-email="@user.Email.ToLower()"
+                        data-governorate="@user.WorkGovernorate">
+                        <td>@index</td>
+                        <td>@user.FullName</td>
+                        <td>@user.Email</td>
+                        <td>@(string.IsNullOrWhiteSpace(user.Roles) ? "---" : user.Roles)</td>
+                        <td>
+                            <span class="role-badge @(isAssistant ? "role-assistant" : "role-manager")">
+                                @(isAssistant ? "معاون" : "مسؤول")
+                            </span>
+                        </td>
+                        <td>@user.ManagementLevelArabic</td>
+                        <td>@user.ManagedEntityName</td>
+                        <td>@user.WorkGovernorate</td>
+                        <td>
+                            @if (user.IsActive)
+                            {
+                                <span class="badge bg-success">مفعل</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">معطل</span>
+                            }
+                        </td>
+                        <td>
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="SuperAdmin" asp-action="UserDetails" asp-route-id="@user.Id">
+                                عرض
+                            </a>
+                        </td>
+                    </tr>
+                    index++;
+                }
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="10" class="text-center text-muted py-4">لا توجد بيانات للعرض</td>
+                    </tr>
+                }
+                <tr id="noFilterResultsRow" style="display: none;">
+                    <td colspan="10" class="text-center text-muted py-4">لا توجد نتائج مطابقة للبحث</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const searchInput = document.getElementById('managerSearchInput');
+            const governorateFilter = document.getElementById('governorateFilter');
+            const clearButton = document.getElementById('clearManagerFilters');
+            const rows = Array.from(document.querySelectorAll('.manager-row'));
+            const emptyRow = document.getElementById('noFilterResultsRow');
+
+            function applyManagerFilters() {
+                const searchText = (searchInput?.value || '').trim().toLowerCase();
+                const governorate = governorateFilter?.value || '';
+                let visibleCount = 0;
+
+                rows.forEach(function (row) {
+                    const name = row.dataset.name || '';
+                    const email = row.dataset.email || '';
+                    const rowGovernorate = row.dataset.governorate || '';
+                    const matchesSearch = !searchText || name.includes(searchText) || email.includes(searchText);
+                    const matchesGovernorate = !governorate || rowGovernorate === governorate;
+                    const isVisible = matchesSearch && matchesGovernorate;
+
+                    row.style.display = isVisible ? '' : 'none';
+                    if (isVisible) visibleCount++;
+                });
+
+                if (emptyRow) {
+                    emptyRow.style.display = visibleCount === 0 && rows.length > 0 ? '' : 'none';
+                }
+            }
+
+            searchInput?.addEventListener('input', applyManagerFilters);
+            governorateFilter?.addEventListener('change', applyManagerFilters);
+            clearButton?.addEventListener('click', function () {
+                if (searchInput) searchInput.value = '';
+                if (governorateFilter) governorateFilter.value = '';
+                applyManagerFilters();
+            });
+        });
+    </script>
+}

@@ -1,0 +1,56 @@
+﻿@{
+    ViewData["Title"] = "التحقق برقم الهاتف";
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white text-center">
+                    <h3>📱 التحقق برقم الهاتف</h3>
+                </div>
+                <div class="card-body">
+                    @if (TempData["ErrorMessage"] != null)
+                    {
+                        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+                    }
+
+                    <form asp-action="SendOtp" method="post">
+                        @Html.AntiForgeryToken()
+
+                        <div class="mb-3">
+                            <label>الدولة</label>
+                            <select name="countryCode" class="form-control" id="countrySelect">
+                                <option value="964">🇮🇶 العراق (+964)</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label>رقم الهاتف</label>
+                            <div class="input-group">
+                                <span class="input-group-text" id="selectedCountryCode">+964</span>
+                                <input type="text" name="phoneNumber" id="phoneNumber" class="form-control"
+                                       placeholder="7701234567" required />
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100" id="sendBtn">
+                            إرسال كود التحقق
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+                document.querySelector("form").addEventListener("submit", function () {
+            const btn = document.getElementById("sendBtn");
+            btn.disabled = true;
+            btn.innerHTML = "جاري الإرسال...";
+        });
+        });
+    </script>
+}

@@ -1,0 +1,275 @@
+﻿@model WebApplication2.Models.News
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<IdentityUser> UserManager
+
+@{
+    var currentUserId = UserManager.GetUserId(User);
+}
+
+<style>
+    /* تحسينات التصميم */
+    .card {
+        border-radius: 20px !important;
+        overflow: hidden;
+        transition: transform 0.3s ease;
+        border: none !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1) !important;
+    }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(30, 60, 114, 0.15) !important;
+        }
+
+    .card-header {
+        background: linear-gradient(135deg, #059669, #047857) !important;
+        padding: 1.5rem 2rem !important;
+        border: none !important;
+    }
+
+        .card-header h4 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+        }
+
+        .card-header i {
+            font-size: 2rem;
+            background: rgba(255,255,255,0.2);
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+        }
+
+    .card-body {
+        padding: 2rem !important;
+        background: #ffffff;
+    }
+
+    .form-label {
+        font-weight: 700;
+        color: #1e3c72;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+        .form-label .text-danger {
+            font-size: 1.2rem;
+            margin-right: 3px;
+        }
+
+    .form-control {
+        border-radius: 16px !important;
+        padding: 0.8rem 1.2rem !important;
+        border: 2px solid #e2e8f0 !important;
+        transition: all 0.3s;
+        font-size: 1rem;
+    }
+
+        .form-control:focus {
+            border-color: #1e3c72 !important;
+            box-shadow: 0 0 0 4px rgba(30, 60, 114, 0.1) !important;
+            outline: none;
+        }
+
+    textarea.form-control {
+        min-height: 200px;
+        line-height: 1.8;
+    }
+
+    input[type="file"] {
+        padding: 0.6rem !important;
+        background: #f8fafc;
+        border: 2px dashed #1e3c72 !important;
+        cursor: pointer;
+    }
+
+        input[type="file"]:hover {
+            background: #ffffff;
+            border-color: #2a5a9c !important;
+        }
+
+    .form-text {
+        color: #64748b;
+        margin-top: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+        .form-text::before {
+            content: '📎';
+            font-size: 1rem;
+        }
+
+    #imagePreview {
+        border-radius: 16px;
+        border: 3px solid #1e3c72;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        margin-top: 1rem;
+    }
+
+    .btn {
+        border-radius: 50px !important;
+        padding: 0.8rem 2rem !important;
+        font-weight: 600 !important;
+        transition: all 0.3s !important;
+        border: none !important;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1 1 auto;
+        justify-content: center;
+    }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2) !important;
+        }
+
+    .btn-success {
+        background: linear-gradient(135deg, #059669, #047857) !important;
+    }
+
+    .btn-secondary {
+        background: linear-gradient(135deg, #64748b, #475569) !important;
+    }
+
+    .d-flex.gap-2 {
+        gap: 1rem !important;
+        flex-wrap: wrap;
+    }
+
+    @@media (max-width: 768px) {
+        .card-header h4 {
+            font-size: 1.5rem;
+        }
+
+        .card-body {
+            padding: 1.5rem !important;
+        }
+
+        .d-flex.gap-2 {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+        }
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header">
+            <h4 class="mb-0">
+                <i class="bi bi-plus-circle me-2"></i> إضافة خبر جديد
+            </h4>
+        </div>
+
+        <div class="card-body">
+            <form asp-action="Create" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+
+                <!-- عنوان الخبر -->
+                <div class="mb-4">
+                    <label asp-for="Title" class="form-label fw-bold">
+                        <span class="text-danger">*</span> عنوان الخبر
+                    </label>
+                    <input asp-for="Title" class="form-control"
+                           placeholder="اكتب عنوان الخبر هنا..."
+                           required />
+                    <span asp-validation-for="Title" class="text-danger"></span>
+                </div>
+
+                <!-- محتوى الخبر -->
+                <div class="mb-4">
+                    <label asp-for="Content" class="form-label fw-bold">
+                        <span class="text-danger">*</span> محتوى الخبر
+                    </label>
+                    <textarea asp-for="Content"
+                              class="form-control"
+                              rows="10"
+                              placeholder="اكتب محتوى الخبر بالكامل هنا..."
+                              required></textarea>
+                    <span asp-validation-for="Content" class="text-danger"></span>
+                </div>
+
+                <!-- صورة الخبر -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-image"></i> صورة الخبر (اختياري)
+                    </label>
+                    <input type="file"
+                           name="ImageFile"
+                           class="form-control"
+                           accept="image/*"
+                           onchange="previewImage(event)" />
+                    <div class="form-text">يمكنك رفع صورة للخبر (JPG, PNG, GIF, WEBP) - الحد الأقصى 5 ميجابايت</div>
+                </div>
+
+                <!-- معاينة الصورة -->
+                <div class="mb-3 text-center">
+                    <img id="imagePreview"
+                         src="#"
+                         class="img-fluid rounded d-none"
+                         style="max-height: 200px;" />
+                </div>
+
+                <!-- أزرار -->
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle me-1"></i> حفظ الخبر
+                    </button>
+                    <a asp-action="Index" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left me-1"></i> رجوع للقائمة
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        function previewImage(event) {
+            const img = document.getElementById('imagePreview');
+            if (event.target.files && event.target.files[0]) {
+                const fileSize = event.target.files[0].size / 1024 / 1024;
+                if (fileSize > 5) {
+                    alert('حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت');
+                    event.target.value = '';
+                    img.classList.add('d-none');
+                    return;
+                }
+
+                const fileType = event.target.files[0].type;
+                if (!fileType.startsWith('image/')) {
+                    alert('الرجاء اختيار ملف صورة فقط');
+                    event.target.value = '';
+                    img.classList.add('d-none');
+                    return;
+                }
+
+                img.src = URL.createObjectURL(event.target.files[0]);
+                img.classList.remove('d-none');
+            } else {
+                img.classList.add('d-none');
+            }
+        }
+
+        window.addEventListener('beforeunload', function() {
+            const img = document.getElementById('imagePreview');
+            if (img.src && img.src.startsWith('blob:')) {
+                URL.revokeObjectURL(img.src);
+            }
+        });
+    </script>
+}

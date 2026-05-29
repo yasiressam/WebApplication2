@@ -1,0 +1,33 @@
+﻿@{
+    ViewData["Title"] = "ارسال OTP";
+}
+
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-info text-white">
+            ارسال OTP عبر واتساب
+        </div>
+        <div class="card-body">
+            <form method="post">
+                <div class="mb-3">
+                    <label>رقم الهاتف</label>
+                    <input name="phone" class="form-control" value="@ViewBag.Phone" readonly />
+                </div>
+
+                <div class="mb-3">
+                    <label>رمز التحقق (OTP)</label>
+                    <input name="code" class="form-control" required />
+                </div>
+
+                <button class="btn btn-info">ارسال OTP</button>
+            </form>
+
+            @if (ViewBag.Result != null)
+            {
+                <div class="alert alert-success mt-3" style="white-space: pre-wrap;">
+                    @ViewBag.Result
+                </div>
+            }
+        </div>
+    </div>
+</div>

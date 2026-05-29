@@ -1,0 +1,646 @@
+﻿<!DOCTYPE html>
+@{
+    var siteImageUrl = $"{Context.Request.Scheme}://{Context.Request.Host}/images/background1.jpg";
+    var siteUrl = $"{Context.Request.Scheme}://{Context.Request.Host}";
+    var pageTitle = $"{ViewData["Title"]} - التنظيم السياسي";
+}
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+        @ViewData["Title"] -  التنظيم السياسي
+    </title>
+    <link rel="icon" type="image/jpeg" href="~/images/background1.jpg" asp-append-version="true" />
+    <link rel="shortcut icon" type="image/jpeg" href="~/images/background1.jpg" asp-append-version="true" />
+    <link rel="apple-touch-icon" href="~/images/background1.jpg" asp-append-version="true" />
+    <meta name="description" content="نظام التنظيم السياسي لإدارة المستخدمين والطلبات والإحصائيات." />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="ar_IQ" />
+    <meta property="og:site_name" content="التنظيم السياسي" />
+    <meta property="og:title" content="@pageTitle" />
+    <meta property="og:description" content="نظام التنظيم السياسي لإدارة المستخدمين والطلبات والإحصائيات." />
+    <meta property="og:url" content="@siteUrl" />
+    <meta property="og:image" content="@siteImageUrl" />
+    <meta property="og:image:secure_url" content="@siteImageUrl" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="@pageTitle" />
+    <meta name="twitter:description" content="نظام التنظيم السياسي لإدارة المستخدمين والطلبات والإحصائيات." />
+    <meta name="twitter:image" content="@siteImageUrl" />
+    <link rel="image_src" href="@siteImageUrl" />
+    <script type="application/ld+json">
+        {
+            "@@context": "https://schema.org",
+            "@@type": "WebSite",
+            "name": "التنظيم السياسي",
+            "url": "@siteUrl",
+            "image": "@siteImageUrl"
+        }
+    </script>
+
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.rtl.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/_LayoutStyles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+    <style>
+        :root {
+            --header-height: 60px;
+            --footer-height: 130px;
+            --content-bg: rgba(255, 255, 255, 0.85);
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --shadow-color: rgba(0, 0, 0, 0.2);
+            --primary-blue: #3498db;
+            --primary-dark: #2c3e50;
+            --primary-gradient: linear-gradient(135deg, #3498db, #2c3e50);
+        }
+
+        .site-background {
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            width: 100%;
+                height: calc(100vh - var(--header-height));
+                background-size: contain;
+            background-color: white;
+            background-image: url('/images/background1.jpg');
+            background-size: contain;
+                background-position: center center;
+            background-repeat: no-repeat;
+            opacity: 1;
+            z-index: -1;
+            pointer-events: none;
+            filter: brightness(1);
+        }
+
+            .site-background::after {
+                content: "";
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(255,255,255,0.05);
+            }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            margin: 0;
+            background-color: #f8f9fa;
+            position: relative;
+            color: #2c3e50;
+        }
+
+        main {
+            flex: 1 0 auto;
+            min-height: calc(100vh - var(--header-height) - var(--footer-height));
+            padding: 30px 0 50px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            position: relative;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            margin-bottom: 2.5rem;
+            color: #2c3e50;
+            font-weight: 800;
+            text-align: center;
+            border-bottom: 3px solid #2980b9;
+            padding-bottom: 15px;
+            background-color: var(--content-bg);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .content-area {
+            font-size: 1.15rem;
+            line-height: 1.9;
+            padding: 30px;
+            background: var(--card-bg);
+            border-radius: 15px;
+            box-shadow: 0 8px 25px var(--shadow-color);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        .form-control {
+            background-color: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ced4da;
+            color: #495057;
+        }
+
+            .form-control:focus {
+                background-color: white;
+                border-color: #3498db;
+                box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
+            }
+
+        .btn {
+            font-weight: 600;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            background-color: rgba(52, 152, 219, 0.95);
+            color: white;
+        }
+
+            .btn:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+                background-color: rgba(41, 128, 185, 0.95);
+            }
+
+        .table {
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px var(--shadow-color);
+        }
+
+            .table thead th {
+                background-color: rgba(52, 152, 219, 0.9);
+                color: white;
+                border: none;
+                font-weight: 600;
+            }
+
+            .table tbody tr:hover {
+                background-color: rgba(52, 152, 219, 0.15);
+            }
+
+        .alert {
+            font-size: 1.05rem;
+            background-color: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0,0,0,0.15);
+            box-shadow: 0 4px 12px var(--shadow-color);
+        }
+
+        .progress-indicator {
+                position: absolute;
+            top: 0;
+            left: 0;
+            width: 0%;
+            height: 3px;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            z-index: 9999;
+            transition: width 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(241, 241, 241, 0.9);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(52, 152, 219, 0.7);
+            border-radius: 5px;
+        }
+
+            ::-webkit-scrollbar-thumb:hover {
+                background: rgba(41, 128, 185, 0.9);
+            }
+
+        .text-muted {
+            color: #6c757d !important;
+        }
+
+        .bg-light {
+            background-color: rgba(248, 249, 250, 0.95) !important;
+        }
+
+        .bg-white {
+            background-color: rgba(255, 255, 255, 0.95) !important;
+        }
+
+        .bi {
+            text-shadow: 0px 0px 2px rgba(255, 255, 255, 0.8);
+        }
+
+        .text-dark {
+            color: #2c3e50 !important;
+        }
+
+        .border {
+            border-color: rgba(0, 0, 0, 0.15) !important;
+        }
+
+        /* ===== تنسيقات الكارد بنفس ألوان Login ===== */
+        .custom-card {
+            border: none !important;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+            border-radius: 15px !important;
+            overflow: hidden !important;
+            background: white !important;
+        }
+
+        .custom-card-header {
+            background: linear-gradient(135deg, #3498db, #2c3e50) !important;
+            color: white !important;
+            padding: 1.2rem 1.5rem !important;
+            border-bottom: none !important;
+        }
+
+            .custom-card-header h1,
+            .custom-card-header h2,
+            .custom-card-header h3,
+            .custom-card-header h4,
+            .custom-card-header h5,
+            .custom-card-header h6 {
+                color: white !important;
+                margin-bottom: 0 !important;
+            }
+
+            .custom-card-header p {
+                color: rgba(255, 255, 255, 0.9) !important;
+                margin-bottom: 0 !important;
+            }
+
+            .custom-card-header i {
+                color: white !important;
+            }
+
+        .custom-card-body {
+            padding: 1.5rem !important;
+            background: white !important;
+        }
+
+        .custom-card-footer {
+            background: #f8f9fa !important;
+            border-top: 1px solid rgba(52, 152, 219, 0.2) !important;
+            padding: 1rem 1.5rem !important;
+            color: #6c757d !important;
+        }
+
+            .custom-card-footer i {
+                color: #3498db !important;
+            }
+
+        /* تنسيق الأزرار داخل الكارد */
+        .custom-btn-primary {
+            background: linear-gradient(135deg, #3498db, #2c3e50) !important;
+            border: none !important;
+            color: white !important;
+            font-weight: 600 !important;
+            padding: 0.6rem 1.5rem !important;
+            border-radius: 8px !important;
+            transition: opacity 0.2s !important;
+            display: inline-block !important;
+            text-align: center !important;
+            width: auto !important;
+        }
+
+            .custom-btn-primary:hover {
+                opacity: 0.9 !important;
+                background: linear-gradient(135deg, #3498db, #2c3e50) !important;
+                transform: translateY(-2px) !important;
+                box-shadow: 0 0.5rem 1rem rgba(52, 152, 219, 0.3) !important;
+            }
+
+            .custom-btn-primary:active {
+                transform: translateY(0) !important;
+            }
+
+            .custom-btn-primary:disabled {
+                opacity: 0.65 !important;
+            }
+
+        /* تنسيق الحقول داخل الكارد */
+        .custom-card-body .form-control,
+        .custom-card-body .form-select {
+            border-radius: 8px !important;
+            border: 1px solid #ced4da !important;
+            padding: 0.6rem 1rem !important;
+            transition: all 0.2s !important;
+        }
+
+            .custom-card-body .form-control:focus,
+            .custom-card-body .form-select:focus {
+                border-color: #3498db !important;
+                box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25) !important;
+                outline: none !important;
+            }
+
+        .custom-card-body .form-label {
+            color: #2c3e50 !important;
+            font-weight: 600 !important;
+            margin-bottom: 0.4rem !important;
+        }
+
+        .custom-card-body .input-group-text {
+            background: #f8f9fa !important;
+            border: 1px solid #ced4da !important;
+            border-radius: 8px 0 0 8px !important;
+            color: #2c3e50 !important;
+        }
+
+        /* تنسيق التنبيهات داخل الكارد */
+        .custom-card-body .alert {
+            border-radius: 8px !important;
+            border: none !important;
+            padding: 1rem !important;
+        }
+
+        .custom-card-body .alert-info {
+            background-color: rgba(52, 152, 219, 0.1) !important;
+            border-right: 4px solid #3498db !important;
+            color: #2c3e50 !important;
+        }
+
+        .custom-card-body .alert-success {
+            background: linear-gradient(135deg, #3498db, #2c3e50) !important;
+            color: white !important;
+        }
+
+        .custom-card-body .alert-danger {
+            background-color: rgba(220, 53, 69, 0.1) !important;
+            border-right: 4px solid #dc3545 !important;
+            color: #721c24 !important;
+        }
+
+        .custom-card-body .alert-warning {
+            background-color: rgba(255, 193, 7, 0.1) !important;
+            border-right: 4px solid #ffc107 !important;
+            color: #856404 !important;
+        }
+
+        /* تنسيق الروابط داخل الكارد */
+        .custom-card-body a:not(.btn) {
+            color: #3498db !important;
+            text-decoration: none !important;
+            transition: color 0.2s !important;
+        }
+
+            .custom-card-body a:not(.btn):hover {
+                color: #2c3e50 !important;
+                text-decoration: underline !important;
+            }
+
+        /* تنسيق القوائم داخل الكارد */
+        .custom-card-body ul,
+        .custom-card-body ol {
+            padding-right: 1.5rem !important;
+        }
+
+        .custom-card-body li {
+            margin-bottom: 0.3rem !important;
+        }
+
+        /* تنسيق الحدود الفاصلة */
+        .custom-card-body .border-top {
+            border-top: 1px solid rgba(52, 152, 219, 0.2) !important;
+        }
+
+        .custom-card-body .border-bottom {
+            border-bottom: 1px solid rgba(52, 152, 219, 0.2) !important;
+        }
+
+        /* تنسيق الخانات الاختيارية */
+        .custom-card-body small.text-muted {
+            color: #6c757d !important;
+            font-size: 0.85rem !important;
+        }
+    </style>
+
+    @RenderSection("Styles", required: false)
+</head>
+<body>
+    <div class="site-background" style="background-image: url('@Url.Content("~/images/background1.jpg")?v=20260530-2');"></div>
+    <div class="progress-indicator" id="progressIndicator"></div>
+    <partial name="_FloatingAlerts" />
+    <partial name="_Header" />
+
+    <main class="main-content">
+        <div class="container">
+            @if (!string.IsNullOrEmpty(ViewData["Title"] as string))
+            {
+                <h1 class="page-title">
+                    <i class="@(ViewData["Icon"] as string ?? "bi bi-file-text") me-3"></i>
+                    @ViewData["Title"]
+                </h1>
+            }
+
+            @if (ViewBag.ErrorMessage != null)
+            {
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-x-circle-fill fs-4 me-3"></i>
+                        <div class="flex-grow-1">
+                            <h5 class="alert-heading mb-1 fw-bold">خطأ في الإدخال</h5>
+                            <p class="mb-0">@ViewBag.ErrorMessage</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            @if (ViewBag.SuccessMessage != null)
+            {
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-check2-circle fs-4 me-3"></i>
+                        <div class="flex-grow-1">
+                            <h5 class="alert-heading mb-1 fw-bold">تم بنجاح</h5>
+                            <p class="mb-0">@ViewBag.SuccessMessage</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            }
+
+            <div class="content-area">
+                @RenderBody()
+            </div>
+        </div>
+    </main>
+
+    <partial name="_Footer" />
+
+    <!-- JavaScript Files - الترتيب مهم جداً -->
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+    <script src="~/js/notifications.js"></script>
+
+    <script>
+        feather.replace();
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    if (this.href && !this.href.includes('javascript')) {
+                        document.getElementById('progressIndicator').style.width = '100%';
+                        setTimeout(() => {
+                            document.getElementById('progressIndicator').style.width = '0%';
+                        }, 500);
+                    }
+                });
+            });
+
+            setTimeout(() => {
+                document.querySelectorAll('.floating-alert').forEach(alert => {
+                    const bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                });
+            }, 5000);
+
+            document.querySelectorAll('.btn').forEach(btn => {
+                btn.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-3px)';
+                    this.style.boxShadow = '0 7px 14px rgba(0,0,0,0.1)';
+                });
+
+                btn.addEventListener('mouseleave', function() {
+                    this.style.transform = 'translateY(0)';
+                    this.style.boxShadow = '0 2px 5px rgba(0,0,0,0.1)';
+                });
+            });
+
+            document.querySelectorAll('label[for]').forEach(label => {
+                const inputId = label.getAttribute('for');
+                const input = document.getElementById(inputId);
+                if (input && input.hasAttribute('required')) {
+                    label.classList.add('required-field');
+                    label.innerHTML += ' <span class="text-danger">*</span>';
+                }
+            });
+        });
+
+        window.addEventListener('beforeunload', function() {
+            document.getElementById('progressIndicator').style.width = '100%';
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.alert') && !e.target.closest('.btn-close')) {
+                document.querySelectorAll('.alert.show').forEach(alert => {
+                    const bsAlert = bootstrap.Alert.getInstance(alert);
+                    if (bsAlert) bsAlert.close();
+                });
+            }
+        });
+
+        window.getCsrfToken = function() {
+            return document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+        };
+    </script>
+
+    <!-- OneSignal SDK - مفعل بالكود الصحيح -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+
+        // تهيئة OneSignal
+        window.OneSignalDeferred.push(function(OneSignal) {
+            OneSignal.init({
+                appId: "880334b8-c814-42b1-8bd1-61087237bc61",
+                serviceWorkerPath: "OneSignalSDKWorker.js",
+                notifyButton: {
+                    enable: true,
+                },
+            });
+            console.log("✅ OneSignal initialized");
+        });
+
+        // تسجيل الجهاز بعد التهيئة
+        window.OneSignalDeferred.push(async function(OneSignal) {
+            try {
+                // انتظار قليل للتأكد من اكتمال التهيئة
+                await new Promise(resolve => setTimeout(resolve, 7000));
+
+                // محاولة الحصول على User ID بالطريقة الصحيحة للإصدار الحديث
+                let userId = null;
+
+                try {
+                    // الطريقة الصحيحة للإصدار الحديث من OneSignal
+                    if (OneSignal && OneSignal.User && OneSignal.User.PushSubscription) {
+                        const subscription = await OneSignal.User.PushSubscription;
+                        userId = subscription?.id || null;
+                        console.log("✅ OneSignal Subscription:", subscription);
+                    }
+                } catch (innerError) {
+                    console.log("⚠️ لم نتمكن من الحصول على User ID:", innerError.message);
+                }
+
+                if (userId) {
+                    console.log("✅ OneSignal User ID:", userId);
+
+                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+
+                    if (token) {
+                        console.log("📤 جاري تسجيل جهاز OneSignal...");
+
+                        const response = await fetch('/api/notifications/register-device', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'RequestVerificationToken': token
+                            },
+                            body: JSON.stringify({
+                                playerId: userId,
+                                deviceType: 'web',
+                                browser: navigator.userAgent,
+                                operatingSystem: navigator.platform
+                            })
+                        });
+
+                        const data = await response.json();
+                        console.log("✅ تم تسجيل الجهاز في OneSignal:", data);
+                    } else {
+                        console.log("⚠️ CSRF token غير موجود");
+                    }
+                } else {
+                    console.log("⚠️ لم يتم الحصول على OneSignal User ID - قد يحتاج المستخدم للموافقة على الإشعارات أولاً");
+                }
+            } catch (e) {
+                console.error("❌ خطأ في تسجيل OneSignal:", e);
+            }
+        });
+
+        // طلب إذن الإشعارات من المتصفح
+        if (Notification.permission === "default") {
+            Notification.requestPermission().then(permission => {
+                console.log("✅ Notification permission:", permission);
+            });
+        }
+
+        // طلب إذن الإشعارات من OneSignal (يظهر النافذة المنبثقة)
+        window.OneSignalDeferred.push(function(OneSignal) {
+            // تأخير قليل قبل عرض النافذة
+            setTimeout(() => {
+                OneSignal.Notifications.requestPermission().then(accepted => {
+                    console.log("✅ تم عرض طلب الإشعارات - المستخدم وافق:", accepted);
+                    if (accepted) {
+                        // إذا وافق المستخدم، حاول تسجيل الجهاز مرة أخرى
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 2000);
+                    }
+                }).catch(err => {
+                    console.log("⚠️ لم يتم عرض طلب الإشعارات:", err);
+                });
+            }, 6000);
+        });
+    </script>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,89 @@
+@model WebApplication2.Models.Profile.ManagementAssignmentReviewViewModel
+
+@{
+    ViewData["Title"] = "مراجعة طلب التكليف الإداري";
+    Layout = "_Layout";
+}
+
+<div class="container mt-4" dir="rtl">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-sm border-0 rounded-4">
+                <div class="card-header text-white rounded-top-4" style="background: linear-gradient(135deg, #2c3e50, #3498db);">
+                    <h4 class="mb-0">
+                        <i class="bi bi-person-check-fill me-2"></i>
+                        مراجعة طلب تكليف @Model.AssignmentRoleArabic
+                    </h4>
+                </div>
+
+                <div class="card-body">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">الاسم</label>
+                            <input class="form-control" value="@Model.FullName" readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">البريد الإلكتروني</label>
+                            <input class="form-control" value="@Model.Email" readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">المحافظة</label>
+                            <input class="form-control" value="@Model.Governorate" readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">المستوى المطلوب</label>
+                            <input class="form-control" value="@Model.ManagementLevelArabic" readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">جهة الانتساب</label>
+                            <input class="form-control" value="@(string.IsNullOrWhiteSpace(Model.AffiliationEntityName) ? "---" : Model.AffiliationEntityName)" readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">القسم</label>
+                            <input class="form-control" value="@(string.IsNullOrWhiteSpace(Model.DivisionName) ? "---" : Model.DivisionName)" readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">الشعبة</label>
+                            <input class="form-control" value="@(string.IsNullOrWhiteSpace(Model.SectionName) ? "---" : Model.SectionName)" readonly />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">الوحدة</label>
+                            <input class="form-control" value="@(string.IsNullOrWhiteSpace(Model.GroupName) ? "---" : Model.GroupName)" readonly />
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <form asp-action="ApproveRequest" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@Model.RequestId" />
+                                <button type="submit" class="btn btn-success w-100">
+                                    <i class="bi bi-check-circle-fill me-1"></i>
+                                    موافقة وتفعيل التكليف
+                                </button>
+                            </form>
+                        </div>
+
+                        <div class="col-md-6">
+                            <form asp-action="RejectRequest" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@Model.RequestId" />
+                                <button type="submit" class="btn btn-danger w-100">
+                                    <i class="bi bi-x-circle-fill me-1"></i>
+                                    رفض الطلب
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div class="mt-3">
+                        <a asp-action="Individuals" class="btn btn-secondary">
+                            <i class="bi bi-arrow-right-circle me-1"></i>
+                            رجوع إلى قائمة الأفراد
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

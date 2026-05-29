@@ -1,0 +1,1331 @@
+﻿@model IEnumerable<WebApplication2.Controllers.AdminUserVM>
+
+@{
+    Layout = "_Layout";
+    var administrativeOnly = ViewBag.AdministrativeOnly is bool value && value;
+    var pageTitle = administrativeOnly ? "المسؤولين والمعاونين" : "إدارة المستخدمين";
+    ViewData["Title"] = pageTitle + " - محافظة " + ViewBag.ManagedGovernorate;
+
+    // جلب الإحصائيات
+    var totalUsers = ViewBag.TotalUsers is int totalUsersValue ? totalUsersValue : Model.Count();
+    var filteredUsers = ViewBag.FilteredUsers is int filteredUsersValue ? filteredUsersValue : totalUsers;
+    var activeUsers = ViewBag.ActiveUsers is int activeUsersValue ? activeUsersValue : Model.Count(u => u.IsActive);
+    var promotedUsers = ViewBag.PromotedUsers is int promotedUsersValue ? promotedUsersValue : Model.Count(u => u.IsPromoted);
+    var currentPage = ViewBag.CurrentPage is int currentPageValue ? currentPageValue : 1;
+    var pageSize = ViewBag.PageSize is int pageSizeValue ? pageSizeValue : 10;
+    var totalPages = ViewBag.TotalPages is int totalPagesValue ? totalPagesValue : 1;
+    var rangeStart = filteredUsers > 0 ? ((currentPage - 1) * pageSize) + 1 : 0;
+    var rangeEnd = Math.Min(currentPage * pageSize, filteredUsers);
+    var currentSearch = ViewBag.Search as string ?? "";
+    var currentRoleFilter = ViewBag.RoleFilter as string ?? "";
+    var currentStatusFilter = ViewBag.StatusFilter as string ?? "";
+    var currentManagerLevelFilter = ViewBag.ManagerLevelFilter as string ?? "";
+    var currentEducationFilter = ViewBag.EducationFilter as string ?? "";
+}
+
+<style>
+    :root {
+        --primary: #1e3c72;
+        --primary-light: #2a5a9c;
+        --primary-soft: #e8f0fe;
+        --success: #28a745;
+        --danger: #dc3545;
+        --info: #17a2b8;
+        --warning: #ffc107;
+        --purple: #9b59b6;
+    }
+
+    .table {
+        font-size: 0.8rem;
+    }
+
+        .table td, .table th {
+            padding: 0.6rem 0.5rem;
+            vertical-align: middle;
+        }
+
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.35em 0.65em;
+    }
+
+    .btn-action {
+        padding: 5px 10px;
+        font-size: 0.75rem;
+    }
+
+        .btn-action i {
+            font-size: 0.75rem;
+        }
+
+    .stat-card {
+        border-radius: 15px !important;
+        transition: all 0.3s ease;
+        border: none !important;
+        overflow: hidden;
+    }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+        }
+
+        .stat-card .card-body {
+            padding: 1.2rem !important;
+        }
+
+        .stat-card h5 {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card h2 {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+
+    .filter-card {
+        border-radius: 15px !important;
+        border: none !important;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.05) !important;
+        margin-bottom: 25px;
+        background: white;
+    }
+
+    .footer-page-size {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        justify-content: center;
+    }
+
+        .footer-page-size label {
+            margin: 0;
+            white-space: nowrap;
+        }
+
+        .footer-page-size select {
+            width: 105px;
+        }
+
+    @@media (max-width: 768px) {
+        .footer-page-size {
+            width: 100%;
+            margin: 0.75rem 0;
+        }
+
+        .footer-page-size select {
+            width: 100%;
+            max-width: 180px;
+        }
+
+    }
+
+        .filter-card .card-header {
+            background: white !important;
+            border-bottom: 2px solid #f0f2f5 !important;
+            padding: 1rem 1.5rem !important;
+        }
+
+            .filter-card .card-header h5 {
+                color: var(--primary);
+                font-size: 1rem;
+                font-weight: 700;
+                margin: 0;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+    .table-card {
+        border-radius: 15px !important;
+        border: none !important;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.05) !important;
+    }
+
+        .table-card .card-header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light)) !important;
+            padding: 1rem 1.5rem !important;
+            border: none !important;
+            color: white;
+        }
+
+    .btn-add-user {
+        background: rgba(255,255,255,0.2) !important;
+        border: 1px solid rgba(255,255,255,0.3) !important;
+        color: white !important;
+        padding: 0.4rem 1rem !important;
+        border-radius: 50px !important;
+        font-weight: 600;
+        font-size: 0.8rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.3s;
+        backdrop-filter: blur(10px);
+    }
+
+        .btn-add-user:hover {
+            background: white !important;
+            color: var(--primary) !important;
+            transform: translateY(-3px);
+        }
+
+    .table thead th {
+        background: #f8f9fa;
+        color: var(--primary);
+        font-weight: 700;
+        font-size: 0.85rem;
+        padding: 0.8rem 0.5rem;
+        border: none;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    .table tbody tr {
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+
+        .table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+    .num-wrapper {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        background: var(--primary-soft);
+        border-radius: 6px;
+        color: var(--primary);
+        font-weight: 700;
+        font-size: 0.8rem;
+    }
+
+    tr:hover .num-wrapper {
+        transform: scale(1.05);
+        background: var(--primary);
+        color: white;
+    }
+
+    .user-table-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid white;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.16);
+        flex: 0 0 36px;
+    }
+
+    .user-table-avatar-fallback {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+        font-weight: 700;
+        border: 2px solid white;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.16);
+        flex: 0 0 36px;
+    }
+
+    .action-buttons-container {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
+
+    .btn-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 5px 12px;
+        border-radius: 25px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        white-space: nowrap;
+    }
+
+        .btn-action i {
+            font-size: 0.75rem;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+    .btn-details {
+        background: linear-gradient(135deg, #17a2b8, #138496);
+        color: white;
+    }
+
+        .btn-details:hover {
+            background: linear-gradient(135deg, #138496, #117a8b);
+            color: white;
+        }
+
+    .btn-toggle {
+        background: linear-gradient(135deg, #ffc107, #e0a800);
+        color: #212529;
+    }
+
+        .btn-toggle.inactive {
+            background: linear-gradient(135deg, #28a745, #218838);
+            color: white;
+        }
+
+    .btn-delete {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        color: white;
+    }
+
+        .btn-delete:hover {
+            background: linear-gradient(135deg, #c82333, #bd2130);
+            color: white;
+        }
+
+    .action-bar {
+        background: white;
+        border-radius: 15px;
+        padding: 12px 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        border: 1px solid #e9ecef;
+    }
+
+    .btn-excel {
+        background: linear-gradient(135deg, #28a745, #218838);
+        color: white;
+        border: none;
+        padding: 6px 15px;
+        border-radius: 25px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+        .btn-excel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+            color: white;
+        }
+
+    .checkbox-column {
+        width: 30px;
+        text-align: center;
+    }
+
+    .user-checkbox {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        accent-color: var(--primary);
+    }
+
+    #selectAll {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        accent-color: var(--primary);
+    }
+
+    .selected-count {
+        background: white;
+        color: #dc3545;
+        padding: 2px 6px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        margin-left: 8px;
+    }
+
+    .governorate-badge {
+        background: #e3f2fd;
+        color: #1565c0;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+
+    .bulk-delete-btn {
+        background: linear-gradient(135deg, #dc3545, #c82333);
+        color: white;
+        border: none;
+        padding: 6px 15px;
+        border-radius: 25px;
+    }
+
+        .bulk-delete-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+    /* تنسيقات المسؤولية الإدارية */
+    .manager-level-badge {
+        background-color: #17a2b8;
+        color: #ffffff;
+        font-weight: 600;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        display: inline-block;
+    }
+
+    .manager-entity-name {
+        color: #2c3e50;
+        font-size: 0.7rem;
+        font-weight: 500;
+        margin-top: 3px;
+        display: inline-block;
+    }
+
+    .manager-no-data {
+        color: #adb5bd;
+        font-size: 0.7rem;
+    }
+
+    /* تنسيقات الأدوار */
+    .role-badge {
+        font-size: 0.7rem;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-weight: 600;
+    }
+
+    @@media (max-width: 768px) {
+        .table thead {
+            display: none;
+        }
+
+        .table tbody tr {
+            display: block;
+            margin-bottom: 1rem;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 0.8rem;
+        }
+
+        .table tbody td {
+            display: flex;
+            align-items: center;
+            padding: 0.4rem;
+            border: none;
+            border-bottom: 1px dashed #dee2e6;
+        }
+
+            .table tbody td:last-child {
+                border-bottom: none;
+            }
+
+            .table tbody td::before {
+                content: attr(data-label);
+                font-weight: 700;
+                color: var(--primary);
+                min-width: 90px;
+                font-size: 0.75rem;
+            }
+
+        .action-buttons-container {
+            justify-content: center;
+            width: 100%;
+        }
+
+        .btn-action {
+            flex: 1;
+            min-width: 60px;
+        }
+    }
+</style>
+
+<div class="container-fluid mt-3">
+    <!-- عنوان الصفحة مع اسم المحافظة -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+        <div>
+            <h3 class="mb-1" style="font-size: 1.3rem;">
+                <i class="fas fa-users"></i> @pageTitle
+            </h3>
+            <p class="text-muted mb-0">
+                <i class="fas fa-map-marker-alt text-primary"></i>
+                محافظة <strong class="text-primary">@ViewBag.ManagedGovernorate</strong>
+            </p>
+        </div>
+
+    </div>
+
+    <!-- بطاقات الإحصائيات -->
+    <div class="row mb-3">
+        <div class="col-md-4 col-sm-6 mb-2">
+            <div class="card stat-card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">إجمالي المستخدمين</h5>
+                            <h2 class="mb-0">@totalUsers</h2>
+                        </div>
+                        <i class="fas fa-users fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-sm-6 mb-2">
+            <div class="card stat-card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title">المستخدمين النشطين</h5>
+                            <h2 class="mb-0">@activeUsers</h2>
+                        </div>
+                        <i class="fas fa-user-check fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-sm-6 mb-2">
+            <div class="card stat-card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="card-title"> الافراد</h5>
+                            <h2 class="mb-0">@promotedUsers</h2>
+                        </div>
+                        <i class="fas fa-star fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- شريط الإجراءات -->
+    <div class="action-bar">
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <div class="dropdown d-inline-block">
+                    <button class="btn btn-excel dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-file-excel me-1"></i> تصدير
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a class="dropdown-item" href="@Url.Action("ExportAllUsersToExcel")">
+                                <i class="fas fa-users text-success me-2"></i> جميع المستخدمين
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="@Url.Action("ExportMembersOnlyToExcel")">
+                                <i class="fas fa-star text-warning me-2"></i> الأعضاء المصعدين
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item" href="@Url.Action("ExportStudentsOnlyToExcel")">
+                                <i class="fas fa-graduation-cap text-info me-2"></i> الطلاب الجامعيين
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="@Url.Action("ExportAdministrativeManagersOnlyToExcel")">
+                                <i class="fas fa-user-tie text-purple me-2"></i> المسؤولين الإداريين
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <button class="bulk-delete-btn ms-2" id="bulkDeleteBtn" onclick="bulkDeleteSelected()" disabled>
+                    <i class="fas fa-trash-alt me-1"></i> حذف
+                    <span class="selected-count" id="selectedCount">0</span>
+                </button>
+            </div>
+            <div class="col-md-6 text-start text-md-end">
+                <small class="text-muted">
+                    <i class="fas fa-info-circle"></i> حدد المستخدمين للحذف المتعدد
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- بطاقة البحث والتصفية -->
+    <div class="filter-card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-filter"></i> البحث والتصفية
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label fw-bold">🔍 البحث:</label>
+                    <input type="text" class="form-control" id="searchInput" placeholder="ابحث بالاسم أو البريد أو الهاتف أو رقم الباج الخاص بك أو الجهة أو القسم أو الشعبة أو الوحدة..." value="@currentSearch">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label fw-bold">🎓 المؤهل العلمي:</label>
+                    <select class="form-select" id="educationFilter">
+                        <option value="">جميع المؤهلات</option>
+                        <option value="ابتدائي">ابتدائي</option>
+                        <option value="متوسط">متوسط</option>
+                        <option value="إعدادي">إعدادي</option>
+                        <option value="آمي">آمي</option>
+                        <option value="دبلوم">دبلوم</option>
+                        <option value="بكالوريوس">بكالوريوس</option>
+                        <option value="طالب جامعي">طالب جامعي</option>
+                        <option value="ماجستير">ماجستير</option>
+                        <option value="دكتوراه">دكتوراه</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    <label class="form-label fw-bold">🟢 الحالة:</label>
+                    <select class="form-select" id="statusFilter">
+                        <option value="">جميع الحالات</option>
+                        <option value="active">نشط</option>
+                        <option value="inactive">غير نشط</option>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label fw-bold">👔 المسؤولية الإدارية:</label>
+                    <select class="form-select" id="managerLevelFilter">
+                        <option value="">جميع المسؤوليات</option>
+
+                        <optgroup label="المسؤول">
+                            <option value="manager-entity">مسؤول جهة</option>
+                            <option value="manager-division">مسؤول قسم</option>
+                            <option value="manager-section">مسؤول شعبة</option>
+                            <option value="manager-group">مسؤول وحدة</option>
+                        </optgroup>
+
+                        <optgroup label="المعاون">
+                            <option value="assistant-entity">معاون جهة</option>
+                            <option value="assistant-division">معاون قسم</option>
+                            <option value="assistant-section">معاون شعبة</option>
+                            <option value="assistant-group">معاون وحدة</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <label class="form-label fw-bold">👤 الدور:</label>
+                    <select class="form-select" id="roleFilter">
+                        <option value="">جميع الأدوار</option>
+                        <option value="admin">أدمن محافظة</option>
+                        <option value="mapviewer">مشاهد خريطة</option>
+                        <option value="superadmin">سوبر أدمن</option>
+                        <option value="فرد">فرد</option>
+                        <option value="user">مستخدم</option>
+                    </select>
+                </div>
+                <div class="col-md-3 mb-3 d-flex align-items-end">
+                    <div class="btn-group">
+                        <button class="btn btn-primary" id="applyFilter">
+                            <i class="fas fa-filter"></i> تطبيق الفلتر
+                        </button>
+                        <button class="btn btn-outline-secondary" id="clearFilter">
+                            <i class="fas fa-times"></i> مسح الفلاتر
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="alert alert-info mb-0 py-2">
+                        <i class="fas fa-info-circle"></i>
+                        إجمالي النتائج: <span id="filteredCount">@filteredUsers</span> @(administrativeOnly ? "مسؤول/معاون" : "مستخدم")
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- جدول المستخدمين -->
+    <div class="table-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <i class="fas fa-users"></i> قائمة @(administrativeOnly ? "المسؤولين والمعاونين" : "المستخدمين")
+                <span class="badge bg-light text-dark ms-2">@filteredUsers</span>
+            </div>
+            <a asp-action="CreateUserByAdmin" asp-controller="Account" class="btn-add-user">
+                <i class="fas fa-user-plus"></i> إضافة مستخدم
+            </a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="usersTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="checkbox-column">
+                                <input type="checkbox" id="selectAll" onclick="toggleAll(this)">
+                            </th>
+                            <th style="width: 3%;">#</th>
+                            <th style="width: 15%;">البريد</th>
+                            <th style="width: 12%;">الاسم</th>
+                            <th style="width: 10%;">الدور</th>
+                            <th style="width: 9%;">السكن</th>
+                            <th style="width: 9%;">العمل</th>
+                            <th style="width: 10%;">التحصيل الدراسي</th>
+                            <th style="width: 10%;">المسؤولية الإدارية</th>
+                            <th style="width: 5%;">الحالة</th>
+                            <th style="width: 12%;">الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.Count(); i++)
+                        {
+                            var user = Model.ElementAt(i);
+                            var rowNumber = ((currentPage - 1) * pageSize) + i + 1;
+                            <tr data-user
+                                data-index="@rowNumber"
+                                data-name="@user.FullName?.ToLower()"
+                                data-email="@user.Email?.ToLower()"
+                                data-search="@user.SearchText"
+                                data-status="@(user.IsActive ? "active" : "inactive")"
+                                data-education="@user.Education?.ToLower()"
+                                data-studystage="@user.StudyStage?.ToLower()"
+                                data-role="@user.Roles?.ToLower()"
+                                data-managerlevel="@user.ManagementLevel"
+                                data-assignmentrole="@user.AssignmentRole"
+                                data-ismanager="@user.IsManager.ToString().ToLower()">
+                                
+                                <td class="checkbox-column" data-label="اختيار">
+                                    <input type="checkbox" class="user-checkbox" value="@user.UserId" onchange="updateSelectedCount()">
+                                </td>
+                                
+                                <td data-label="#">
+                                    <span class="num-wrapper">@rowNumber</span>
+                                </td>
+                                
+                                <td data-label="البريد">
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar me-1">
+                                            @if (!string.IsNullOrWhiteSpace(user.CoverImage))
+                                            {
+                                                <img src="@user.CoverImage" class="user-table-avatar" alt="@user.FullName" />
+                                            }
+                                            else
+                                            {
+                                                <div class="user-table-avatar-fallback">
+                                                    @(string.IsNullOrEmpty(user.FullName) ? "?" : user.FullName[0].ToString())
+                                                </div>
+                                            }
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold small">@user.Email</div>
+                                            <small class="text-muted" style="font-size: 0.6rem;">@user.UserId.Substring(0, Math.Min(6, user.UserId.Length))...</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                
+                                <td data-label="الاسم">
+                                    <div class="fw-bold small">@user.FullName</div>
+                                </td>
+                                
+                                <!-- عمود الدور -->
+                                <td data-label="الدور">
+                                    @if (!string.IsNullOrEmpty(user.Roles))
+                                    {
+                                        var rolesList = user.Roles.Split(',');
+                                        foreach (var role in rolesList)
+                                        {
+                                            var roleTrimmed = role.Trim();
+                                            <span class="badge @(roleTrimmed == "Admin" ? "bg-danger" :
+                                                                                               roleTrimmed == "DistrictAdmin" ? "bg-danger" :
+                                                                                               roleTrimmed == "SuperAdmin" ? "bg-dark" :
+                                                                                               roleTrimmed == "فرد" ? "bg-success" :
+                                                                                               roleTrimmed == "User" ? "bg-secondary" :
+                                                                                               roleTrimmed == "Manager" ? "bg-info" :
+                                                                                               roleTrimmed == "AssistantManager" ? "bg-warning text-dark" : "bg-info") me-1">
+                        @(roleTrimmed == "DistrictAdmin" ? "أدمن محافظة" :
+                          roleTrimmed == "Manager" ? "مسؤول" :
+                          roleTrimmed == "AssistantManager" ? "معاون" :
+                          roleTrimmed == "User" ? "مستخدم" :
+                          (roleTrimmed == "فرد" ? "فرد" : roleTrimmed))
+                    </span>
+                }
+            }
+    else
+            {
+                <span class="text-muted">---</span>
+            }
+        </td>
+
+                                <td data-label="السكن">
+                                    <small>@(!string.IsNullOrEmpty(user.ResidenceGovernorate) && user.ResidenceGovernorate != "غير محدد" ? $"محافظة {user.ResidenceGovernorate}" : "---")</small>
+                                </td>
+                                <td data-label="العمل">
+                                    <small>@(!string.IsNullOrEmpty(user.WorkGovernorate) && user.WorkGovernorate != "غير محدد" ? $"محافظة {user.WorkGovernorate}" : "---")</small>
+                                </td>
+                                <td data-label="التحصيل الدراسي">
+                                    @if (!string.IsNullOrEmpty(user.Education) && user.Education != "---")
+                                    {
+                                        <span class="badge bg-secondary">@user.Education</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">---</span>
+                                    }
+                                </td>
+        <td data-label="المسؤولية الإدارية">
+            @if (user.IsManager)
+            {
+                var isAssistant = !string.IsNullOrEmpty(user.ManagementLevelArabic) && user.ManagementLevelArabic.Contains("معاون");
+                <div class="d-flex flex-column">
+                    <span class="manager-level-badge @(isAssistant ? "bg-warning text-dark" : "")">
+                        @user.ManagementLevelArabic
+                    </span>
+                    <small class="manager-entity-name">@user.ManagedEntityName</small>
+                </div>
+            }
+            else
+            {
+                <span class="manager-no-data">---</span>
+            }
+        </td>
+
+                                
+        <td data-label="الحالة">
+            @if (user.IsActive)
+            {
+                <span class="badge bg-success">مفعل</span>
+            }
+            else
+            {
+                <span class="badge bg-danger">معطل</span>
+            }
+        </td>
+                                
+        <td data-label="الإجراءات">
+            <div class="action-buttons-container">
+                <a href="@Url.Action("Details", "Admin", new { id = user.UserId })"
+                       class="btn-action btn-details" title="تفاصيل">
+                    <i class="fas fa-eye"></i>
+                    <span>تفاصيل</span>
+                </a>
+
+                <button class="btn-action btn-toggle @(user.IsActive ? "" : "inactive") toggle-status-btn"
+                        data-user-id="@user.UserId"
+                        title="@(user.IsActive ? "تعطيل" : "تفعيل")">
+                    <i class="fas fa-power-off"></i>
+                    <span>@(user.IsActive ? "تعطيل" : "تفعيل")</span>
+                </button>
+
+                <button class="btn-action btn-delete delete-user-btn"
+                        data-user-id="@user.UserId"
+                        data-user-email="@user.Email"
+                        data-user-name="@user.FullName"
+                        title="حذف">
+                    <i class="fas fa-trash-alt"></i>
+                    <span>حذف</span>
+                </button>
+            </div>
+        </td>
+    </tr>
+}
+</tbody>
+</table>
+</div>
+</div>
+<div class="card-footer">
+    <div class="row align-items-center">
+        <div class="col-md-4">
+            @if (totalPages > 1)
+            {
+                var firstPage = Math.Max(1, currentPage - 2);
+                var lastPage = Math.Min(totalPages, currentPage + 2);
+                <nav aria-label="Page navigation">
+                    <ul class="pagination pagination-sm mb-0" id="serverPagination">
+                        <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                            <a class="page-link" asp-action="Users" asp-route-page="@(currentPage - 1)" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">السابق</a>
+                        </li>
+                        @if (firstPage > 1)
+                        {
+                            <li class="page-item">
+                                <a class="page-link" asp-action="Users" asp-route-page="1" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">1</a>
+                            </li>
+                            @if (firstPage > 2)
+                            {
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            }
+                        }
+                        @for (var p = firstPage; p <= lastPage; p++)
+                        {
+                            <li class="page-item @(p == currentPage ? "active" : "")">
+                                <a class="page-link" asp-action="Users" asp-route-page="@p" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">@p</a>
+                            </li>
+                        }
+                        @if (lastPage < totalPages)
+                        {
+                            @if (lastPage < totalPages - 1)
+                            {
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            }
+                            <li class="page-item">
+                                <a class="page-link" asp-action="Users" asp-route-page="@totalPages" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">@totalPages</a>
+                            </li>
+                        }
+                        <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                            <a class="page-link" asp-action="Users" asp-route-page="@(currentPage + 1)" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">التالي</a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+        </div>
+        <div class="col-md-4">
+            <div class="footer-page-size">
+                <label class="form-label fw-bold small">عدد العرض:</label>
+                <select class="form-select form-select-sm" id="pageSizeSelect">
+                    <option value="10" selected="@(pageSize == 10 ? "selected" : null)">10</option>
+                    <option value="25" selected="@(pageSize == 25 ? "selected" : null)">25</option>
+                    <option value="50" selected="@(pageSize == 50 ? "selected" : null)">50</option>
+                    <option value="100" selected="@(pageSize == 100 ? "selected" : null)">100</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-4 text-end">
+            <div class="text-muted small">
+                <i class="fas fa-chart-bar"></i>
+                عرض <span id="currentRange">@rangeStart-@rangeEnd</span> من @filteredUsers
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+</div>
+
+<!-- Modal تأكيد الحذف -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> تأكيد الحذف</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <i class="fas fa-user-slash fa-3x text-danger mb-2"></i>
+                    <h6>هل أنت متأكد من حذف هذا المستخدم؟</h6>
+                </div>
+                <div id="deleteUserInfo" class="alert alert-warning py-2 small text-center"></div>
+                <div class="alert alert-danger py-2 small">
+                    <i class="fas fa-exclamation-circle"></i> هذا الإجراء لا يمكن التراجع عنه.
+                </div>
+                <input type="hidden" id="deleteUserId">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">حذف</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // متغيرات عامة
+        let currentPage = 1;
+        const rowsPerPage = @pageSize;
+        const serverPageOffset = @((currentPage - 1) * pageSize);
+        let filteredRows = [];
+        const appliedServerFilters = {
+            role: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(currentRoleFilter)),
+            status: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(currentStatusFilter)),
+            managerLevel: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(currentManagerLevelFilter)),
+            education: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(currentEducationFilter))
+        };
+
+        function setSelectValue(id, value) {
+            const element = document.getElementById(id);
+            if (element && value) element.value = value;
+        }
+
+        setSelectValue('roleFilter', appliedServerFilters.role);
+        setSelectValue('statusFilter', appliedServerFilters.status);
+        setSelectValue('managerLevelFilter', appliedServerFilters.managerLevel);
+        setSelectValue('educationFilter', appliedServerFilters.education);
+
+        function redirectWithServerFilters() {
+            const params = new URLSearchParams();
+            const add = (name, value) => {
+                if (value) params.set(name, value);
+            };
+
+            add('search', document.getElementById('searchInput')?.value?.trim() || '');
+            add('role', document.getElementById('roleFilter')?.value || '');
+            add('status', document.getElementById('statusFilter')?.value || '');
+            add('managerLevel', document.getElementById('managerLevelFilter')?.value || '');
+            add('education', document.getElementById('educationFilter')?.value || '');
+            add('pageSize', document.getElementById('pageSizeSelect')?.value || '@pageSize');
+
+            window.location.href = '/Admin/Users' + (params.toString() ? '?' + params.toString() : '');
+        }
+        // ========== حفظ واسترجاع رقم الصفحة (مؤقت فقط للرجوع من التفاصيل أو الحذف) ==========
+        function saveCurrentPage() {
+        sessionStorage.setItem('currentAdminManagementPage', currentPage);
+        }
+
+        function restoreCurrentPage() {
+        const savedPage = sessionStorage.getItem('currentAdminManagementPage');
+        if (savedPage && !isNaN(parseInt(savedPage))) {
+        currentPage = parseInt(savedPage);
+        }
+        }
+
+        // ✅ دالة مسح التخزين عند العودة من صفحات غير مسموحة
+        function clearSavedPage() {
+        sessionStorage.removeItem('currentAdminManagementPage');
+        }
+
+        // ✅ التحقق من المصدر ومسح التخزين إذا كان المصدر من خارج صفحة المستخدمين
+        function checkAndClearStorage() {
+        var referrer = document.referrer;
+    
+        // قائمة بالصفحات التي نريد الاحتفاظ بالصفحة عند العودة منها
+        var allowedReferrers = [
+        '/Admin/Details',
+        '/Admin/EditUser',
+        '/Admin/Users'
+        ];
+    
+        var isFromAllowedPage = false;
+        for (var i = 0; i < allowedReferrers.length; i++) {
+        if (referrer.includes(allowedReferrers[i])) {
+        isFromAllowedPage = true;
+        break;
+        }
+        }
+    
+        // إذا لم يكن المصدر من الصفحات المسموح بها، نمسح التخزين
+        if (!isFromAllowedPage && referrer !== '') {
+        console.log('🧹 مسح التخزين - المصدر:', referrer);
+        sessionStorage.removeItem('currentAdminManagementPage');
+        currentPage = 1;
+        }
+        }
+
+        // ✅ تعديل دالة DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', function() {
+        // ✅ التحقق من المصدر ومسح التخزين إذا لزم الأمر
+        checkAndClearStorage();
+    
+        const allRows = document.querySelectorAll('#usersTable tbody tr[data-user]');
+        filteredRows = Array.from(allRows);
+    
+        currentPage = 1;
+        updateTable();
+        updateSelectedCount();
+    
+        document.querySelectorAll('.user-checkbox').forEach(cb => {
+        cb.addEventListener('change', updateSelectedCount);
+        });
+        });
+
+        function toggleAll(source) {
+        document.querySelectorAll('.user-checkbox').forEach(cb => {
+        cb.checked = source.checked;
+        });
+        updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+        const count = document.querySelectorAll('.user-checkbox:checked').length;
+        const selectedCountSpan = document.getElementById('selectedCount');
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+            
+        if (selectedCountSpan) selectedCountSpan.textContent = count;
+        if (bulkDeleteBtn) bulkDeleteBtn.disabled = count === 0;
+        }
+
+        async function bulkDeleteSelected() {
+        const selectedIds = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
+
+        if (selectedIds.length === 0) {
+        Swal.fire('تنبيه', 'الرجاء اختيار مستخدمين للحذف', 'warning');
+        return;
+        }
+
+        const result = await Swal.fire({
+        title: 'تأكيد الحذف المتعدد',
+        text: `هل أنت متأكد من حذف ${selectedIds.length} مستخدم؟`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'نعم، احذف',
+        cancelButtonText: 'إلغاء'
+        });
+
+        if (!result.isConfirmed) return;
+
+        const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+
+        try {
+        const response = await fetch('/Admin/BulkDeleteUsers', {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        'RequestVerificationToken': csrfToken
+        },
+        body: JSON.stringify({ userIds: selectedIds })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+        Swal.fire('تم الحذف', data.message, 'success').then(() => {
+        saveCurrentPage();
+        location.reload();
+        });
+        } else {
+        Swal.fire('خطأ', data.message, 'error');
+        }
+        } catch (error) {
+        Swal.fire('خطأ', 'حدث خطأ في الاتصال بالخادم', 'error');
+        }
+        }
+
+        function applyFilter() {
+        redirectWithServerFilters();
+        return;
+        const searchText = document.getElementById('searchInput')?.value.toLowerCase() || '';
+        const educationFilter = document.getElementById('educationFilter')?.value || '';
+        const statusFilter = document.getElementById('statusFilter')?.value || '';
+        const managerLevelFilter = document.getElementById('managerLevelFilter')?.value || '';
+        const roleFilter = document.getElementById('roleFilter')?.value || '';
+
+        const allRows = document.querySelectorAll('#usersTable tbody tr[data-user]');
+        filteredRows = Array.from(allRows).filter(row => {
+        const name = row.dataset.name || '';
+        const email = row.dataset.email || '';
+        const status = row.dataset.status || '';
+        const education = row.dataset.education || '';
+        const managerLevel = row.dataset.managerlevel || '';
+        const isManager = row.dataset.ismanager === 'true';
+        const assignmentRole = row.dataset.assignmentrole || '';
+        const userRole = row.dataset.role || '';
+
+        const rowSearch = row.dataset.search || '';
+
+        if (searchText && !name.includes(searchText) && !email.includes(searchText) && !rowSearch.includes(searchText)) return false;
+        if (statusFilter === 'active' && status !== 'active') return false;
+        if (statusFilter === 'inactive' && status !== 'inactive') return false;
+        if (educationFilter && education !== educationFilter) return false;
+                
+        if (managerLevelFilter !== '') {
+        if (!isManager) return false;
+
+        if (managerLevelFilter === 'manager-entity' && !(managerLevel === 'entity' && assignmentRole === 'manager')) return false;
+        if (managerLevelFilter === 'manager-division' && !(managerLevel === 'division' && assignmentRole === 'manager')) return false;
+        if (managerLevelFilter === 'manager-section' && !(managerLevel === 'section' && assignmentRole === 'manager')) return false;
+        if (managerLevelFilter === 'manager-group' && !(managerLevel === 'group' && assignmentRole === 'manager')) return false;
+
+        if (managerLevelFilter === 'assistant-entity' && !(managerLevel === 'entity' && assignmentRole === 'assistant')) return false;
+        if (managerLevelFilter === 'assistant-division' && !(managerLevel === 'division' && assignmentRole === 'assistant')) return false;
+        if (managerLevelFilter === 'assistant-section' && !(managerLevel === 'section' && assignmentRole === 'assistant')) return false;
+        if (managerLevelFilter === 'assistant-group' && !(managerLevel === 'group' && assignmentRole === 'assistant')) return false;
+        }
+
+        if (roleFilter !== '') {
+        if (!userRole.includes(roleFilter)) return false;
+        }
+
+        return true;
+        });
+
+        // ✅ ترتيب النتائج: الأدمن أولاً ثم باقي المستخدمين حسب الاسم
+        filteredRows.sort((a, b) => {
+        const roleA = a.dataset.role || '';
+        const roleB = b.dataset.role || '';
+        
+        // التحقق إذا كان المستخدم أدمن أو سوبر أدمن
+        const isAdminA = roleA.includes('admin') || roleA.includes('superadmin');
+        const isAdminB = roleB.includes('admin') || roleB.includes('superadmin');
+        
+        // إذا كان A أدمن و B ليس أدمن، A يأتي أولاً
+        if (isAdminA && !isAdminB) return -1;
+        // إذا كان B أدمن و A ليس أدمن، B يأتي أولاً
+        if (!isAdminA && isAdminB) return 1;
+        
+        // إذا كان كلاهما أدمن أو كلاهما ليس أدمن، رتب حسب الاسم
+        const nameA = a.dataset.name || '';
+        const nameB = b.dataset.name || '';
+        return nameA.localeCompare(nameB);
+        });
+
+        currentPage = 1;
+        updateTable();
+        updateSelectedCount();
+        }
+
+        function updateTable() {
+        const allRows = document.querySelectorAll('#usersTable tbody tr[data-user]');
+        allRows.forEach(row => row.style.display = 'none');
+
+        const startIndex = (currentPage - 1) * rowsPerPage;
+        const endIndex = startIndex + rowsPerPage;
+        const currentRows = filteredRows.slice(startIndex, endIndex);
+
+        currentRows.forEach((row, index) => {
+        row.style.display = '';
+        const numWrapper = row.querySelector('.num-wrapper');
+        if (numWrapper) numWrapper.textContent = serverPageOffset + startIndex + index + 1;
+        });
+
+        document.getElementById('filteredCount').textContent = '@filteredUsers';
+        const rangeStart = filteredRows.length > 0 ? serverPageOffset + startIndex + 1 : 0;
+        const rangeEnd = serverPageOffset + Math.min(endIndex, filteredRows.length);
+        document.getElementById('currentRange').textContent = rangeStart + '-' + rangeEnd;
+        updatePagination();
+        saveCurrentPage(); // ✅ أضف هذا السطر
+
+        }
+
+        function updatePagination() {
+        const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+        const pagination = document.getElementById('pagination');
+        if (!pagination) return;
+            
+        pagination.innerHTML = '';
+        if (totalPages <= 1) return;
+
+        const prevLi = document.createElement('li');
+        prevLi.className = 'page-item ' + (currentPage === 1 ? 'disabled' : '');
+        prevLi.innerHTML = '<a class="page-link" href="#" data-page="' + (currentPage - 1) + '">السابق</a>';
+        pagination.appendChild(prevLi);
+
+        for (let i = 1; i <= totalPages; i++) {
+        const pageLi = document.createElement('li');
+        pageLi.className = 'page-item ' + (currentPage === i ? 'active' : '');
+        pageLi.innerHTML = '<a class="page-link" href="#" data-page="' + i + '">' + i + '</a>';
+        pagination.appendChild(pageLi);
+        }
+
+        const nextLi = document.createElement('li');
+        nextLi.className = 'page-item ' + (currentPage === totalPages ? 'disabled' : '');
+        nextLi.innerHTML = '<a class="page-link" href="#" data-page="' + (currentPage + 1) + '">التالي</a>';
+        pagination.appendChild(nextLi);
+
+        pagination.querySelectorAll('.page-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const page = parseInt(this.dataset.page);
+        if (page >= 1 && page <= totalPages && page !== currentPage) {
+        currentPage = page;
+        updateTable();
+        }
+        });
+        });
+        }
+
+        // حذف المستخدم
+        document.querySelectorAll('.delete-user-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        document.getElementById('deleteUserId').value = this.dataset.userId;
+        document.getElementById('deleteUserInfo').innerHTML = '<strong>' + this.dataset.userName + '</strong><br><small>' + this.dataset.userEmail + '</small>';
+        new bootstrap.Modal(document.getElementById('deleteConfirmModal')).show();
+        });
+        });
+
+        document.getElementById('confirmDeleteBtn')?.addEventListener('click', async function() {
+        const userId = document.getElementById('deleteUserId').value;
+        const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+        const response = await fetch('/Admin/DeleteUser', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+        body: JSON.stringify({ UserId: userId })
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+        Swal.fire('تم الحذف', result.message, 'success').then(() => {
+        saveCurrentPage();
+        window.location.reload();
+        });
+        }
+        else {
+        Swal.fire('خطأ', result.message, 'error');
+        }
+        });
+
+        // تفعيل/تعطيل
+        document.querySelectorAll('.toggle-status-btn').forEach(btn => {
+        btn.addEventListener('click', async function(e) {
+        e.stopPropagation();
+        const userId = this.dataset.userId;
+        const isActive = this.classList.contains('inactive');
+        const action = isActive ? 'تفعيل' : 'تعطيل';
+        const result = await Swal.fire({
+        title: 'تأكيد',
+        text: `هل تريد ${action} هذا المستخدم؟`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'نعم',
+        cancelButtonText: 'إلغاء'
+        });
+        if (!result.isConfirmed) return;
+        const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+        const response = await fetch('/Admin/ToggleUserStatus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+        body: JSON.stringify({ UserId: userId })
+        });
+        const data = await response.json();
+        if (data.success) {
+        Swal.fire('تم', data.message, 'success').then(() => {
+        saveCurrentPage();
+        window.location.reload();
+        });
+        } else {
+        Swal.fire('خطأ', data.message, 'error');
+        }
+        });
+        });
+
+        
+
+        // أحداث الفلتر
+        document.getElementById('applyFilter')?.addEventListener('click', applyFilter);
+        document.getElementById('clearFilter')?.addEventListener('click', function() {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('educationFilter').value = '';
+        document.getElementById('statusFilter').value = '';
+        document.getElementById('managerLevelFilter').value = '';
+        document.getElementById('roleFilter').value = '';
+        document.getElementById('pageSizeSelect').value = '10';
+        applyFilter();
+        });
+        document.getElementById('searchInput')?.addEventListener('keyup', function(e) {
+        if (e.key === 'Enter') applyFilter();
+        });
+        document.getElementById('educationFilter')?.addEventListener('change', applyFilter);
+        document.getElementById('statusFilter')?.addEventListener('change', applyFilter);
+        document.getElementById('managerLevelFilter')?.addEventListener('change', applyFilter);
+        document.getElementById('roleFilter')?.addEventListener('change', applyFilter);
+        document.getElementById('pageSizeSelect')?.addEventListener('change', applyFilter);
+
+        document.addEventListener('DOMContentLoaded', function() {
+        const allRows = document.querySelectorAll('#usersTable tbody tr[data-user]');
+        filteredRows = Array.from(allRows);
+        currentPage = 1;
+
+        updateTable();
+        updateSelectedCount();
+            
+        document.querySelectorAll('.user-checkbox').forEach(cb => {
+        cb.addEventListener('change', updateSelectedCount);
+        });
+        });
+       
+    </script>
+}

@@ -1,0 +1,1634 @@
+﻿@model WebApplication2.Models.Profile.CompleteProfileViewModel
+
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "تعديل بيانات المستخدم";
+
+    var workGovernorateValue = Model.WorkLocation.Governorate == "بغداد" && !string.IsNullOrWhiteSpace(Model.WorkLocation.District)
+        ? $"بغداد - {Model.WorkLocation.District}"
+        : Model.WorkLocation.Governorate;
+
+    var workGovernorates = Model.Governorates?
+        .SelectMany(governorate => governorate == "بغداد"
+            ? new[] { "بغداد - الكرخ", "بغداد - الرصافة" }
+            : new[] { governorate })
+        .ToList() ?? new List<string>();
+}
+
+<style>
+    .form-section {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        margin-bottom: 25px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .form-section-header {
+        background: linear-gradient(135deg, #1e3c72, #2a5a9c);
+        color: white;
+        padding: 12px 20px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+        .form-section-header:hover {
+            background: linear-gradient(135deg, #2a5a9c, #1e3c72);
+        }
+
+        .form-section-header h5 {
+            margin: 0;
+            font-weight: 600;
+            display: inline-block;
+            font-size: 1rem;
+        }
+
+        .form-section-header i {
+            margin-left: 10px;
+        }
+
+    .toggle-icon {
+        float: left;
+        font-size: 1.1rem;
+        transition: transform 0.3s;
+    }
+
+        .toggle-icon.collapsed {
+            transform: rotate(-90deg);
+        }
+
+    .form-section-body {
+        padding: 20px;
+        display: block;
+    }
+
+        .form-section-body.collapsed {
+            display: none;
+        }
+
+    .required-field::after {
+        content: "*";
+        color: #dc3545;
+        margin-right: 4px;
+    }
+
+    .admin-alert {
+        background: #fff3cd;
+        border-right: 4px solid #ffc107;
+        padding: 12px 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+
+    .profile-image-preview {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid #1e3c72;
+        margin-bottom: 15px;
+    }
+
+    .profile-image-container {
+        cursor: pointer;
+        position: relative;
+        display: inline-block;
+        transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+
+    .profile-image-container:hover {
+        opacity: 0.92;
+        transform: translateY(-2px);
+    }
+
+    .profile-image-container:hover::after {
+        content: "قص وتعديل";
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(30, 60, 114, 0.55);
+        color: #fff;
+        font-weight: 700;
+        border-radius: 50%;
+    }
+
+    .cropper-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(12, 20, 38, 0.78);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+
+    .cropper-modal-overlay.active {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    .cropper-container-custom {
+        width: min(92vw, 760px);
+        max-height: 90vh;
+        overflow: auto;
+        background: #fff;
+        border-radius: 18px;
+        padding: 24px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28);
+    }
+
+    .cropper-instruction {
+        background: #eef4ff;
+        color: #1e3c72;
+        border-radius: 12px;
+        padding: 10px 14px;
+        margin-bottom: 16px;
+        text-align: center;
+        font-weight: 600;
+    }
+
+    .cropper-image-stage {
+        text-align: center;
+        overflow: auto;
+    }
+
+    .cropper-image-stage img {
+        max-width: 100%;
+        max-height: 60vh;
+    }
+
+    .cropper-buttons {
+        margin-top: 18px;
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-crop-save,
+    .btn-crop-cancel {
+        border: none;
+        border-radius: 999px;
+        padding: 10px 24px;
+        font-weight: 700;
+        color: #fff;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .btn-crop-save {
+        background: linear-gradient(135deg, #198754, #20c997);
+    }
+
+    .btn-crop-cancel {
+        background: #6c757d;
+    }
+
+    .btn-crop-save:hover,
+    .btn-crop-cancel:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 22px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-save {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: white;
+        border: none;
+        padding: 10px 30px;
+        border-radius: 30px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(40, 167, 69, 0.3);
+            color: white;
+        }
+
+    .btn-cancel {
+        background: #6c757d;
+        color: white;
+        border: none;
+        padding: 10px 30px;
+        border-radius: 30px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+        .btn-cancel:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+            color: white;
+        }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #1e3c72;
+        box-shadow: 0 0 0 0.2rem rgba(30, 60, 114, 0.25);
+    }
+
+    hr {
+        margin: 15px 0;
+        background: linear-gradient(90deg, #1e3c72, transparent);
+        height: 2px;
+    }
+
+    .info-badge {
+        background: #e9ecef;
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        color: #495057;
+    }
+
+    .federation-level-container {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 15px;
+        border-right: 3px solid #1e3c72;
+    }
+</style>
+
+<div class="container-fluid py-3" dir="rtl">
+    <!-- رأس الصفحة -->
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+        <div>
+            <h4 class="mb-1">
+                <i class="bi bi-pencil-square text-warning"></i>
+                تعديل بيانات المستخدم
+            </h4>
+            <p class="text-muted mb-0 small">تعديل جميع بيانات المستخدم</p>
+        </div>
+        <div class="info-badge">
+            <i class="bi bi-person"></i>
+            <strong>@Model?.Email</strong>
+        </div>
+    </div>
+
+    <!-- تنبيه للمسؤول -->
+    <div class="admin-alert">
+        <i class="bi bi-shield-shaded text-warning"></i>
+        <strong>تنبيه:</strong> أنت تقوم بتعديل بيانات مستخدم آخر. أي تغيير سيتم حفظه مباشرة وسيتم إشعار المستخدم.
+    </div>
+
+    <form asp-action="EditUser" method="post" enctype="multipart/form-data" id="editUserForm">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="UserId" />
+        <input type="hidden" asp-for="Email" />
+        <input type="hidden" asp-for="AccountType" />
+        <input type="hidden" asp-for="IsPromoted" />
+        
+        <!-- حقول مخفية للحفاظ على معرفات الانتساب -->
+        <input type="hidden" asp-for="AffiliationEntityId" />
+        <input type="hidden" asp-for="DivisionId" />
+        <input type="hidden" asp-for="SectionId" />
+        <input type="hidden" asp-for="GroupId" />
+
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <strong>يرجى تصحيح الأخطاء التالية:</strong>
+                <div asp-validation-summary="All" class="mt-2"></div>
+            </div>
+        }
+
+        <!-- ========== القسم 1: الصورة الشخصية والمعلومات الأساسية ========== -->
+        <div class="form-section">
+            <div class="form-section-header" onclick="toggleSection(this)">
+                <h5>
+                    <i class="bi bi-camera"></i>
+                    الصورة الشخصية والمعلومات الأساسية
+                </h5>
+                <i class="bi bi-chevron-up toggle-icon"></i>
+            </div>
+            <div class="form-section-body">
+                <div class="row">
+                    <div class="col-md-12 text-center mb-3">
+                        <div id="imagePreview" class="profile-image-container" onclick="openCropModal()">
+                            @if (!string.IsNullOrEmpty(Model?.PersonalInfo?.CoverImage))
+                            {
+                                <img src="@Model.PersonalInfo.CoverImage" class="profile-image-preview" id="profileImage" alt="الصورة الشخصية">
+                            }
+                            else
+                            {
+                                <div class="profile-image-preview bg-light d-flex align-items-center justify-content-center mx-auto" style="display: flex;">
+                                    <i class="bi bi-person" style="font-size: 2rem; color: #1e3c72;"></i>
+                                </div>
+                            }
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label d-block">تغيير الصورة الشخصية</label>
+                            <input type="file" class="d-none" asp-for="CoverImageFile" accept="image/*" />
+                            <button type="button" class="btn btn-outline-primary" onclick="openCropModal()">
+                                <i class="bi bi-pencil-square"></i>
+                                تغيير الصورة الشخصية
+                            </button>
+                            <small class="text-muted">يسمح بصيغ: jpg, png, gif (حد أقصى 5MB)</small>
+                            <small class="text-muted d-block">اضغط على الصورة لتعديلها واقتصاصها</small>
+                        </div>
+                    </div>
+                </div>
+
+                <hr />
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label required-field">الاسم الرباعي</label>
+                        <input type="text" class="form-control" asp-for="PersonalInfo.FullName" required />
+                        <span asp-validation-for="PersonalInfo.FullName" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">اللقب</label>
+                        <input type="text" class="form-control" asp-for="PersonalInfo.LastName" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label required-field">اسم الأم</label>
+                        <input type="text" class="form-control" asp-for="PersonalInfo.MotherName" required />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">تاريخ الميلاد</label>
+                        <input type="date" class="form-control" asp-for="PersonalInfo.DateOfBirth" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label required-field">الجنس</label>
+                        <select class="form-select" asp-for="PersonalInfo.Gender" required>
+                            <option value="">اختر الجنس</option>
+                            @if (Model.Genders != null)
+                            {
+                                foreach (var gender in Model.Genders)
+                                {
+                                    <option value="@gender">@gender</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">الحالة الاجتماعية</label>
+                        <select class="form-select" asp-for="PersonalInfo.MaritalStatus">
+                            <option value="">اختر الحالة الاجتماعية</option>
+                            <option value="أعزب">أعزب</option>
+                            <option value="متزوج">متزوج</option>
+                            <option value="مطلق">مطلق</option>
+                            <option value="أرمل">أرمل</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label required-field">رقم الهاتف</label>
+                        <input type="tel" class="form-control" asp-for="PersonalInfo.PhoneNumber" required />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">المؤهل العلمي</label>
+                        <select class="form-select" asp-for="PersonalInfo.Education" id="EducationLevel">
+                            <option value="">اختر المؤهل العلمي</option>
+                            @if (Model.Educations != null)
+                            {
+                                foreach (var edu in Model.Educations)
+                                {
+                                    <option value="@edu">@edu</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-12 mb-3 required-field" id="SpecializationDiv">
+                        <label class="form-label">الاختصاص</label>
+                        <input type="text" class="form-control" asp-for="PersonalInfo.Specialization" id="PersonalInfo_Specialization" />
+                    </div>
+                </div>
+
+                <!-- حقول الطالب الجامعي -->
+                <div id="UniversityFields" style="display: none;">
+                    <hr />
+                    <h6 class="text-primary mb-3"><i class="bi bi-building"></i> بيانات الطالب الجامعي</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">نوع الجامعة</label>
+                            <select class="form-select" asp-for="PersonalInfo.UniversityType" id="PersonalInfo_UniversityType">
+                                <option value="">اختر نوع الجامعة</option>
+                                <option value="حكومي">حكومي</option>
+                                <option value="أهلي">أهلي</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">نوع المؤسسة</label>
+                            <select class="form-select" asp-for="PersonalInfo.InstitutionType" id="PersonalInfo_InstitutionType">
+                                <option value="">اختر نوع المؤسسة</option>
+                                <option value="جامعة">جامعة</option>
+                                <option value="معهد">معهد</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">اسم المؤسسة</label>
+                            <input type="text" class="form-control" asp-for="PersonalInfo.InstitutionName" id="PersonalInfo_InstitutionName" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">الكلية/القسم</label>
+                            <input type="text" class="form-control" asp-for="PersonalInfo.FacultyDepartment" id="PersonalInfo_FacultyDepartment" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">نوع الدراسة</label>
+                            <select class="form-select" asp-for="PersonalInfo.StudyType" id="PersonalInfo_StudyType">
+                                <option value="">اختر نوع الدراسة</option>
+                                <option value="صباحي">صباحي</option>
+                                <option value="مسائي">مسائي</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">المرحلة</label>
+                            <select class="form-select" asp-for="PersonalInfo.StudyStage" id="PersonalInfo_StudyStage">
+                                <option value="">-- اختر المرحلة --</option>
+                                @if (Model.StudyStagesList != null)
+                                {
+                                    foreach (var stage in Model.StudyStagesList)
+                                    {
+                                        <option value="@stage">@stage</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== القسم 2: محافظة العمل التنظيمي ========== -->
+        <div class="form-section">
+            <div class="form-section-header" onclick="toggleSection(this)">
+                <h5>
+                    <i class="bi bi-geo-alt-fill"></i>
+                    محافظة العمل التنظيمي
+                </h5>
+                <i class="bi bi-chevron-up toggle-icon"></i>
+            </div>
+            <div class="form-section-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">محافظة العمل التنظيمي</label>
+                        <select class="form-select" name="WorkLocation.Governorate" id="WorkGovernorateSelect">
+                            <option value="">اختر محافظة العمل التنظيمي</option>
+                            @foreach (var gov in workGovernorates)
+                            {
+                                <option value="@gov" selected="@(workGovernorateValue == gov ? "selected" : null)">@gov</option>
+                            }
+                        </select>
+                        <input type="hidden" name="WorkLocation.District" value="" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== القسم 3: محافظة السكن (مع دعم بغداد) ========== -->
+        <div class="form-section">
+            <div class="form-section-header" onclick="toggleSection(this)">
+                <h5>
+                    <i class="bi bi-geo-alt"></i>
+                    محافظة السكن
+                </h5>
+                <i class="bi bi-chevron-up toggle-icon"></i>
+            </div>
+            <div class="form-section-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label required-field">المحافظة</label>
+                        <select class="form-select" asp-for="Address.Governorate" id="GovernorateSelect" required>
+                            <option value="">اختر المحافظة</option>
+                            @if (Model.Governorates != null)
+                            {
+                                foreach (var gov in Model.Governorates)
+                                {
+                                    <option value="@gov">@gov</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <!-- حقل القضاء - قائمة منسدلة خاصة ببغداد -->
+                    <div id="districtSelectDiv" class="col-md-4 mb-3" style="display: none;">
+                        <label class="form-label">القضاء</label>
+                        <select id="districtSelect" class="form-select">
+                            <option value="">-- اختر القضاء --</option>
+                            @{
+                                var baghdadDistrictsList = new List<string> { "الكرخ", "الرصافة" };
+                            }
+                            @foreach (var district in baghdadDistrictsList)
+                            {
+                                var isSelected = !string.IsNullOrEmpty(Model.Address.District) && Model.Address.District == district;
+                                <option value="@district" selected="@(isSelected ? "selected" : null)">
+                                    @district
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- حقل القضاء - حقل نص عادي لباقي المحافظات -->
+                    <div id="districtInputDiv" class="col-md-4 mb-3">
+                        <label class="form-label">القضاء</label>
+                        <input type="text" class="form-control" id="Address_District" asp-for="Address.District" />
+                    </div>
+
+                    <!-- حقل مخفي لتوحيد القيمة -->
+                    <input type="hidden" id="hiddenDistrict" name="Address.District" value="@Model.Address.District" />
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">المنطقة</label>
+                        <input type="text" class="form-control" asp-for="Address.Area" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">المحلة</label>
+                        <input type="text" class="form-control" asp-for="Address.Alley" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">الزقاق</label>
+                        <input type="text" class="form-control" asp-for="Address.Street" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">الدار</label>
+                        <input type="text" class="form-control" asp-for="Address.House" />
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">أقرب نقطة دالة</label>
+                        <input type="text" class="form-control" asp-for="Address.NearestPoint" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== القسم 3: المستندات الرسمية ========== -->
+        <div class="form-section">
+            <div class="form-section-header" onclick="toggleSection(this)">
+                <h5>
+                    <i class="bi bi-card-text"></i>
+                    المستندات الرسمية
+                </h5>
+                <i class="bi bi-chevron-up toggle-icon"></i>
+            </div>
+            <div class="form-section-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label required-field">رقم البطاقة الموحدة</label>
+                        <input type="text" class="form-control" asp-for="IdentityCardN" required maxlength="12" pattern="[0-9]*" inputmode="numeric" />
+                        <span asp-validation-for="IdentityCardN" class="text-danger"></span>
+                        <small class="text-muted">أدخل 12 رقماً</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">تاريخ الإصدار</label>
+                        <input type="date" class="form-control" asp-for="IdentityDate" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">رقم بطاقة الناخب</label>
+                        <input type="text" class="form-control" asp-for="Documents.VoterCardNumber" />
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">رقم مركز الاقتراع</label>
+                        <input type="text" class="form-control" asp-for="Documents.PollingCenterNumber" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== القسم 4: العمل التنظيمي ========== -->
+        <!-- ========== القسم 5: العمل والتوظيف ========== -->
+        <div class="form-section">
+            <div class="form-section-header" onclick="toggleSection(this)">
+                <h5>
+                    <i class="bi bi-briefcase"></i>
+                    العمل والتوظيف
+                </h5>
+                <i class="bi bi-chevron-up toggle-icon"></i>
+            </div>
+            <div class="form-section-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">الحالة الوظيفية</label>
+                        <select class="form-select" asp-for="Employment.EmploymentStatus" id="EmploymentStatus">
+                            <option value="">اختر الحالة الوظيفية</option>
+                            @if (Model.EmploymentStatuses != null)
+                            {
+                                foreach (var status in Model.EmploymentStatuses)
+                                {
+                                    <option value="@status">@status</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">جهة العمل</label>
+                        <input type="text" class="form-control" asp-for="Employment.Work" id="Employment_Work" />
+                    </div>
+                    <div class="col-md-4 mb-3" id="MinistryDiv" style="display: none;">
+                        <label class="form-label">الوزارة</label>
+                        <select class="form-select" asp-for="Employment.Ministry" id="Employment_Ministry">
+                            <option value="">اختر الوزارة</option>
+                            @if (Model.Ministries != null)
+                            {
+                                foreach (var ministry in Model.Ministries)
+                                {
+                                    <option value="@ministry">@ministry</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3" id="DepartmentDiv" style="display: none;">
+                        <label class="form-label">الدائرة</label>
+                        <input type="text" class="form-control" asp-for="Employment.Department" id="Employment_Department" />
+                    </div>
+                    <div class="col-md-4 mb-3" id="PositionDiv" style="display: none;">
+                        <label class="form-label">المنصب</label>
+                        <input type="text" class="form-control" asp-for="Employment.Position" id="Employment_Position" />
+                    </div>
+                    <div class="col-md-6 mb-3" id="JobTitleDiv" style="display: none;">
+                        <label class="form-label">العنوان الوظيفي</label>
+                        <input type="text" class="form-control" asp-for="Employment.JobTitle" id="Employment_JobTitle" placeholder="مثال: مدير قسم، رئيس فرع..." />
+                    </div>
+                    <div class="col-md-6 mb-3" id="JobGradeDiv" style="display: none;">
+                        <label class="form-label">الدرجة الوظيفية</label>
+                        <select class="form-select" asp-for="Employment.JobGrade" id="Employment_JobGrade">
+                            @if (Model.JobGradesList != null)
+                            {
+                                foreach (var grade in Model.JobGradesList)
+                                {
+                                    <option value="@grade">@grade</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== القسم 5: معلومات الانتساب ========== -->
+        <div class="form-section">
+            <div class="form-section-header" onclick="toggleSection(this)">
+                <h5>
+                    <i class="bi bi-diagram-3"></i>
+                    معلومات الانتساب
+                </h5>
+                <i class="bi bi-chevron-up toggle-icon"></i>
+            </div>
+            <div class="form-section-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">جهة الانتساب</label>
+                        <select class="form-select" asp-for="Affiliation.AffiliationEntity" id="Affiliation_AffiliationEntity">
+                            <option value="">اختر جهة الانتساب</option>
+                            @if (Model.AffiliationEntities != null)
+                            {
+                                foreach (var entity in Model.AffiliationEntities)
+                                {
+                                    <option value="@entity">@entity</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">القسم</label>
+                        <select class="form-select" asp-for="Affiliation.Division" id="Affiliation_Division" disabled>
+                            <option value="">-- اختر القسم --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">الشعبة</label>
+                        <select class="form-select" asp-for="Affiliation.Section" id="Affiliation_Section" disabled>
+                            <option value="">-- اختر الشعبة --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">الوحدة</label>
+                        <select class="form-select" asp-for="Affiliation.Group" id="Affiliation_Group" disabled>
+                            <option value="">-- اختر الوحدة --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">رقم الباج الخاص بك</label>
+                        <input type="text" class="form-control" asp-for="Affiliation.BadgeNumber" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">اسم المزكي</label>
+                        <input type="text" class="form-control" asp-for="Affiliation.MozakeName" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">رقم هاتف المزكي</label>
+                        <input type="tel" class="form-control" asp-for="Affiliation.MozakePhoneNumber" />
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">تاريخ الانتماء</label>
+                        <input type="date" class="form-control" asp-for="Affiliation.AffiliationDate" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========== القسم 6: العضويات ========== -->
+        <div class="form-section">
+            <div class="form-section-header" onclick="toggleSection(this)">
+                <h5>
+                    <i class="bi bi-people"></i>
+                    العضويات (نقابة - اتحاد - جمعية - منظمة)
+                </h5>
+                <i class="bi bi-chevron-up toggle-icon"></i>
+            </div>
+            <div class="form-section-body">
+                <!-- النقابة -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">اسم النقابة</label>
+                        <select class="form-select" asp-for="Memberships.UnionName">
+                            <option value="">اختر النقابة</option>
+                            @if (Model.UnionsList != null)
+                            {
+                                foreach (var union in Model.UnionsList)
+                                {
+                                    <option value="@union">@union</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">المنصب</label>
+                        <input type="text" class="form-control" asp-for="Memberships.UnionPosition" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">رقم العضوية</label>
+                        <input type="text" class="form-control" asp-for="Memberships.UnionIdNumber" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">تاريخ النفاذ</label>
+                        <input type="date" class="form-control" asp-for="Memberships.UnionAffiliationDate" />
+                    </div>
+                </div>
+
+                <!-- الاتحاد -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">الاتحاد</label>
+                        <select id="FederationMasterName" class="form-select">
+                            <option value="">-- اختر الاتحاد --</option>
+                            @if (Model.FederationsList != null)
+                            {
+                                foreach (var fed in Model.FederationsList)
+                                {
+                                    <option value="@fed">@fed</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">قسم الاتحاد</label>
+                        <select id="FederationDivisionName" class="form-select" disabled>
+                            <option value="">-- اختر القسم --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">شعبة الاتحاد</label>
+                        <select id="FederationSectionName" class="form-select" disabled>
+                            <option value="">-- اختر الشعبة --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">وحدة الاتحاد</label>
+                        <select id="FederationGroupName" class="form-select" disabled>
+                            <option value="">-- اختر الوحدة --</option>
+                        </select>
+                    </div>
+                    <input type="hidden" asp-for="Memberships.FederationName" id="FederationFullName" />
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">المنصب في الاتحاد</label>
+                        <input type="text" class="form-control" asp-for="Memberships.FederationPosition" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">رقم العضوية في الاتحاد</label>
+                        <input type="text" class="form-control" asp-for="Memberships.FederationIdNumber" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">تاريخ النفاذ للاتحاد</label>
+                        <input type="date" class="form-control" asp-for="Memberships.FederationAffiliationDate" />
+                    </div>
+                </div>
+
+                <!-- الجمعية -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">اسم الجمعية</label>
+                        <select class="form-select" asp-for="Memberships.AssociationName">
+                            <option value="">اختر الجمعية</option>
+                            @if (Model.AssociationsList != null)
+                            {
+                                foreach (var assoc in Model.AssociationsList)
+                                {
+                                    <option value="@assoc">@assoc</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">المنصب</label>
+                        <input type="text" class="form-control" asp-for="Memberships.AssociationPosition" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">رقم العضوية</label>
+                        <input type="text" class="form-control" asp-for="Memberships.AssociationIdNumber" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">تاريخ النفاذ</label>
+                        <input type="date" class="form-control" asp-for="Memberships.AssociationAffiliationDate" />
+                    </div>
+                </div>
+
+                <!-- المنظمة -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">اسم المنظمة</label>
+                        <select class="form-select" asp-for="Memberships.NgoName">
+                            <option value="">اختر المنظمة</option>
+                            @if (Model.NgosList != null)
+                            {
+                                foreach (var ngo in Model.NgosList)
+                                {
+                                    <option value="@ngo">@ngo</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">المنصب</label>
+                        <input type="text" class="form-control" asp-for="Memberships.NgoPosition" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">رقم العضوية</label>
+                        <input type="text" class="form-control" asp-for="Memberships.NgoIdNumber" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">تاريخ النفاذ</label>
+                        <input type="date" class="form-control" asp-for="Memberships.NgoAffiliationDate" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- أزرار الحفظ والإلغاء -->
+        <div class="text-center mt-3">
+            <button type="submit" class="btn-save">
+                <i class="bi bi-check-lg"></i> حفظ التعديلات
+            </button>
+            <a asp-action="Details" asp-route-id="@Model?.UserId" class="btn-cancel ms-3">
+                <i class="bi bi-x-lg"></i> إلغاء
+            </a>
+        </div>
+    </form>
+</div>
+
+<div id="cropModal" class="cropper-modal-overlay">
+    <div class="cropper-container-custom">
+        <div class="cropper-instruction">
+            <i class="bi bi-arrows-move"></i>
+            اسحب وحدد الجزء المطلوب، ويمكنك التكبير بعجلة الماوس
+        </div>
+        <div class="cropper-image-stage">
+            <img id="cropImage" src="" alt="قص الصورة">
+        </div>
+        <div class="cropper-buttons">
+            <button type="button" class="btn-crop-save" onclick="saveCroppedImage()">
+                <i class="bi bi-check-circle"></i>
+                حفظ الصورة
+            </button>
+            <button type="button" class="btn-crop-cancel" onclick="closeCropModal()">
+                <i class="bi bi-x-circle"></i>
+                إلغاء
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        let cropper = null;
+        let currentImageFile = null;
+
+        // toggle sections
+        function toggleSection(element) {
+            const body = element.nextElementSibling;
+            const icon = element.querySelector('.toggle-icon');
+            
+            if (body.classList.contains('collapsed')) {
+                body.classList.remove('collapsed');
+                icon.classList.remove('collapsed');
+                icon.classList.replace('bi-chevron-down', 'bi-chevron-up');
+            } else {
+                body.classList.add('collapsed');
+                icon.classList.add('collapsed');
+                icon.classList.replace('bi-chevron-up', 'bi-chevron-down');
+            }
+        }
+
+        function openCropModal() {
+            document.getElementById('CoverImageFile')?.click();
+        }
+
+        function renderProfileImage(imageSrc) {
+            const container = document.getElementById('imagePreview');
+            if (!container) return;
+
+            container.innerHTML = '<img src="' + imageSrc + '" class="profile-image-preview" id="profileImage" alt="الصورة الشخصية">';
+        }
+
+        document.getElementById('CoverImageFile')?.addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+            const fileExtension = (file.name.split('.').pop() || '').toLowerCase();
+            if (!allowedExtensions.includes(fileExtension)) {
+                alert('صيغة الملف غير مدعومة. الصيغ المسموحة: jpg, png, gif, webp');
+                this.value = '';
+                return;
+            }
+
+            const maxSize = 5 * 1024 * 1024;
+            if (file.size > maxSize) {
+                alert('حجم الصورة كبير جداً. الحد الأقصى 5MB');
+                this.value = '';
+                return;
+            }
+
+            currentImageFile = file;
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const cropImage = document.getElementById('cropImage');
+                const modal = document.getElementById('cropModal');
+                if (!cropImage || !modal) return;
+
+                cropImage.src = event.target.result;
+                modal.classList.add('active');
+
+                setTimeout(() => {
+                    if (cropper) {
+                        cropper.destroy();
+                    }
+
+                    cropper = new Cropper(cropImage, {
+                        aspectRatio: 1,
+                        viewMode: 1,
+                        dragMode: 'move',
+                        cropBoxMovable: true,
+                        cropBoxResizable: true,
+                        zoomable: true,
+                        zoomOnWheel: true,
+                        autoCropArea: 1,
+                        background: true,
+                        guides: true,
+                        responsive: true,
+                        restore: false,
+                        center: true
+                    });
+                }, 100);
+            };
+
+            reader.readAsDataURL(file);
+        });
+
+        function saveCroppedImage() {
+            if (!cropper || !currentImageFile) return;
+
+            const canvas = cropper.getCroppedCanvas({
+                width: 500,
+                height: 500,
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high'
+            });
+
+            if (!canvas) {
+                alert('حدث خطأ أثناء معالجة الصورة');
+                return;
+            }
+
+            canvas.toBlob(function (blob) {
+                if (!blob) {
+                    alert('تعذر حفظ الصورة بعد القص');
+                    return;
+                }
+
+                const croppedFile = new File([blob], currentImageFile.name, {
+                    type: currentImageFile.type,
+                    lastModified: Date.now()
+                });
+
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(croppedFile);
+
+                const fileInput = document.getElementById('CoverImageFile');
+                if (fileInput) {
+                    fileInput.files = dataTransfer.files;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    renderProfileImage(event.target.result);
+                };
+                reader.readAsDataURL(blob);
+
+                closeCropModal();
+            }, currentImageFile.type, 1);
+        }
+
+        function closeCropModal() {
+            document.getElementById('cropModal')?.classList.remove('active');
+
+            if (cropper) {
+                cropper.destroy();
+                cropper = null;
+            }
+        }
+
+        // نفس منطق BasicInfo للتحصيل الدراسي وحقول الطالب الجامعي
+        const educationSelect = document.getElementById('EducationLevel');
+        if (educationSelect) {
+            function toggleStudentFields() {
+                const universityFields = document.getElementById('UniversityFields');
+                const specializationField = document.getElementById('PersonalInfo_Specialization');
+                const universityTypeField = document.getElementById('PersonalInfo_UniversityType');
+                const institutionTypeField = document.getElementById('PersonalInfo_InstitutionType');
+                const institutionNameField = document.getElementById('PersonalInfo_InstitutionName');
+                const facultyDepartmentField = document.getElementById('PersonalInfo_FacultyDepartment');
+                const studyTypeField = document.getElementById('PersonalInfo_StudyType');
+                const studyStageField = document.getElementById('PersonalInfo_StudyStage');
+                const educationLevel = educationSelect.value;
+
+                if (specializationField) {
+                    if (educationLevel === 'آمي' || educationLevel === 'ابتدائي' || educationLevel === 'متوسط') {
+                        specializationField.value = educationLevel;
+                        specializationField.setAttribute('readonly', 'readonly');
+                    } else {
+                        if (specializationField.value === 'آمي' || specializationField.value === 'ابتدائي' || specializationField.value === 'متوسط') {
+                            specializationField.value = '';
+                        }
+
+                        specializationField.removeAttribute('readonly');
+                    }
+                }
+
+                if (!universityFields) return;
+
+                if (educationLevel === 'طالب جامعي') {
+                    universityFields.style.display = 'flex';
+                    universityFields.style.flexWrap = 'wrap';
+                    universityTypeField?.setAttribute('required', 'required');
+                    institutionTypeField?.setAttribute('required', 'required');
+                    institutionNameField?.setAttribute('required', 'required');
+                    facultyDepartmentField?.setAttribute('required', 'required');
+                    studyTypeField?.setAttribute('required', 'required');
+                    studyStageField?.setAttribute('required', 'required');
+                } else {
+                    universityFields.style.display = 'none';
+                    universityTypeField?.removeAttribute('required');
+                    institutionTypeField?.removeAttribute('required');
+                    institutionNameField?.removeAttribute('required');
+                    facultyDepartmentField?.removeAttribute('required');
+                    studyTypeField?.removeAttribute('required');
+                    studyStageField?.removeAttribute('required');
+                }
+            }
+
+            educationSelect.addEventListener('change', toggleStudentFields);
+            toggleStudentFields();
+        }
+
+        // نفس منطق BasicInfo للحالة الوظيفية
+        const employmentSelect = document.getElementById('EmploymentStatus');
+        if (employmentSelect) {
+            function updateEmploymentValidationRules() {
+                const employmentStatus = employmentSelect.value;
+                const ministryField = document.getElementById('Employment_Ministry');
+                const departmentField = document.getElementById('Employment_Department');
+                const positionField = document.getElementById('Employment_Position');
+                const jobTitleField = document.getElementById('Employment_JobTitle');
+                const jobGradeField = document.getElementById('Employment_JobGrade');
+
+                if (employmentStatus === 'موظف') {
+                    ministryField?.setAttribute('required', 'required');
+                    departmentField?.setAttribute('required', 'required');
+                    positionField?.setAttribute('required', 'required');
+                    jobTitleField?.setAttribute('required', 'required');
+                    jobGradeField?.setAttribute('required', 'required');
+                } else {
+                    ministryField?.removeAttribute('required');
+                    departmentField?.removeAttribute('required');
+                    positionField?.removeAttribute('required');
+                    jobTitleField?.removeAttribute('required');
+                    jobGradeField?.removeAttribute('required');
+                }
+            }
+
+            function toggleEmploymentFields() {
+                const ministryDiv = document.getElementById('MinistryDiv');
+                const departmentDiv = document.getElementById('DepartmentDiv');
+                const positionDiv = document.getElementById('PositionDiv');
+                const jobTitleDiv = document.getElementById('JobTitleDiv');
+                const jobGradeDiv = document.getElementById('JobGradeDiv');
+                const workField = document.getElementById('Employment_Work');
+                const employmentStatus = employmentSelect.value;
+
+                if (workField) {
+                    if (employmentStatus === 'موظف' || employmentStatus === 'متقاعد' || employmentStatus === 'طالب') {
+                        workField.value = employmentStatus;
+                        workField.setAttribute('readonly', 'readonly');
+                    } else {
+                        if (workField.value === 'موظف' || workField.value === 'متقاعد' || workField.value === 'طالب') {
+                            workField.value = '';
+                        }
+
+                        workField.removeAttribute('readonly');
+                    }
+                }
+                
+                if (employmentStatus === 'موظف') {
+                    if (ministryDiv) ministryDiv.style.display = 'block';
+                    if (departmentDiv) departmentDiv.style.display = 'block';
+                    if (positionDiv) positionDiv.style.display = 'block';
+                    if (jobTitleDiv) jobTitleDiv.style.display = 'block';
+                    if (jobGradeDiv) jobGradeDiv.style.display = 'block';
+                } else {
+                    if (ministryDiv) ministryDiv.style.display = 'none';
+                    if (departmentDiv) departmentDiv.style.display = 'none';
+                    if (positionDiv) positionDiv.style.display = 'none';
+                    if (jobTitleDiv) jobTitleDiv.style.display = 'none';
+                    if (jobGradeDiv) jobGradeDiv.style.display = 'none';
+                }
+
+                updateEmploymentValidationRules();
+            }
+
+            employmentSelect.addEventListener('change', toggleEmploymentFields);
+            toggleEmploymentFields();
+        }
+
+               // ========== دوال تحميل مستويات الاتحاد (محسنة) ==========
+
+        function loadFederationDivisions(federationName, savedDivision = null, savedSection = null, savedGroup = null) {
+            $('#FederationDivisionName').prop('disabled', true).html('<option value="">جاري التحميل...</option>');
+            $('#FederationSectionName').prop('disabled', true).html('<option value="">-- اختر الشعبة --</option>');
+            $('#FederationGroupName').prop('disabled', true).html('<option value="">-- اختر الوحدة --</option>');
+    
+            $.ajax({
+                url: '@Url.Action("GetFederationDivisionsByFederationName", "PublicData")',
+                type: 'GET',
+                data: { federationName: federationName },
+                success: function(response) {
+                    let options = '<option value="">-- اختر القسم --</option>';
+                    if (response.data && response.data.length > 0) {
+                        response.data.forEach(function(div) {
+                            let selected = (savedDivision === div.name) ? 'selected' : '';
+                            options += `<option value="${div.name}" ${selected}>${div.name}</option>`;
+                        });
+                        $('#FederationDivisionName').prop('disabled', false);
+                    } else {
+                        options += '<option value="" disabled>لا توجد أقسام</option>';
+                    }
+                    $('#FederationDivisionName').html(options);
+            
+                    // إذا كان هناك قسم محفوظ، قم بتحميل الشعب
+                    if (savedDivision && savedDivision !== '') {
+                        loadFederationSections(savedDivision, savedSection, savedGroup);
+                    }
+                },
+                error: function() {
+                    $('#FederationDivisionName').html('<option value="">حدث خطأ</option>');
+                }
+            });
+        }
+
+        function loadFederationSections(divisionName, savedSection = null, savedGroup = null) {
+            $('#FederationSectionName').prop('disabled', true).html('<option value="">جاري التحميل...</option>');
+            $('#FederationGroupName').prop('disabled', true).html('<option value="">-- اختر الوحدة --</option>');
+    
+            if (!divisionName) {
+                $('#FederationSectionName').prop('disabled', true).html('<option value="">-- اختر الشعبة --</option>');
+                return;
+            }
+    
+            var federationName = $('#FederationMasterName').val();
+    
+            $.ajax({
+                url: '@Url.Action("GetFederationSectionsByDivisionName", "PublicData")',
+                type: 'GET',
+                data: {
+                    federationName: federationName,
+                    divisionName: divisionName
+                },
+                success: function(response) {
+                    if (response.success && response.data && response.data.length > 0) {
+                        let options = '<option value="">-- اختر الشعبة --</option>';
+                        response.data.forEach(function(sec) {
+                            let selected = (savedSection === sec.name) ? 'selected' : '';
+                            options += `<option value="${sec.name}" ${selected}>${sec.name}</option>`;
+                        });
+                        $('#FederationSectionName').html(options).prop('disabled', false);
+                
+                        // إذا كانت هناك شعبة محفوظة، قم بتحميل التجمعات
+                        if (savedSection && savedSection !== '') {
+                            loadFederationGroups(savedSection, savedGroup);
+                        }
+                    } else {
+                        $('#FederationSectionName').html('<option value="">لا توجد شعب</option>').prop('disabled', true);
+                        $('#FederationGroupName').prop('disabled', true).html('<option value="">-- اختر الوحدة --</option>');
+                    }
+                },
+                error: function() {
+                    $('#FederationSectionName').html('<option value="">حدث خطأ</option>').prop('disabled', true);
+                }
+            });
+        }
+
+                                   function loadFederationGroups(sectionName, savedGroup = null) {
+            const groupSelect = $('#FederationGroupName');
+            groupSelect.prop('disabled', true).html('<option value="">جاري التحميل...</option>');
+    
+            if (!sectionName) {
+                groupSelect.prop('disabled', true).html('<option value="">-- اختر الوحدة --</option>');
+                return;
+            }
+    
+            var federationName = $('#FederationMasterName').val();
+            var divisionName = $('#FederationDivisionName').val();
+    
+            console.log('🔍 إرسال طلب لتجمعات الاتحاد:', { federationName, divisionName, sectionName });
+    
+            $.ajax({
+                url: '@Url.Action("GetFederationGroupsBySectionName", "PublicData")',
+                type: 'GET',
+                data: {
+                    federationName: federationName,
+                    divisionName: divisionName,
+                    sectionName: sectionName
+                },
+                success: function(response) {
+                    console.log('📡 استجابة تجمعات الاتحاد:', response);
+                    console.log('📡 response.data:', response.data);
+                    console.log('📡 response.data.length:', response.data ? response.data.length : 'null');
+            
+                    let options = '';
+            
+                    if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+                        options = '<option value="">-- اختر الوحدة --</option>';
+                        for (let i = 0; i < response.data.length; i++) {
+                            let selected = (savedGroup === response.data[i].name) ? 'selected' : '';
+                            options += `<option value="${response.data[i].name}" ${selected}>${response.data[i].name}</option>`;
+                        }
+                        groupSelect.prop('disabled', false);
+                        console.log('✅ تم تحميل ' + response.data.length + ' تجمعات');
+                    } else {
+                        // ✅ رسالة واضحة
+                        options = '<option value="" disabled selected> لا توجد وحدات </option>';
+                        groupSelect.prop('disabled', true);
+                        console.log('⚠️ لا توجد تجمعات لهذه الشعبة في الاتحاد');
+                    }
+                    groupSelect.html(options);
+                },
+                error: function(xhr, status, error) {
+                    console.error('❌ خطأ في تحميل تجمعات الاتحاد:', error);
+                    console.error('❌ Status:', status);
+                    console.error('❌ Response:', xhr.responseText);
+                    groupSelect.html('<option value="">حدث خطأ في التحميل</option>');
+                }
+            });
+        }
+        
+        function updateFederationFullName() {
+            var masterName = $('#FederationMasterName').val();
+            var divisionName = $('#FederationDivisionName').val();
+            var sectionName = $('#FederationSectionName').val();
+            var groupName = $('#FederationGroupName').val();
+            
+            var fullName = '';
+            if (masterName) fullName = masterName;
+            if (divisionName) fullName += ' - ' + divisionName;
+            if (sectionName) fullName += ' - ' + sectionName;
+            if (groupName) fullName += ' - ' + groupName;
+            
+            $('#FederationFullName').val(fullName);
+        }
+
+        function toggleWorkDistrictField() {
+            const workGovernorateSelect = document.getElementById('WorkGovernorateSelect');
+            if (!workGovernorateSelect) return;
+        }
+
+                // ========== دوال الـ Cascading Dropdown للانتساب (باستخدام PublicDataController) ==========
+        function loadDivisions(entityName, savedDivision = null) {
+            const divisionSelect = $('#Affiliation_Division');
+            divisionSelect.prop('disabled', true).html('<option value="">جاري التحميل...</option>');
+    
+            $.ajax({
+                url: '@Url.Action("GetDivisionsByEntityName", "PublicData")',
+                type: 'GET',
+                data: { entityName: entityName },
+                success: function(response) {
+                    let options = '<option value="">-- اختر القسم --</option>';
+                    if (response.data && response.data.length > 0) {
+                        response.data.forEach(function(div) {
+                            let selected = (savedDivision === div.name) ? 'selected' : '';
+                            options += `<option value="${div.name}" ${selected}>${div.name}</option>`;
+                        });
+                        divisionSelect.prop('disabled', false);
+                    } else {
+                        options += '<option value="" disabled>لا توجد أقسام</option>';
+                    }
+                    divisionSelect.html(options);
+            
+                    $('#Affiliation_Section').prop('disabled', true).html('<option value="">-- اختر الشعبة --</option>');
+                    $('#Affiliation_Group').prop('disabled', true).html('<option value="">-- اختر الوحدة --</option>');
+                },
+                error: function() {
+                    divisionSelect.html('<option value="">حدث خطأ</option>');
+                }
+            });
+        }
+
+        function loadSections(divisionName, savedSection = null) {
+            const sectionSelect = $('#Affiliation_Section');
+            sectionSelect.prop('disabled', true).html('<option value="">جاري التحميل...</option>');
+    
+            var entityName = $('#Affiliation_AffiliationEntity').val();
+    
+            $.ajax({
+                url: '@Url.Action("GetSectionsByDivisionName", "PublicData")',
+                type: 'GET',
+                data: {
+                    entityName: entityName,
+                    divisionName: divisionName
+                },
+                success: function(response) {
+                    let options = '<option value="">-- اختر الشعبة --</option>';
+                    if (response.data && response.data.length > 0) {
+                        response.data.forEach(function(sec) {
+                            let selected = (savedSection === sec.name) ? 'selected' : '';
+                            options += `<option value="${sec.name}" ${selected}>${sec.name}</option>`;
+                        });
+                        sectionSelect.prop('disabled', false);
+                    } else {
+                        options += '<option value="" disabled>لا توجد شعب</option>';
+                    }
+                    sectionSelect.html(options);
+            
+                    $('#Affiliation_Group').prop('disabled', true).html('<option value="">-- اختر الوحدة --</option>');
+                },
+                error: function() {
+                    sectionSelect.html('<option value="">حدث خطأ</option>');
+                }
+            });
+        }
+                      function loadGroups(sectionName, savedGroup = null) {
+            const groupSelect = $('#Affiliation_Group');
+            groupSelect.prop('disabled', true).html('<option value="">جاري التحميل...</option>');
+    
+            var entityName = $('#Affiliation_AffiliationEntity').val();
+            var divisionName = $('#Affiliation_Division').val();
+    
+            console.log('🔍 إرسال طلب للتجمعات:', { entityName, divisionName, sectionName });
+    
+            $.ajax({
+                url: '@Url.Action("GetGroupsBySectionName", "PublicData")',
+                type: 'GET',
+                data: {
+                    entityName: entityName,
+                    divisionName: divisionName,
+                    sectionName: sectionName
+                },
+                success: function(response) {
+                    console.log('📡 الاستجابة من الخادم:', response);
+                    console.log('📡 response.data:', response.data);
+                    console.log('📡 typeof response.data:', typeof response.data);
+                    console.log('📡 response.data.length:', response.data ? response.data.length : 'null');
+            
+                    let options = '';
+            
+                    // التحقق من وجود بيانات
+                    if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+                        options = '<option value="">-- اختر الوحدة --</option>';
+                        for (let i = 0; i < response.data.length; i++) {
+                            let selected = (savedGroup === response.data[i].name) ? 'selected' : '';
+                            options += `<option value="${response.data[i].name}" ${selected}>${response.data[i].name}</option>`;
+                        }
+                        groupSelect.prop('disabled', false);
+                        console.log('✅ تم تحميل ' + response.data.length + ' تجمعات');
+                    } else {
+                        // ✅ رسالة واضحة
+                        options = '<option value="" disabled selected> لا توجد وحدات </option>';
+                        groupSelect.prop('disabled', true);
+                        console.log('⚠️ لا توجد تجمعات');
+                    }
+                    groupSelect.html(options);
+                },
+                error: function(xhr, status, error) {
+                    console.error('❌ خطأ في Ajax:', error);
+                    console.error('❌ Status:', status);
+                    console.error('❌ Response:', xhr.responseText);
+                    groupSelect.html('<option value="">حدث خطأ في التحميل</option>');
+                }
+            });
+        }
+               
+        
+        // ========== ربط الأحداث ==========
+        $(document).ready(function() {
+            $('#WorkGovernorateSelect').change(toggleWorkDistrictField);
+            toggleWorkDistrictField();
+
+            // أحداث الاتحاد
+            $('#FederationMasterName').change(function() {
+                var federationName = $(this).val();
+                if (federationName) {
+                    loadFederationDivisions(federationName);
+                } else {
+                    $('#FederationDivisionName').prop('disabled', true).html('<option value="">-- اختر القسم --</option>');
+                    $('#FederationSectionName').prop('disabled', true).html('<option value="">-- اختر الشعبة --</option>');
+                    $('#FederationGroupName').prop('disabled', true).html('<option value="">-- اختر الوحدة --</option>');
+                }
+                updateFederationFullName();
+            });
+            
+            $('#FederationDivisionName').change(function() {
+                var divisionName = $(this).val();
+                if (divisionName) {
+                    loadFederationSections(divisionName);
+                } else {
+                    $('#FederationSectionName').prop('disabled', true).html('<option value="">-- اختر الشعبة --</option>');
+                    $('#FederationGroupName').prop('disabled', true).html('<option value="">-- اختر الوحدة --</option>');
+                }
+                updateFederationFullName();
+            });
+            
+            $('#FederationSectionName').change(function() {
+                var sectionName = $(this).val();
+                if (sectionName) {
+                    loadFederationGroups(sectionName);
+                } else {
+                    $('#FederationGroupName').prop('disabled', true).html('<option value="">-- اختر الوحدة --</option>');
+                }
+                updateFederationFullName();
+            });
+            
+            $('#FederationGroupName').change(function() {
+                updateFederationFullName();
+            });
+            
+            // أحداث جهة الانتساب
+            $('#Affiliation_AffiliationEntity').change(function() {
+                var entityName = $(this).val();
+                if (entityName) {
+                    loadDivisions(entityName);
+                } else {
+                    $('#Affiliation_Division').prop('disabled', true).html('<option value="">-- اختر القسم --</option>');
+                    $('#Affiliation_Section').prop('disabled', true).html('<option value="">-- اختر الشعبة --</option>');
+                    $('#Affiliation_Group').prop('disabled', true).html('<option value="">-- اختر الوحدة --</option>');
+                }
+            });
+            
+            $('#Affiliation_Division').change(function() {
+                var divisionName = $(this).val();
+                if (divisionName) {
+                    loadSections(divisionName);
+                } else {
+                    $('#Affiliation_Section').prop('disabled', true).html('<option value="">-- اختر الشعبة --</option>');
+                    $('#Affiliation_Group').prop('disabled', true).html('<option value="">-- اختر الوحدة --</option>');
+                }
+            });
+            
+            $('#Affiliation_Section').change(function() {
+                var sectionName = $(this).val();
+                if (sectionName) {
+                    loadGroups(sectionName);
+                } else {
+                    $('#Affiliation_Group').prop('disabled', true).html('<option value="">-- اختر الوحدة --</option>');
+                }
+            });
+            
+                    // استعادة القيم المحفوظة للاتحاد (محسنة)
+        var savedFederationFullName = $('#FederationFullName').val();
+        if (savedFederationFullName && savedFederationFullName !== '') {
+            var parts = savedFederationFullName.split(' - ');
+            console.log('🔄 استعادة بيانات الاتحاد:', parts);
+    
+            if (parts.length >= 1 && parts[0] && parts[0] !== '') {
+                $('#FederationMasterName').val(parts[0]);
+        
+                if (parts.length >= 2 && parts[1] && parts[1] !== '') {
+                    // تحميل الأقسام ثم تعيين القيمة
+                    loadFederationDivisions(parts[0], parts[1], parts.length >= 3 ? parts[2] : null, parts.length >= 4 ? parts[3] : null);
+            
+                    if (parts.length >= 3 && parts[2] && parts[2] !== '') {
+                        setTimeout(() => {
+                            $('#FederationSectionName').val(parts[2]);
+                            updateFederationFullName();
+                        }, 500);
+                    }
+                } else {
+                    loadFederationDivisions(parts[0]);
+                }
+            }
+        }
+            
+            // استعادة القيم المحفوظة لجهة الانتساب بشكل مضمون
+            const savedEntity = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Affiliation?.AffiliationEntity ?? ""));
+            const savedDivision = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Affiliation?.Division ?? ""));
+            const savedSection = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Affiliation?.Section ?? ""));
+            const savedGroup = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Affiliation?.Group ?? ""));
+
+            if (savedEntity) {
+                $('#Affiliation_AffiliationEntity').val(savedEntity);
+                loadDivisions(savedEntity, savedDivision);
+
+                if (savedDivision) {
+                    setTimeout(function() {
+                        $('#Affiliation_Division').val(savedDivision);
+                        loadSections(savedDivision, savedSection);
+
+                        if (savedSection) {
+                            setTimeout(function() {
+                                $('#Affiliation_Section').val(savedSection);
+                                loadGroups(savedSection, savedGroup);
+
+                                if (savedGroup) {
+                                    setTimeout(function() {
+                                        $('#Affiliation_Group').val(savedGroup);
+                                    }, 250);
+                                }
+                            }, 250);
+                        }
+                    }, 250);
+                }
+            }
+        });
+        (function() {
+            setTimeout(function() {
+                const governorateSelect = document.getElementById('GovernorateSelect');
+                const districtSelectDiv = document.getElementById('districtSelectDiv');
+                const districtInputDiv = document.getElementById('districtInputDiv');
+                const districtSelect = document.getElementById('districtSelect');
+                const districtInput = document.getElementById('Address_District');
+                const hiddenDistrict = document.getElementById('hiddenDistrict');
+                
+                if (!governorateSelect) {
+                    console.log('❌ لم يتم العثور على حقل المحافظة');
+                    return;
+                }
+                
+                function updateDistrictField() {
+                    const selectedValue = governorateSelect.value;
+                    console.log('المحافظة المختارة:', selectedValue);
+                    
+                    if (selectedValue === 'بغداد') {
+                        districtSelectDiv.style.display = 'block';
+                        districtInputDiv.style.display = 'none';
+                        console.log('✅ تم إظهار القائمة المنسدلة');
+                    } else {
+                        districtSelectDiv.style.display = 'none';
+                        districtInputDiv.style.display = 'block';
+                        console.log('✅ تم إظهار حقل النص');
+                    }
+                }
+                
+                function syncValues() {
+                    if (districtSelectDiv.style.display === 'block') {
+                        if (districtSelect && hiddenDistrict) {
+                            hiddenDistrict.value = districtSelect.value;
+                            if (districtInput) districtInput.value = districtSelect.value;
+                        }
+                    } else {
+                        if (districtInput && hiddenDistrict) {
+                            hiddenDistrict.value = districtInput.value;
+                        }
+                    }
+                }
+                
+                governorateSelect.addEventListener('change', function() {
+                    updateDistrictField();
+                    syncValues();
+                });
+                
+                if (districtSelect) {
+                    districtSelect.addEventListener('change', syncValues);
+                }
+                
+                if (districtInput) {
+                    districtInput.addEventListener('input', syncValues);
+                }
+                
+                updateDistrictField();
+                syncValues();
+                
+                console.log('✅ تم تهيئة نظام بغداد بنجاح');
+            }, 500);
+        })();
+    </script>
+
+}

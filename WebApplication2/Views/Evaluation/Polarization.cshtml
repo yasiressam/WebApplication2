@@ -1,0 +1,133 @@
+﻿@model WebApplication2.Models.ViewModels.EvaluationFactorViewModel
+
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "تقييم الاستقطاب";
+}
+
+<div class="container mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>👥 تقييم: @Model.FactorDisplayName</h3>
+        <div>
+            <select id="monthSelect" class="form-select d-inline-block w-auto" style="width: 120px;">
+                @for (int i = 1; i <= 12; i++)
+                {
+                    <option value="@i" selected="@(Model.Month == i)">@(new DateTime(2024, i, 1).ToString("MMMM"))</option>
+                }
+            </select>
+            <select id="yearSelect" class="form-select d-inline-block w-auto ms-2" style="width: 100px;">
+                @for (int i = 2020; i <= DateTime.Now.Year + 1; i++)
+                {
+                    <option value="@i" selected="@(Model.Year == i)">@i</option>
+                }
+            </select>
+            <button id="filterBtn" class="btn btn-primary ms-2">🔍 عرض</button>
+        </div>
+    </div>
+
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> الدرجة القصوى لهذا العامل: <strong>@Model.MaxScore</strong>
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 5%">#</th>
+                            <th style="width: 30%">الاسم</th>
+                            <th style="width: 15%">رقم الهاتف</th>
+                            <th style="width: 15%">المحافظة</th>
+                            <th style="width: 20%">الدرجة</th>
+                            <th style="width: 15%">الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.Users.Count; i++)
+                        {
+                            var user = Model.Users[i];
+                            <tr>
+                                <td class="text-center">@(i + 1)</td>
+                                <td>@user.FullName</td>
+                                <td>@user.PhoneNumber</td>
+                                <td>@user.Governorate</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input type="range" class="form-range score-slider"
+                                               style="width: 150px;"
+                                               data-user-id="@user.UserId"
+                                               min="1" max="@user.MaxScore"
+                                               value="@user.CurrentScore" />
+                                        <span class="score-value fw-bold">@user.CurrentScore</span> / @user.MaxScore
+                                    </div>
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-primary save-btn"
+                                            data-user-id="@user.UserId"
+                                            data-user-name="@user.FullName">
+                                        💾 حفظ
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    @await Html.PartialAsync("_EvaluationPagination", Model)
+
+    @if (!Model.Users.Any())
+    {
+        <div class="alert alert-warning text-center mt-3">
+            ⚠️ لا يوجد أفراد مصعدين لعرضهم.
+        </div>
+    }
+</div>
+
+<script>
+    document.querySelectorAll('.score-slider').forEach(slider => {
+        const span = slider.nextElementSibling;
+        slider.addEventListener('input', function() {
+            span.innerText = this.value;
+        });
+    });
+
+    document.querySelectorAll('.save-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const userId = this.dataset.userId;
+            const row = this.closest('tr');
+            const slider = row.querySelector('.score-slider');
+            const score = slider.value;
+            const month = document.getElementById('monthSelect').value;
+            const year = document.getElementById('yearSelect').value;
+            const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+
+            const response = await fetch('/Evaluation/SavePolarization', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'RequestVerificationToken': csrfToken
+                },
+                body: `userId=${userId}&score=${score}&month=${month}&year=${year}`
+            });
+
+            if (response.ok) {
+                const originalText = this.innerHTML;
+                this.innerHTML = '✅ تم';
+                setTimeout(() => { this.innerHTML = originalText; }, 2000);
+            } else {
+                this.innerHTML = '❌ خطأ';
+                setTimeout(() => { this.innerHTML = '💾 حفظ'; }, 2000);
+            }
+        });
+    });
+
+    document.getElementById('filterBtn').addEventListener('click', function() {
+        const month = document.getElementById('monthSelect').value;
+        const year = document.getElementById('yearSelect').value;
+        window.location.href = `/Evaluation/Polarization?month=${month}&year=${year}`;
+    });
+</script>

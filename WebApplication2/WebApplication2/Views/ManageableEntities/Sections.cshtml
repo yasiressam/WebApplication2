@@ -1,0 +1,135 @@
+﻿@model IEnumerable<WebApplication2.Models.Section>
+
+@{
+    ViewData["Title"] = "الشعب";
+    var currentDivision = ViewBag.CurrentDivision as WebApplication2.Models.Division;
+}
+
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col-8">
+            <h2>
+                <i class="bi bi-layers"></i> شعب القسم:
+                <span class="text-success">@(currentDivision?.Name ?? "غير محدد")</span>
+            </h2>
+            @if (currentDivision?.AffiliationEntity != null)
+            {
+                <small class="text-muted">
+                    <i class="bi bi-building"></i> جهة الانتساب: @currentDivision.AffiliationEntity.Name
+                </small>
+            }
+        </div>
+        <div class="col-4 text-start">
+            <a href="@Url.Action("CreateSection", new { divisionId = ViewBag.DivisionId })" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> إضافة شعبة جديدة
+            </a>
+            <a href="@Url.Action("Divisions", new { entityId = currentDivision?.AffiliationEntityId })" class="btn btn-secondary">
+                <i class="bi bi-arrow-right"></i> عودة
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle"></i> @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle"></i> @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 5%">#</th>
+                            <th style="width: 45%">الشعبة</th>
+                            <th style="width: 15%">عدد الوحدات</th>
+                            <th style="width: 20%">تاريخ الإضافة</th>
+                            <th style="width: 15%">الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model != null && Model.Any())
+                        {
+                            int i = 1;
+                            foreach (var item in Model)
+                            {
+                                <tr>
+                                    <td class="text-center">@(i++)</td>
+                                    <td>
+                                        <a href="@Url.Action("Groups", new { sectionId = item.Id })"
+                                               class="text-decoration-none fw-bold text-warning">
+                                            <i class="bi bi-grid-3x3-gap-fill"></i> @item.Name
+                                        </a>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info rounded-pill">@item.Groups?.Count()</span>
+                                    </td>
+                                    <td>@item.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                    <td>
+                                        <a href="@Url.Action("Groups", new { sectionId = item.Id })"
+                                               class="btn btn-sm btn-outline-info">
+                                            <i class="bi bi-diagram-3"></i> إدارة
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                onclick="deleteSection(@item.Id, '@item.Name')">
+                                            <i class="bi bi-trash"></i> حذف
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-5">
+                                    <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                    لا توجد شعب
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function deleteSection(id, name) {
+            if (confirm(`⚠️ هل أنت متأكد من حذف الشعبة "${name}"؟\n\nملاحظة: سيتم حذف جميع الوحدات المرتبطة بها.`)) {
+                var token = $('input[name="__RequestVerificationToken"]').val();
+                if (!token) token = $('form input[name="__RequestVerificationToken"]').val();
+
+                $.ajax({
+                    url: '@Url.Action("DeleteSection", "ManageableEntities")',
+                    type: 'POST',
+                    data: { id: id },
+                    headers: { 'RequestVerificationToken': token },
+                    success: function(response) {
+                        if (response.success) {
+                            alert(response.message);
+                            location.reload();
+                        } else {
+                            alert("❌ " + response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        alert("❌ حدث خطأ: " + (xhr.responseJSON?.message || xhr.statusText));
+                    }
+                });
+            }
+        }
+    </script>
+}

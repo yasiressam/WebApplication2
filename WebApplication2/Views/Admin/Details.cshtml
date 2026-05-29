@@ -1,0 +1,846 @@
+﻿@model WebApplication2.Controllers.AdminUserDetailsVM
+
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "تفاصيل المستخدم";
+}
+
+<style>
+    .profile-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        margin-bottom: 25px;
+        overflow: hidden;
+    }
+
+    .profile-header {
+        background: linear-gradient(135deg, #1e3c72, #2a5a9c);
+        color: white;
+        padding: 20px;
+        position: relative;
+    }
+
+    .profile-header-actions {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        z-index: 2;
+    }
+
+    .profile-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        border: 3px solid white;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+        object-fit: cover;
+    }
+
+    .profile-header h2 {
+        font-size: 1.3rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .profile-header p {
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .section-title {
+        color: #1e3c72;
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 3px solid #1e3c72;
+        display: inline-block;
+    }
+
+    .info-label {
+        font-weight: 600;
+        color: #6c757d;
+        font-size: 0.8rem;
+        margin-bottom: 5px;
+    }
+
+    .info-value {
+        font-weight: 500;
+        color: #212529;
+        font-size: 0.95rem;
+        margin-bottom: 15px;
+        padding: 8px 12px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+
+    .badge-status {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .badge-active {
+        background: #28a745;
+        color: white;
+    }
+
+    .badge-inactive {
+        background: #dc3545;
+        color: white;
+    }
+
+    .badge-superadmin {
+        background: #dc3545;
+        color: white;
+    }
+
+    .badge-admin {
+        background: #28a745;
+        color: white;
+    }
+
+    .badge-member {
+        background: #ffc107;
+        color: #212529;
+    }
+
+    .info-section {
+        padding: 20px;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+        .info-section:last-child {
+            border-bottom: none;
+        }
+
+    .btn-back {
+        background: linear-gradient(135deg, #6c757d, #495057);
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+        .btn-back:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(108, 117, 125, 0.3);
+            color: white;
+        }
+
+    .btn-edit {
+        background: linear-gradient(135deg, #17a2b8, #138496);
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 25px;
+        font-weight: 600;
+        transition: all 0.3s;
+    }
+
+        .btn-edit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(23, 162, 184, 0.3);
+            color: white;
+        }
+
+    .btn-print-form {
+        background: linear-gradient(135deg, #198754, #20c997);
+        color: white;
+        border: none;
+        padding: 5px 12px;
+        border-radius: 25px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        transition: all 0.3s;
+    }
+
+        .btn-print-form:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(25, 135, 84, 0.3);
+            color: white;
+        }
+
+    .governorate-badge {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+    }
+</style>
+
+<div class="container mt-4" dir="rtl">
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle-fill"></i> @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle-fill"></i> @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="profile-card">
+        <!-- الهيدر الرئيسي -->
+        <div class="profile-header text-center">
+            <div class="profile-header-actions">
+                <button type="button" onclick="printUserDetails()" class="btn-print-form">
+                    <i class="bi bi-printer-fill"></i> طباعة
+                </button>
+            </div>
+            <div class="position-relative">
+                @if (!string.IsNullOrEmpty(Model?.CoverImage))
+                {
+                    <img src="@Model.CoverImage" class="profile-avatar mb-2" alt="الصورة الشخصية">
+                }
+                else
+                {
+                    <div class="profile-avatar mb-2 bg-light d-flex align-items-center justify-content-center mx-auto">
+                        <i class="bi bi-person" style="font-size: 2rem; color: #1e3c72;"></i>
+                    </div>
+                }
+
+                <h2 class="mb-1">@(Model?.FullName ?? "غير مكتمل") @(Model?.LastName ?? "")</h2>
+                <p class="mb-2"><i class="bi bi-envelope"></i> @Model?.Email</p>
+
+                <div class="mt-2">
+                    @if (Model?.IsActive == true)
+                    {
+                        <span class="badge-status badge-active">
+                            <i class="bi bi-check-circle"></i> حساب مفعل
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="badge-status badge-inactive">
+                            <i class="bi bi-x-circle"></i> حساب معطل
+                        </span>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Model?.Roles))
+                    {
+                        if (Model.Roles.Contains("SuperAdmin"))
+                        {
+                            <span class="badge-status badge-superadmin ms-2">
+                                <i class="bi bi-crown-fill"></i> سوبر أدمن
+                            </span>
+                        }
+                        else if (Model.Roles.Contains("Admin"))
+                        {
+                            <span class="badge-status badge-admin ms-2">
+                                <i class="bi bi-shield-fill"></i> أدمن
+                            </span>
+                        }
+                        else if (Model.Roles.Contains("فرد"))
+                        {
+                            <span class="badge-status badge-member ms-2">
+                                <i class="bi bi-star-fill"></i> فرد
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge-status badge-secondary ms-2">
+                                <i class="bi bi-person"></i> مستخدم
+                            </span>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- معلومات الحساب -->
+        <div class="info-section">
+            <h4 class="section-title">
+                <i class="bi bi-person-badge"></i> معلومات الحساب
+            </h4>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="info-label">البريد الإلكتروني</div>
+                    <div class="info-value">@Model?.Email</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">رقم الهاتف</div>
+                    <div class="info-value">@(!string.IsNullOrEmpty(Model?.PhoneNumber) ? Model.PhoneNumber : "---")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">رقم الواتساب</div>
+                    <div class="info-value">
+                        @(!string.IsNullOrEmpty(Model?.WhatsAppNumber) ? Model.WhatsAppNumber : "---")
+                        @if (Model?.IsWhatsAppVerified == true)
+                        {
+                            <span class="badge bg-success ms-2">موثق</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary ms-2">غير موثق</span>
+                        }
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">معرف المستخدم</div>
+                    <div class="info-value"><small class="text-muted">@Model?.UserId</small></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- المعلومات الشخصية -->
+        <div class="info-section">
+            <h4 class="section-title">
+                <i class="bi bi-person"></i> المعلومات الشخصية
+            </h4>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="info-label">الاسم الرباعي</div>
+                    <div class="info-value">@(Model?.FullName ?? "غير مكتمل")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">اللقب</div>
+                    <div class="info-value">@(!string.IsNullOrEmpty(Model?.LastName) ? Model.LastName : "---")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">اسم الأم</div>
+                    <div class="info-value">@(!string.IsNullOrEmpty(Model?.MotherName) ? Model.MotherName : "---")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">تاريخ الميلاد</div>
+                    <div class="info-value">@(Model?.DateOfBirth > DateTime.MinValue ? Model.DateOfBirth.ToString("yyyy-MM-dd") : "---")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">الجنس</div>
+                    <div class="info-value">
+                        @if (Model?.Gender == "ذكر")
+                        {
+                            <span><i class="bi bi-gender-male"></i> ذكر</span>
+                        }
+                        else if (Model?.Gender == "أنثى")
+                        {
+                            <span><i class="bi bi-gender-female"></i> أنثى</span>
+                        }
+                        else
+                        {
+                            <span>---</span>
+                        }
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">الحالة الاجتماعية</div>
+                    <div class="info-value">@(!string.IsNullOrEmpty(Model?.MaritalStatus) ? Model.MaritalStatus : "---")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">التحصيل الدراسي</div>
+                    <div class="info-value">@(!string.IsNullOrEmpty(Model?.Education) ? Model.Education : "---")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">الاختصاص</div>
+                    <div class="info-value">@(!string.IsNullOrEmpty(Model?.Specialization) ? Model.Specialization : "---")</div>
+                </div>
+
+                @if (Model?.Education == "طالب جامعي")
+                {
+                    <div class="col-md-4">
+                        <div class="info-label">نوع الجامعة</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model?.UniversityType) ? Model.UniversityType : "---")</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-label">نوع المؤسسة</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model?.InstitutionType) ? Model.InstitutionType : "---")</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-label">اسم الجامعة/المعهد</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model?.InstitutionName) ? Model.InstitutionName : "---")</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-label">الكلية/القسم</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model?.FacultyDepartment) ? Model.FacultyDepartment : "---")</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-label">نوع الدراسة</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model?.StudyType) ? Model.StudyType : "---")</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-label">المرحلة</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model?.StudyStage) ? Model.StudyStage : "---")</div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- المستندات الرسمية -->
+        <div class="info-section">
+            <h4 class="section-title">
+                <i class="bi bi-card-text"></i> المستندات الرسمية
+            </h4>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="info-label">رقم البطاقة الموحدة</div>
+                    <div class="info-value">@(!string.IsNullOrEmpty(Model?.IdentityCardN) ? Model.IdentityCardN : "---")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">تاريخ الإصدار</div>
+                    <div class="info-value">@(Model?.IdentityDate > DateTime.MinValue ? Model.IdentityDate.ToString("yyyy-MM-dd") : "---")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">رقم بطاقة الناخب</div>
+                    <div class="info-value">@(!string.IsNullOrEmpty(Model?.VoterCardNumber) ? Model.VoterCardNumber : "---")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">رقم مركز الاقتراع</div>
+                    <div class="info-value">@(!string.IsNullOrEmpty(Model?.PollingCenterNumber) ? Model.PollingCenterNumber : "---")</div>
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model?.WorkGovernorate))
+        {
+            <div class="info-section">
+                <h4 class="section-title">
+                    <i class="bi bi-geo-alt-fill"></i> محافظة العمل التنظيمي
+                </h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="info-label">محافظة العمل التنظيمي</div>
+                        <div class="info-value">@Model.WorkGovernorate</div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- العنوان -->
+        @if (Model?.Address != null)
+        {
+            <div class="info-section">
+                <h4 class="section-title">
+                    <i class="bi bi-geo-alt"></i> عنوان السكن
+                </h4>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="info-label">المحافظة</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model.Address.Governorate) ? Model.Address.Governorate : "---")</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-label">القضاء</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model.Address.District) ? Model.Address.District : "---")</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-label">المنطقة/الناحية</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model.Address.Area) ? Model.Address.Area : "---")</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="info-label">المحلة</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model.Address.Alley) ? Model.Address.Alley : "---")</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="info-label">الزقاق</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model.Address.Street) ? Model.Address.Street : "---")</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="info-label">الدار</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model.Address.House) ? Model.Address.House : "---")</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="info-label">أقرب نقطة دالة</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model.Address.NearestPoint) ? Model.Address.NearestPoint : "---")</div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- العمل والتوظيف -->
+        <div class="info-section">
+            <h4 class="section-title">
+                <i class="bi bi-briefcase"></i> العمل والتوظيف
+            </h4>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="info-label">الحالة الوظيفية</div>
+                    <div class="info-value">@(!string.IsNullOrEmpty(Model?.EmploymentStatus) ? Model.EmploymentStatus : "---")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">جهة العمل</div>
+                    <div class="info-value">@(!string.IsNullOrEmpty(Model?.Work) ? Model.Work : "---")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">الوزارة</div>
+                    <div class="info-value">@(!string.IsNullOrEmpty(Model?.Ministry) ? Model.Ministry : "---")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">الدائرة</div>
+                    <div class="info-value">@(!string.IsNullOrEmpty(Model?.Department) ? Model.Department : "---")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">المنصب</div>
+                    <div class="info-value">@(!string.IsNullOrEmpty(Model?.Position) ? Model.Position : "---")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">العنوان الوظيفي</div>
+                    <div class="info-value">@(!string.IsNullOrEmpty(Model?.JobTitle) ? Model.JobTitle : "---")</div>
+                </div>
+                <div class="col-md-4">
+                    <div class="info-label">الدرجة الوظيفية</div>
+                    <div class="info-value">@(!string.IsNullOrEmpty(Model?.JobGrade) ? Model.JobGrade : "---")</div>
+                </div>
+            </div>
+        </div>
+        <!-- ========== المسؤوليات الإدارية ========== -->
+        <div class="info-section">
+            <h4 class="section-title">
+                <i class="bi bi-person-badge-fill"></i> المسؤوليات الإدارية
+            </h4>
+
+            @if (Model?.ManagementAssignments != null && Model.ManagementAssignments.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead>
+                            <tr class="table-light">
+                                <th><i class="bi bi-tag"></i> المستوى</th>
+                                <th><i class="bi bi-geo-alt"></i> المحافظة</th>
+                                <th><i class="bi bi-building"></i> الجهة/القسم/الشعبة/الوحدة</th>
+                                <th><i class="bi bi-calendar"></i> تاريخ التعيين</th>
+                                @if (User.IsInRole("SuperAdmin"))
+                                {
+                                    <th><i class="bi bi-gear"></i> إجراءات</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var assignment in Model.ManagementAssignments)
+                            {
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-info text-dark">
+                                            <i class="bi bi-person-badge"></i> @assignment.LevelArabic
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-geo-alt-fill"></i> @assignment.Governorate
+                                        </span>
+                                    </td>
+                                    <td>
+                                        @{
+                                            string entityDisplay = "";
+                                            if (!string.IsNullOrEmpty(assignment.EntityName))
+                                                entityDisplay = assignment.EntityName;
+                                            else if (!string.IsNullOrEmpty(assignment.DivisionName))
+                                                entityDisplay = assignment.DivisionName;
+                                            else if (!string.IsNullOrEmpty(assignment.SectionName))
+                                                entityDisplay = assignment.SectionName;
+                                            else if (!string.IsNullOrEmpty(assignment.GroupName))
+                                                entityDisplay = assignment.GroupName;
+                                            else
+                                                entityDisplay = assignment.LevelArabic;
+                                        }
+                                        <strong class="text-primary">@entityDisplay</strong>
+                                    </td>
+                                    <td>
+                                        <i class="bi bi-calendar"></i> @assignment.CreatedAt.ToString("yyyy/MM/dd")
+                                    </td>
+                                    @if (User.IsInRole("SuperAdmin"))
+                                    {
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-danger"
+                                                    onclick="removeAssignment(@assignment.Id, '@Model.FullName')"
+                                                    title="إلغاء التكليف">
+                                                <i class="bi bi-trash"></i> حذف
+                                            </button>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-secondary">
+                    <i class="bi bi-info-circle"></i> هذا المستخدم ليس لديه أي مسؤوليات إدارية حالياً.
+                    @if (User.IsInRole("SuperAdmin"))
+                    {
+                        <a asp-controller="ManagementAssignments" asp-action="Assign" asp-route-userId="@Model?.UserId" class="alert-link">
+                            اضغط هنا لتعيينه كمسؤول
+                        </a>
+                    }
+                </div>
+            }
+        </div>
+        <!-- معلومات الانتساب -->
+        @if (!string.IsNullOrEmpty(Model?.AffiliationEntity) || !string.IsNullOrEmpty(Model?.Division) ||
+                     !string.IsNullOrEmpty(Model?.Section) || !string.IsNullOrEmpty(Model?.Group))
+        {
+            <div class="info-section">
+                <h4 class="section-title">
+                    <i class="bi bi-diagram-3"></i> معلومات الانتساب
+                </h4>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="info-label">جهة الانتساب</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model.AffiliationEntity) ? Model.AffiliationEntity : "---")</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-label">القسم</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model.Division) ? Model.Division : "---")</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-label">الشعبة</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model.Section) ? Model.Section : "---")</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-label">الوحدة</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model.Group) ? Model.Group : "---")</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-label">رقم الباج الخاص بك</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model.BadgeNumber) ? Model.BadgeNumber : "---")</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-label">اسم المزكي</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model.AffiliationMozakeName) ? Model.AffiliationMozakeName : "---")</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-label">رقم هاتف المزكي</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model.MozakePhoneNumber) ? Model.MozakePhoneNumber : "---")</div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-label">تاريخ الانتماء</div>
+                        <div class="info-value">@(Model.AffiliationEntryDate?.ToString("yyyy-MM-dd") ?? "---")</div>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- العضويات -->
+        @if (!string.IsNullOrEmpty(Model?.UnionName) || !string.IsNullOrEmpty(Model?.FederationName) ||
+                     !string.IsNullOrEmpty(Model?.AssociationName) || !string.IsNullOrEmpty(Model?.NgoName))
+        {
+            <div class="info-section">
+                <h4 class="section-title">
+                    <i class="bi bi-people"></i> العضويات
+                </h4>
+
+                <!-- النقابة -->
+                @if (!string.IsNullOrEmpty(Model?.UnionName))
+                {
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="info-label">النقابة</div>
+                            <div class="info-value">@Model.UnionName</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">المنصب</div>
+                            <div class="info-value">@(!string.IsNullOrEmpty(Model.UnionPosition) ? Model.UnionPosition : "---")</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">رقم العضوية</div>
+                            <div class="info-value">@(!string.IsNullOrEmpty(Model.UnionIdNumber) ? Model.UnionIdNumber : "---")</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">تاريخ النفاذ</div>
+                            <div class="info-value">@(Model.UnionAffiliationDate?.ToString("yyyy-MM-dd") ?? "---")</div>
+                        </div>
+                    </div>
+                }
+
+                <!-- الاتحاد -->
+                @if (!string.IsNullOrEmpty(Model?.FederationName) || !string.IsNullOrEmpty(Model?.FederationDivisionName) ||
+                     !string.IsNullOrEmpty(Model?.FederationSectionName) || !string.IsNullOrEmpty(Model?.FederationGroupName))
+                {
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="info-label">الاتحاد</div>
+                            <div class="info-value">@(!string.IsNullOrEmpty(Model.FederationName) ? Model.FederationName : "---")</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">قسم الاتحاد</div>
+                            <div class="info-value">@(!string.IsNullOrEmpty(Model.FederationDivisionName) ? Model.FederationDivisionName : "---")</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">شعبة الاتحاد</div>
+                            <div class="info-value">@(!string.IsNullOrEmpty(Model.FederationSectionName) ? Model.FederationSectionName : "---")</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">وحدة الاتحاد</div>
+                            <div class="info-value">@(!string.IsNullOrEmpty(Model.FederationGroupName) ? Model.FederationGroupName : "---")</div>
+                        </div>
+                    </div>
+    
+                    @if (!string.IsNullOrEmpty(Model.FederationPosition) || !string.IsNullOrEmpty(Model.FederationIdNumber) || Model.FederationAffiliationDate.HasValue)
+                    {
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <div class="info-label">المنصب في الاتحاد</div>
+                                <div class="info-value">@(!string.IsNullOrEmpty(Model.FederationPosition) ? Model.FederationPosition : "---")</div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="info-label">رقم العضوية في الاتحاد</div>
+                                <div class="info-value">@(!string.IsNullOrEmpty(Model.FederationIdNumber) ? Model.FederationIdNumber : "---")</div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="info-label">تاريخ النفاذ للاتحاد</div>
+                                <div class="info-value">@(Model.FederationAffiliationDate?.ToString("yyyy-MM-dd") ?? "---")</div>
+                            </div>
+                        </div>
+                    }
+                }
+
+                <!-- الجمعية -->
+                @if (!string.IsNullOrEmpty(Model?.AssociationName))
+                {
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="info-label">الجمعية</div>
+                            <div class="info-value">@Model.AssociationName</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">المنصب</div>
+                            <div class="info-value">@(!string.IsNullOrEmpty(Model.AssociationPosition) ? Model.AssociationPosition : "---")</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">رقم العضوية</div>
+                            <div class="info-value">@(!string.IsNullOrEmpty(Model.AssociationIdNumber) ? Model.AssociationIdNumber : "---")</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">تاريخ النفاذ</div>
+                            <div class="info-value">@(Model.AssociationAffiliationDate?.ToString("yyyy-MM-dd") ?? "---")</div>
+                        </div>
+                    </div>
+                }
+
+                <!-- المنظمة -->
+                @if (!string.IsNullOrEmpty(Model?.NgoName))
+                {
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="info-label">المنظمة</div>
+                            <div class="info-value">@Model.NgoName</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">المنصب</div>
+                            <div class="info-value">@(!string.IsNullOrEmpty(Model.NgoPosition) ? Model.NgoPosition : "---")</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">رقم العضوية</div>
+                            <div class="info-value">@(!string.IsNullOrEmpty(Model.NgoIdNumber) ? Model.NgoIdNumber : "---")</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-label">تاريخ النفاذ</div>
+                            <div class="info-value">@(Model.NgoAffiliationDate?.ToString("yyyy-MM-dd") ?? "---")</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- حالة الترقية -->
+        <div class="info-section bg-light">
+            <div class="row">
+                @if (Model?.IsPromoted == true)
+                {
+                    <div class="col-md-4">
+                        <div class="info-label">مصعد بواسطة</div>
+                        <div class="info-value">@(!string.IsNullOrEmpty(Model.PromotedBy) ? Model.PromotedBy : "---")</div>
+                    </div>
+                }
+                @if (Model?.RequestedPromotion == true && Model?.IsPromoted == false)
+                {
+                    <div class="col-md-4">
+                        <div class="info-label">تاريخ طلب الترقية</div>
+                        <div class="info-value">@(Model.RequestedPromotionDate?.ToString("yyyy-MM-dd") ?? "---")</div>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(Model?.RejectionReason))
+                {
+                    <div class="col-12">
+                        <div class="info-label">سبب الرفض</div>
+                        <div class="info-value text-danger">@Model.RejectionReason</div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- تواريخ إضافية -->
+        <div class="info-section bg-light">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="info-label">تاريخ التسجيل</div>
+                    <div class="info-value">
+                        <i class="bi bi-clock"></i> @(Model?.CreatedAt > DateTime.MinValue ? Model.CreatedAt.ToString("yyyy-MM-dd HH:mm") : "---")
+                    </div>
+                </div>
+                @if (Model?.AffiliationDate.HasValue == true)
+                {
+                    <div class="col-md-6">
+                        <div class="info-label">تاريخ الانتماء</div>
+                        <div class="info-value">@Model.AffiliationDate.Value.ToString("yyyy-MM-dd")</div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- أزرار التحكم -->
+        <div class="card-footer text-center bg-white border-0 pb-4">
+            <div class="d-flex gap-3 justify-content-center flex-wrap">
+                <a asp-action="EditUser" asp-route-id="@Model?.UserId" class="btn btn-edit">
+                    <i class="bi bi-pencil-square"></i> تعديل بيانات المستخدم
+                </a>
+
+                <a asp-action="Users" class="btn btn-secondary">
+                    <i class="bi bi-people-fill"></i> العودة إلى المستخدمين
+                </a>
+
+                <button onclick="goBack()" class="btn-back">
+                    <i class="bi bi-arrow-right"></i> العودة
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function goBack() {
+            window.history.back();
+        }
+
+        function printUserDetails() {
+            window.print();
+        }
+
+        function removeAssignment(assignmentId, userName) {
+            if (confirm(`هل أنت متأكد من إلغاء هذا التكليف للمستخدم ${userName}؟`)) {
+                const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value;
+                
+                fetch('/ManagementAssignments/RemoveAssignment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token
+                    },
+                    body: JSON.stringify({ assignmentId: assignmentId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('❌ فشل إلغاء التكليف: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('❌ حدث خطأ في إلغاء التكليف');
+                });
+            }
+        }
+    </script>
+}

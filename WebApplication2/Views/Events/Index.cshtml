@@ -1,0 +1,398 @@
+﻿@model IEnumerable<WebApplication2.Models.Event>
+
+@{
+    Layout = "_Layout";
+    ViewData["Title"] = "إدارة الأحداث";
+}
+
+<style>
+    .event-card {
+        transition: all 0.3s;
+        border-radius: 15px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    .event-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    }
+    .event-urgent { border-right: 5px solid #dc3545; }
+    .event-mandatory { border-right: 5px solid #ffc107; }
+    .btn-add {
+        background: linear-gradient(135deg, #28a745, #20c997);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 25px;
+    }
+    .btn-add:hover {
+        transform: translateY(-2px);
+        color: white;
+    }
+    .filter-bar {
+        background: white;
+        border-radius: 15px;
+        padding: 15px;
+        margin-bottom: 25px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+</style>
+
+<div class="container mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>📅 إدارة الأحداث</h3>
+        <button type="button" class="btn btn-add" data-bs-toggle="modal" data-bs-target="#createEventModal">
+            <i class="fas fa-plus"></i> إضافة حدث جديد
+        </button>
+    </div>
+
+    <!-- شريط البحث والفلتر -->
+    <div class="filter-bar">
+        <div class="row">
+            <div class="col-md-4 mb-2 mb-md-0">
+                <input type="text" id="searchInput" class="form-control" placeholder="🔍 بحث عن حدث...">
+            </div>
+            <div class="col-md-3 mb-2 mb-md-0">
+                <select id="typeFilter" class="form-select">
+                    <option value="">جميع الأنواع</option>
+                    <option value="منتدى سياسي">منتدى سياسي</option>
+                    <option value="اجتماع دوري">اجتماع دوري</option>
+                    <option value="ورشة عمل">ورشة عمل</option>
+                </select>
+            </div>
+            <div class="col-md-3 mb-2 mb-md-0">
+                <select id="statusFilter" class="form-select">
+                    <option value="">جميع الحالات</option>
+                    <option value="قادم">قادم</option>
+                    <option value="جاري الآن">جاري الآن</option>
+                    <option value="انتهى">انتهى</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button id="resetFilter" class="btn btn-outline-secondary w-100">مسح</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- قائمة الأحداث -->
+    <div class="row" id="eventsContainer">
+        @foreach (var eventItem in Model)
+        {
+            <div class="col-md-6 col-lg-4 event-item"
+                 data-title="@eventItem.Title.ToLower()"
+                 data-type="@eventItem.EventType"
+                 data-status="@eventItem.Status">
+                <div class="card event-card @(eventItem.IsUrgent ? "event-urgent" : "") @(eventItem.IsMandatory ? "event-mandatory" : "")">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h5 class="card-title">@eventItem.Title</h5>
+                                <p class="card-text text-muted small">@eventItem.EventType</p>
+                            </div>
+                            <div>
+                                @if (eventItem.IsUrgent)
+                                {
+                                    <span class="badge bg-danger">عاجل</span>
+                                }
+                                @if (eventItem.IsMandatory)
+                                {
+                                    <span class="badge bg-warning text-dark">إلزامي</span>
+                                }
+                            </div>
+                        </div>
+                        <p class="card-text small">
+                            <i class="fas fa-calendar-day"></i> @eventItem.StartDate.ToString("yyyy-MM-dd HH:mm")<br />
+                            <i class="fas fa-map-marker-alt"></i> @eventItem.Location<br />
+                            <i class="fas fa-city"></i> @eventItem.Governorate
+                        </p>
+                        <p class="card-text small">@(eventItem.Description?.Length > 80 ? eventItem.Description.Substring(0, 80) + "..." : eventItem.Description)</p>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <span class="badge bg-@(eventItem.Status == "قادم" ? "primary" : eventItem.Status == "جاري الآن" ? "success" : "secondary")">
+                                @eventItem.Status
+                            </span>
+                            <div>
+                                <button class="btn btn-sm btn-outline-primary" onclick="editEvent(@eventItem.Id)">
+                                    <i class="fas fa-edit"></i> تعديل
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteEvent(@eventItem.Id, '@eventItem.Title')">
+                                    <i class="fas fa-trash"></i> حذف
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="text-center py-5">
+            <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">لا توجد أحداث</h5>
+            <p class="text-muted">قم بإضافة حدث جديد</p>
+        </div>
+    }
+</div>
+
+<!-- ========== مودال إضافة حدث جديد ========== -->
+<div class="modal fade" id="createEventModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-plus-circle"></i> إضافة حدث جديد</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="createEventForm">
+                @Html.AntiForgeryToken()
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">عنوان الحدث *</label>
+                            <input type="text" name="Title" class="form-control" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">نوع الحدث *</label>
+                            <select name="EventType" class="form-select" required>
+                                <option value="">-- اختر --</option>
+                                <option value="منتدى سياسي">منتدى سياسي</option>
+                                <option value="اجتماع دوري">اجتماع دوري</option>
+                                <option value="ورشة عمل">ورشة عمل</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">تاريخ البدء *</label>
+                            <input type="datetime-local" name="StartDate" class="form-control" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">تاريخ الانتهاء *</label>
+                            <input type="datetime-local" name="EndDate" class="form-control" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">المكان</label>
+                            <input type="text" name="Location" class="form-control" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">المحافظة المستهدفة *</label>
+                            <select name="Governorate" class="form-select" required>
+                                <option value="">-- اختر --</option>
+                                <option value="بغداد">بغداد</option>
+                                <option value="البصرة">البصرة</option>
+                                <option value="النجف">النجف</option>
+                                <option value="كربلاء">كربلاء</option>
+                                <option value="أربيل">أربيل</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">الوصف</label>
+                            <textarea name="Description" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input type="checkbox" name="IsUrgent" class="form-check-input" value="true" />
+                                <label class="form-check-label">حدث عاجل</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input type="checkbox" name="IsMandatory" class="form-check-input" value="true" />
+                                <label class="form-check-label">حدث إلزامي</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">💾 حفظ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ========== مودال تعديل حدث ========== -->
+<div class="modal fade" id="editEventModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="fas fa-edit"></i> تعديل حدث</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editEventForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" id="editEventId" />
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">عنوان الحدث *</label>
+                            <input type="text" name="Title" id="editTitle" class="form-control" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">نوع الحدث *</label>
+                            <select name="EventType" id="editEventType" class="form-select" required>
+                                <option value="">-- اختر --</option>
+                                <option value="منتدى سياسي">منتدى سياسي</option>
+                                <option value="اجتماع دوري">اجتماع دوري</option>
+                                <option value="ورشة عمل">ورشة عمل</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">تاريخ البدء *</label>
+                            <input type="datetime-local" name="StartDate" id="editStartDate" class="form-control" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">تاريخ الانتهاء *</label>
+                            <input type="datetime-local" name="EndDate" id="editEndDate" class="form-control" required />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">المكان</label>
+                            <input type="text" name="Location" id="editLocation" class="form-control" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">المحافظة المستهدفة *</label>
+                            <select name="Governorate" id="editGovernorate" class="form-select" required>
+                                <option value="">-- اختر --</option>
+                                <option value="بغداد">بغداد</option>
+                                <option value="البصرة">البصرة</option>
+                                <option value="النجف">النجف</option>
+                                <option value="كربلاء">كربلاء</option>
+                                <option value="أربيل">أربيل</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">الوصف</label>
+                            <textarea name="Description" id="editDescription" class="form-control" rows="3"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input type="checkbox" name="IsUrgent" id="editIsUrgent" class="form-check-input" value="true" />
+                                <label class="form-check-label">حدث عاجل</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check">
+                                <input type="checkbox" name="IsMandatory" id="editIsMandatory" class="form-check-input" value="true" />
+                                <label class="form-check-label">حدث إلزامي</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary">💾 حفظ التغييرات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // فلترة الأحداث
+        function filterEvents() {
+            const searchText = $('#searchInput').val().toLowerCase();
+            const typeFilter = $('#typeFilter').val();
+            const statusFilter = $('#statusFilter').val();
+
+            $('.event-item').each(function() {
+                const title = $(this).data('title');
+                const type = $(this).data('type');
+                const status = $(this).data('status');
+
+                let show = true;
+                if (searchText && !title.includes(searchText)) show = false;
+                if (typeFilter && type !== typeFilter) show = false;
+                if (statusFilter && status !== statusFilter) show = false;
+                $(this).toggle(show);
+            });
+        }
+
+        $('#searchInput, #typeFilter, #statusFilter').on('keyup change', filterEvents);
+        $('#resetFilter').on('click', function() {
+            $('#searchInput').val('');
+            $('#typeFilter').val('');
+            $('#statusFilter').val('');
+            filterEvents();
+        });
+
+        // إضافة حدث
+        $('#createEventForm').on('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            data.IsUrgent = data.IsUrgent === 'true';
+            data.IsMandatory = data.IsMandatory === 'true';
+            
+            const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            const response = await fetch('/Events/Create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            if (result.success) {
+                location.reload();
+            } else {
+                alert('خطأ: ' + result.message);
+            }
+        });
+
+        // تعديل حدث
+        async function editEvent(id) {
+            const response = await fetch(`/Events/Get/${id}`);
+            const event = await response.json();
+            if (event && event.id) {
+                $('#editEventId').val(event.id);
+                $('#editTitle').val(event.title);
+                $('#editEventType').val(event.eventType);
+                $('#editStartDate').val(event.startDate?.slice(0, 16));
+                $('#editEndDate').val(event.endDate?.slice(0, 16));
+                $('#editLocation').val(event.location);
+                $('#editGovernorate').val(event.governorate);
+                $('#editDescription').val(event.description);
+                $('#editIsUrgent').prop('checked', event.isUrgent);
+                $('#editIsMandatory').prop('checked', event.isMandatory);
+                new bootstrap.Modal(document.getElementById('editEventModal')).show();
+            }
+        }
+
+        $('#editEventForm').on('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            data.IsUrgent = data.IsUrgent === 'true';
+            data.IsMandatory = data.IsMandatory === 'true';
+            
+            const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
+            const response = await fetch('/Events/Edit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            if (result.success) {
+                location.reload();
+            } else {
+                alert('خطأ: ' + result.message);
+            }
+        });
+
+        // حذف حدث
+        async function deleteEvent(id, title) {
+            if (confirm(`هل أنت متأكد من حذف "${title}"؟`)) {
+                const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
+                const response = await fetch('/Events/Delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                    body: JSON.stringify(id)
+                });
+                const result = await response.json();
+                if (result.success) {
+                    location.reload();
+                } else {
+                    alert('خطأ: ' + result.message);
+                }
+            }
+        }
+    </script>
+}

@@ -1,0 +1,399 @@
+﻿@model WebApplication2.Models.News
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<IdentityUser> UserManager
+
+@{
+    string authorName = "غير معروف";
+    if (!string.IsNullOrEmpty(Model.AuthorId))
+    {
+        var author = await UserManager.FindByIdAsync(Model.AuthorId);
+        if (author != null)
+        {
+            authorName = author.UserName ?? author.Email;
+        }
+    }
+}
+
+<style>
+    /* تحسينات التصميم فقط - بدون تغيير في هيكل الكود */
+    .card {
+        border-radius: 20px !important;
+        overflow: hidden;
+        transition: transform 0.3s ease;
+    }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+    .card-header {
+        background: linear-gradient(135deg, #1e3c72, #2a5a9c) !important;
+        padding: 1.5rem 2rem !important;
+        border: none !important;
+    }
+
+        .card-header h4 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+        }
+
+        .card-header i {
+            font-size: 2rem;
+            background: rgba(255,255,255,0.2);
+            padding: 10px;
+            border-radius: 12px;
+            color: white;
+        }
+
+    .card-body {
+        padding: 2rem !important;
+        background: #ffffff;
+    }
+
+    /* تحسين الصورة */
+    .col-md-4 img {
+        border-radius: 20px !important;
+        width: 100%;
+        height: auto;
+        max-height: 400px;
+        object-fit: cover;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;
+        transition: transform 0.3s ease;
+    }
+
+        .col-md-4 img:hover {
+            transform: scale(1.02);
+        }
+
+    /* تحسين منطقة عدم وجود صورة */
+    .alert-secondary {
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef) !important;
+        border: 2px dashed #adb5bd !important;
+        border-radius: 20px !important;
+        color: #495057 !important;
+        transition: all 0.3s ease;
+    }
+
+        .alert-secondary:hover {
+            background: linear-gradient(135deg, #e9ecef, #dee2e6) !important;
+            border-color: #1e3c72 !important;
+        }
+
+        .alert-secondary i {
+            color: #1e3c72;
+            opacity: 0.5;
+        }
+
+    /* تحسين عنوان الخبر */
+    .text-primary {
+        color: #1e3c72 !important;
+        font-size: 2.2rem !important;
+        font-weight: 800 !important;
+        margin-bottom: 1.5rem !important;
+        line-height: 1.4;
+        position: relative;
+        padding-bottom: 1rem;
+    }
+
+        .text-primary::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 80px;
+            height: 4px;
+            background: linear-gradient(90deg, #1e3c72, #4a90e2);
+            border-radius: 2px;
+        }
+
+    /* تحسين محتوى الخبر */
+    .border-start {
+        border-right: 6px solid #1e3c72 !important;
+        border-left: none !important;
+        background: #f8f9fa;
+        padding: 1.5rem !important;
+        border-radius: 16px;
+        font-size: 1.1rem;
+        line-height: 1.8;
+        color: #2c3e50;
+        margin-bottom: 2rem !important;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.03);
+        transition: all 0.3s ease;
+    }
+
+        .border-start:hover {
+            background: #ffffff;
+            box-shadow: 0 8px 25px rgba(30, 60, 114, 0.1);
+            border-right-color: #4a90e2 !important;
+        }
+
+    /* تحسين بطاقة المعلومات */
+    .bg-light {
+        background: linear-gradient(135deg, #f8fafc, #f1f5f9) !important;
+        border-radius: 20px !important;
+        border: 1px solid #e2e8f0 !important;
+        transition: all 0.3s ease;
+    }
+
+        .bg-light:hover {
+            background: #ffffff !important;
+            border-color: #1e3c72 !important;
+            box-shadow: 0 10px 30px rgba(30, 60, 114, 0.1);
+        }
+
+        .bg-light .card-body {
+            padding: 1.5rem !important;
+        }
+
+        /* تحسين النصوص في بطاقة المعلومات */
+        .bg-light p {
+            margin-bottom: 0.8rem !important;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .bg-light strong {
+            color: #1e3c72;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+            .bg-light strong i {
+                font-size: 1.2rem;
+                color: #1e3c72;
+                background: #ffffff;
+                padding: 8px;
+                border-radius: 10px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            }
+
+    .info-value {
+        background: #ffffff;
+        padding: 12px 18px;
+        border-radius: 14px;
+        color: #2c3e50;
+        font-weight: 500;
+        border: 1px solid #e2e8f0;
+        display: inline-block;
+        width: 100%;
+        margin-top: 5px;
+        transition: all 0.3s ease;
+    }
+
+        .info-value:hover {
+            border-color: #1e3c72;
+            box-shadow: 0 5px 15px rgba(30, 60, 114, 0.1);
+            transform: translateX(-3px);
+        }
+
+    /* بادج خاص باسم الكاتب */
+    .author-badge {
+        background: linear-gradient(135deg, #1e3c72, #2a5a9c);
+        color: white;
+        padding: 8px 20px;
+        border-radius: 50px;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 5px;
+        box-shadow: 0 5px 15px rgba(30, 60, 114, 0.3);
+    }
+
+        .author-badge i {
+            font-size: 1.2rem;
+        }
+
+    /* تحسين الأزرار */
+    .btn {
+        border-radius: 50px !important;
+        padding: 0.8rem 2rem !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+        border: none !important;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-left: 10px;
+    }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2) !important;
+        }
+
+    .btn-warning {
+        background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+        color: white !important;
+    }
+
+    .btn-danger {
+        background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+        color: white !important;
+    }
+
+    .btn-secondary {
+        background: linear-gradient(135deg, #64748b, #475569) !important;
+        color: white !important;
+    }
+
+    /* تحسين الخط الفاصل */
+    .border-top {
+        border-top: 2px solid #e2e8f0 !important;
+        margin-top: 2rem !important;
+        padding-top: 2rem !important;
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+
+    /* تحسينات الموبايل */
+    @@media (max-width: 768px) {
+        .text-primary {
+            font-size: 1.8rem !important;
+        }
+
+        .border-top {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+            margin-left: 0;
+            margin-bottom: 10px;
+        }
+
+        .col-md-4 img {
+            max-height: 300px;
+        }
+
+        .bg-light .row {
+            flex-direction: column;
+        }
+
+        .bg-light .col-md-6 {
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        .author-badge {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    /* تحسينات للشاشات المتوسطة */
+    @@media (min-width: 769px) and (max-width: 992px) {
+        .text-primary {
+            font-size: 2rem !important;
+        }
+    }
+</style>
+
+<div class="container mt-4">
+    <div class="card shadow-sm border-0">
+        <div class="card-header">
+            <h4 class="mb-0">
+                <i class="bi bi-eye me-2"></i> تفاصيل الخبر
+            </h4>
+        </div>
+
+        <div class="card-body">
+            <div class="row">
+                <!-- الصورة -->
+                <div class="col-md-4 mb-3">
+                    @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                    {
+                        <img src="@Model.ImageUrl" class="img-fluid rounded shadow" />
+                    }
+                    else
+                    {
+                        <div class="alert alert-secondary text-center py-5">
+                            <i class="bi bi-image display-4"></i>
+                            <p class="mt-3">لا توجد صورة مرفقة</p>
+                        </div>
+                    }
+                </div>
+
+                <!-- التفاصيل -->
+                <div class="col-md-8">
+                    <h3 class="text-primary mb-3">@Model.Title</h3>
+
+                    <div class="mb-4 border-start ps-3">
+                        @Html.Raw(Model.Content.Replace("\n", "<br>"))
+                    </div>
+
+                    <!-- معلومات الخبر -->
+                    <div class="card bg-light mb-4">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p>
+                                        <strong><i class="bi bi-calendar text-primary"></i> تاريخ الإنشاء:</strong>
+                                        <span class="info-value">
+                                            <i class="bi bi-calendar3 me-2"></i>
+                                            @Model.CreatedAt.ToString("dddd, dd MMMM yyyy")
+                                            <br />
+                                            <i class="bi bi-clock me-2"></i>
+                                            @Model.CreatedAt.ToString("HH:mm")
+                                        </span>
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    @if (!string.IsNullOrEmpty(Model.AuthorId))
+                                    {
+                                        <p>
+                                            <strong><i class="bi bi-person text-primary"></i> اسم الكاتب:</strong>
+                                            <span class="author-badge">
+                                                <i class="bi bi-pencil-fill"></i>
+                                                @authorName
+                                            </span>
+                                        </p>
+                                    }
+                                </div>
+                            </div>
+                            @if (Model.UpdatedAt.HasValue)
+                            {
+                                <div class="row mt-2">
+                                    <div class="col-md-12">
+                                        <p>
+                                            <strong><i class="bi bi-pencil-square text-primary"></i> آخر تعديل:</strong>
+                                            <span class="info-value">
+                                                <i class="bi bi-calendar3 me-2"></i>
+                                                @Model.UpdatedAt.Value.ToString("dddd, dd MMMM yyyy")
+                                                <br />
+                                                <i class="bi bi-clock me-2"></i>
+                                                @Model.UpdatedAt.Value.ToString("HH:mm")
+                                            </span>
+                                        </p>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- أزرار الإجراءات -->
+            <div class="mt-4 pt-3 border-top">
+                <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">
+                    <i class="bi bi-pencil me-1"></i> تعديل
+                </a>
+                <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-danger">
+                    <i class="bi bi-trash me-1"></i> حذف
+                </a>
+                <a asp-action="Index" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> رجوع للقائمة
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

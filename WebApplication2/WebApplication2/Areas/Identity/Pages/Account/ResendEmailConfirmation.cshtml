@@ -1,0 +1,26 @@
+﻿@page
+@model ResendEmailConfirmationModel
+@{
+    ViewData["Title"] = "إعادة إرسال التأكيد";
+}
+
+<h1>@ViewData["Title"]</h1>
+<h2>أدخل البريد الإلكتروني أو رقم الواتساب.</h2>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form method="post">
+            <div asp-validation-summary="All" class="text-danger" role="alert"></div>
+            <div class="form-floating mb-3">
+                <input asp-for="Input.Identifier" class="form-control" aria-required="true" placeholder="name@example.com أو 07XXXXXXXXX" />
+                <label asp-for="Input.Identifier" class="form-label"></label>
+                <span asp-validation-for="Input.Identifier" class="text-danger"></span>
+            </div>
+            <button type="submit" class="w-100 btn btn-lg btn-primary">إعادة إرسال التأكيد</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

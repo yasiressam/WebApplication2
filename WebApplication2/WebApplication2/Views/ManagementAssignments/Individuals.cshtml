@@ -1,0 +1,349 @@
+﻿@model List<WebApplication2.Models.Profile.AssignManagerViewModel>
+
+@{
+    ViewData["Title"] = "التعيين الإداري المباشر";
+    Layout = "_Layout";
+    var currentPage = ViewBag.CurrentPage is int cp ? cp : 1;
+    var totalPages = ViewBag.TotalPages is int tp ? tp : 1;
+    var totalItems = ViewBag.TotalItems is int ti ? ti : Model.Count;
+    var pageSize = ViewBag.PageSize is int ps ? ps : 15;
+    var startIndex = ViewBag.StartIndex is int si ? si : 1;
+    var search = ViewBag.Search as string ?? string.Empty;
+    var status = ViewBag.Status as string ?? string.Empty;
+    var responsibility = ViewBag.Responsibility as string ?? string.Empty;
+    var selectedGovernorate = ViewBag.Governorate as string ?? string.Empty;
+    var governorates = ViewBag.Governorates as List<string> ?? new List<string>();
+}
+
+<style>
+    .management-toolbar {
+        background: #f8fbff;
+        border: 1px solid rgba(52, 152, 219, 0.18);
+        border-radius: 14px;
+        padding: 0.9rem;
+        margin-bottom: 1rem;
+    }
+
+    .assignments-table {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    .assignments-table th,
+    .assignments-table td {
+        vertical-align: middle;
+        padding: 0.42rem 0.3rem;
+        font-size: 0.78rem;
+    }
+
+    .name-cell {
+        width: 14%;
+    }
+
+    .name-text {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    .email-cell {
+        width: 14%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .entity-cell {
+        width: 9%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .responsibility-select {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        font-size: 0.72rem;
+        padding: 0.22rem 1.35rem 0.22rem 0.35rem;
+        border-radius: 8px;
+    }
+
+    .send-request-form .btn {
+        white-space: normal;
+        font-size: 0.72rem;
+        padding: 0.28rem 0.45rem;
+        border-radius: 8px;
+        box-shadow: none;
+        line-height: 1.25;
+    }
+
+    .status-badge-small {
+        font-size: 0.66rem;
+        padding: 0.28rem 0.38rem;
+        border-radius: 8px;
+        white-space: normal;
+        line-height: 1.2;
+    }
+
+    .compact-col {
+        width: 7%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .status-col {
+        width: 10%;
+    }
+
+    .responsibility-col {
+        width: 14%;
+    }
+
+    .action-col {
+        width: 10%;
+    }
+
+    .sequence-col {
+        width: 4%;
+        white-space: nowrap;
+    }
+
+    .pagination-wrap {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+    }
+
+    .page-link {
+        color: #2c3e50;
+    }
+
+    .page-item.active .page-link {
+        background: linear-gradient(135deg, #3498db, #2c3e50);
+        border-color: #3498db;
+    }
+</style>
+
+<div class="container mt-4" dir="rtl">
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-header text-white rounded-top-4"
+             style="background: linear-gradient(135deg, #3498db, #2c3e50);">
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                <h4 class="mb-0">
+                    <i class="bi bi-people-fill me-2"></i>
+                    الأفراد المصعدون
+                </h4>
+                <span class="badge bg-light text-dark fs-6 mt-2 mt-sm-0">
+                    العدد: @Model.Count
+                </span>
+            </div>
+        </div>
+
+        <div class="card-body">
+
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success rounded-3">
+                    @TempData["SuccessMessage"]
+                </div>
+            }
+
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger rounded-3">
+                    @TempData["ErrorMessage"]
+                </div>
+            }
+
+            @if (Model != null && Model.Any())
+            {
+                <form class="management-toolbar" method="get" asp-action="Individuals" id="filterForm">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-3">
+                            <input type="text" id="searchInput" name="search" value="@search" class="form-control form-control-sm" placeholder="ابحث بالاسم أو الإيميل" />
+                        </div>
+                        <div class="col-md-3">
+                            <select id="statusFilter" name="status" class="form-select form-select-sm">
+                                <option value="" selected="@(string.IsNullOrEmpty(status) ? "selected" : null)">كل الحالات</option>
+                                <option value="assigned" selected="@(status == "assigned" ? "selected" : null)">مكلّف</option>
+                                <option value="unassigned" selected="@(status == "unassigned" ? "selected" : null)">غير مكلّف</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select id="responsibilityFilter" name="responsibility" class="form-select form-select-sm">
+                                <option value="" selected="@(string.IsNullOrEmpty(responsibility) ? "selected" : null)">كل المسؤوليات</option>
+                                <option value="manager" selected="@(responsibility == "manager" ? "selected" : null)">المسؤول</option>
+                                <option value="assistant" selected="@(responsibility == "assistant" ? "selected" : null)">المعاون</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select id="pageSizeSelect" name="pageSize" class="form-select form-select-sm">
+                                <option value="10" selected="@(pageSize == 10 ? "selected" : null)">10 في الصفحة</option>
+                                <option value="15" selected="@(pageSize == 15 ? "selected" : null)">15 في الصفحة</option>
+                                <option value="25" selected="@(pageSize == 25 ? "selected" : null)">25 في الصفحة</option>
+                                <option value="50" selected="@(pageSize == 50 ? "selected" : null)">50 في الصفحة</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <select id="governorateFilter" name="governorate" class="form-select form-select-sm">
+                                <option value="" selected="@(string.IsNullOrEmpty(selectedGovernorate) ? "selected" : null)">كل المحافظات</option>
+                                @foreach (var governorate in governorates)
+                                {
+                                    <option value="@governorate" selected="@(selectedGovernorate == governorate ? "selected" : null)">@governorate</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-8 text-md-end d-flex justify-content-md-end gap-2 align-items-center">
+                            <small class="text-muted">
+                                عرض @Model.Count من @totalItems
+                            </small>
+                            <button type="submit" class="btn btn-primary btn-sm">تطبيق</button>
+                            <a asp-action="Individuals" class="btn btn-outline-secondary btn-sm">مسح</a>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover align-middle text-center assignments-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="sequence-col">ت</th>
+                                <th class="name-cell">الاسم</th>
+                                <th class="email-cell">البريد</th>
+                                <th class="compact-col">المحافظة</th>
+                                <th class="entity-cell">الجهة</th>
+                                <th class="entity-cell">القسم</th>
+                                <th class="entity-cell">الشعبة</th>
+                                <th class="entity-cell">الوحدة</th>
+                                <th class="status-col">المسؤول</th>
+                                <th class="responsibility-col">نوع المسؤولية</th>
+                                <th class="action-col">الإجراء</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model)
+                            {
+                                <tr data-row
+                                    data-name="@item.FullName.ToLower()"
+                                    data-email="@item.Email.ToLower()"
+                                    data-governorate="@item.Governorate"
+                                    data-assigned="@(item.IsAssigned ? "assigned" : "unassigned")"
+                                    data-role="@item.CurrentAssignmentRole.ToLower()">
+                                    <td class="row-sequence"></td>
+                                    <td class="name-cell" title="@item.FullName">
+                                        <span class="name-text">@item.FullName</span>
+                                    </td>
+                                    <td class="email-cell" title="@item.Email">@item.Email</td>
+                                    <td>@item.Governorate</td>
+                                    <td class="entity-cell" title="@item.AffiliationEntityName">@(string.IsNullOrWhiteSpace(item.AffiliationEntityName) ? "-" : item.AffiliationEntityName)</td>
+                                    <td class="entity-cell" title="@item.DivisionName">@(string.IsNullOrWhiteSpace(item.DivisionName) ? "-" : item.DivisionName)</td>
+                                    <td class="entity-cell" title="@item.SectionName">@(string.IsNullOrWhiteSpace(item.SectionName) ? "-" : item.SectionName)</td>
+                                    <td class="entity-cell" title="@item.GroupName">@(string.IsNullOrWhiteSpace(item.GroupName) ? "-" : item.GroupName)</td>
+                                    <td>
+                                        @if (item.IsAssigned)
+                                        {
+                                            var badgeClass = item.CurrentAssignmentRole == "Assistant" ? "bg-warning text-dark" : "bg-success";
+                                            <span class="badge status-badge-small @badgeClass">@item.CurrentAssignmentDisplayArabic</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge status-badge-small bg-secondary">غير مكلّف</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        <select class="form-select responsibility-select" data-userid="@item.UserId">
+                                            @{
+                                                var selectedValue = $"{(string.IsNullOrWhiteSpace(item.CurrentAssignmentRole) ? "Manager" : item.CurrentAssignmentRole)}-{(string.IsNullOrWhiteSpace(item.CurrentManagementLevel) ? "Entity" : item.CurrentManagementLevel)}";
+                                            }
+                                            <option value="Manager-Entity" selected="@(selectedValue == "Manager-Entity" ? "selected" : null)">مسؤول جهة</option>
+                                            <option value="Manager-Division" selected="@(selectedValue == "Manager-Division" ? "selected" : null)">مسؤول قسم</option>
+                                            <option value="Manager-Section" selected="@(selectedValue == "Manager-Section" ? "selected" : null)">مسؤول شعبة</option>
+                                            <option value="Manager-Group" selected="@(selectedValue == "Manager-Group" ? "selected" : null)">مسؤول وحدة</option>
+                                            <option value="Assistant-Entity" selected="@(selectedValue == "Assistant-Entity" ? "selected" : null)">معاون جهة</option>
+                                            <option value="Assistant-Division" selected="@(selectedValue == "Assistant-Division" ? "selected" : null)">معاون قسم</option>
+                                            <option value="Assistant-Section" selected="@(selectedValue == "Assistant-Section" ? "selected" : null)">معاون شعبة</option>
+                                            <option value="Assistant-Group" selected="@(selectedValue == "Assistant-Group" ? "selected" : null)">معاون وحدة</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <form asp-action="Assign" method="post" class="d-inline send-request-form">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="userId" value="@item.UserId" />
+                                            <input type="hidden" name="assignmentRole" class="assignment-role-input" value="Manager" />
+                                            <input type="hidden" name="selectedLevel" class="selected-level-input" value="Entity" />
+
+                                            <button type="submit" class="btn btn-primary btn-sm">
+                                                <i class="bi bi-check2-square me-1"></i>
+                                                تعيين مباشر
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="pagination-wrap">
+                    <div class="text-muted small">
+                        الصفحة @currentPage من @totalPages
+                    </div>
+                    <nav aria-label="Pagination">
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                <a class="page-link" asp-action="Individuals" asp-route-search="@search" asp-route-status="@status" asp-route-responsibility="@responsibility" asp-route-governorate="@selectedGovernorate" asp-route-pageSize="@pageSize" asp-route-page="@(currentPage - 1)">السابق</a>
+                            </li>
+                            @for (var i = 1; i <= totalPages; i++)
+                            {
+                                <li class="page-item @(i == currentPage ? "active" : "")">
+                                    <a class="page-link" asp-action="Individuals" asp-route-search="@search" asp-route-status="@status" asp-route-responsibility="@responsibility" asp-route-governorate="@selectedGovernorate" asp-route-pageSize="@pageSize" asp-route-page="@i">@i</a>
+                                </li>
+                            }
+                            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                <a class="page-link" asp-action="Individuals" asp-route-search="@search" asp-route-status="@status" asp-route-responsibility="@responsibility" asp-route-governorate="@selectedGovernorate" asp-route-pageSize="@pageSize" asp-route-page="@(currentPage + 1)">التالي</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-info text-center rounded-3 mb-0">
+                    لا يوجد أفراد مصعدون حاليًا
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelectorAll('.send-request-form').forEach(form => {
+            form.addEventListener('submit', function () {
+                const userId = this.querySelector('input[name="userId"]').value;
+                const responsibilitySelect = document.querySelector(`.responsibility-select[data-userid="${userId}"]`);
+                const roleInput = this.querySelector('.assignment-role-input');
+                const levelInput = this.querySelector('.selected-level-input');
+                const selectedValue = responsibilitySelect ? responsibilitySelect.value : 'Manager-Entity';
+                const parts = selectedValue.split('-');
+                roleInput.value = parts[0] || 'Manager';
+                levelInput.value = parts[1] || 'Entity';
+            });
+        });
+
+        document.querySelectorAll('tr[data-row]').forEach((row, index) => {
+            const sequenceCell = row.querySelector('.row-sequence');
+            if (sequenceCell) {
+                sequenceCell.textContent = @startIndex + index;
+            }
+        });
+    </script>
+}

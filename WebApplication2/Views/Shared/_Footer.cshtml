@@ -1,0 +1,415 @@
+﻿@using Microsoft.EntityFrameworkCore
+@using WebApplication2.Data
+@inject Microsoft.Extensions.DependencyInjection.IServiceScopeFactory ServiceScopeFactory
+
+@{
+    // الحصول على إعدادات الموقع مباشرة من قاعدة البيانات
+    WebApplication2.Models.SiteSettings siteSettings;
+
+    try
+    {
+        using var scope = ServiceScopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        siteSettings = await context.SiteSettings.FirstOrDefaultAsync();
+
+        if (siteSettings == null)
+        {
+            siteSettings = new WebApplication2.Models.SiteSettings();
+            context.SiteSettings.Add(siteSettings);
+            await context.SaveChangesAsync();
+        }
+    }
+    catch
+    {
+        // في حالة الخطأ، استخدم القيم الافتراضية
+        siteSettings = new WebApplication2.Models.SiteSettings();
+    }
+}
+
+<style>
+    /* ===== فوتر بنفس ألوان Login مع !important قوي ===== */
+    .footer {
+        background: linear-gradient(135deg, #3498db, #2c3e50) !important;
+        color: #fff !important;
+        padding: 0.8rem 0 0.4rem !important; /* تم التعديل - أصغر من السابق */
+        margin-top: auto !important;
+        width: 100% !important;
+        position: relative !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 100 !important;
+        border-top: 3px solid #3498db !important;
+        min-height: 100px !important; /* تم التعديل - أصغر من السابق */
+        font-family: 'Tajawal', sans-serif !important;
+    }
+
+    .footer-container {
+        max-width: 1200px !important;
+        margin: 0 auto !important;
+        padding: 0 15px !important;
+    }
+
+    .footer-main {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        margin-bottom: 0.5rem !important;
+        gap: 30px !important;
+    }
+
+    .footer-section {
+        flex: 1 !important;
+    }
+
+    .site-info {
+        margin-bottom: 0.5rem !important;
+    }
+
+    .site-name {
+        font-size: 1.1rem !important; /* تم التعديل - أصغر */
+        font-weight: 700 !important;
+        color: #fff !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        margin-bottom: 0.3rem !important;
+    }
+
+        .site-name i {
+            color: #fff !important;
+            font-size: 1.1rem !important;
+        }
+
+    .site-description {
+        color: rgba(255, 255, 255, 0.8) !important;
+        font-size: 0.85rem !important; /* تم التعديل - أصغر */
+        line-height: 1.4 !important;
+        opacity: 1 !important;
+    }
+
+    .footer-social {
+        display: flex !important;
+        gap: 10px !important;
+        margin-top: 0.5rem !important;
+    }
+
+    .social-icon {
+        width: 32px !important; /* تم التعديل - أصغر */
+        height: 32px !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: rgba(255, 255, 255, 0.15) !important;
+        color: white !important;
+        text-decoration: none !important;
+        transition: all 0.3s !important;
+        font-size: 0.9rem !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    }
+
+        .social-icon:hover {
+            background: #fff !important;
+            color: #3498db !important;
+            transform: translateY(-2px) !important;
+            border-color: #fff !important;
+        }
+
+    .footer-contact {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+
+    .contact-item {
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        color: #fff !important;
+        font-size: 0.85rem !important; /* تم التعديل - أصغر */
+    }
+
+    .contact-icon {
+        width: 28px !important; /* تم التعديل - أصغر */
+        height: 28px !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: rgba(255, 255, 255, 0.15) !important;
+        color: #fff !important;
+        flex-shrink: 0 !important;
+        font-size: 0.85rem !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    }
+
+    .contact-details {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .contact-label {
+        font-size: 0.75rem !important; /* تم التعديل - أصغر */
+        color: rgba(255, 255, 255, 0.7) !important;
+        margin-bottom: 1px !important;
+    }
+
+    .contact-value {
+        font-weight: 500 !important;
+        color: #fff !important;
+        font-size: 0.85rem !important;
+    }
+
+    .contact-phone {
+        direction: ltr !important;
+        unicode-bidi: plaintext !important;
+        text-align: left !important;
+        display: inline-block !important;
+        color: #fff !important;
+        text-decoration: none !important;
+    }
+
+        .contact-phone:hover {
+            color: #fff !important;
+            text-decoration: underline !important;
+        }
+
+    .footer-bottom {
+        padding-top: 0.5rem !important; /* تم التعديل - أصغر */
+        border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
+    }
+
+    .footer-bottom-content {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+    }
+
+    .copyright {
+        font-size: 0.8rem !important; /* تم التعديل - أصغر */
+        color: rgba(255, 255, 255, 0.8) !important;
+        opacity: 1 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 5px !important;
+    }
+
+        .copyright i {
+            color: #fff !important;
+        }
+
+    .footer-links {
+        display: flex !important;
+        align-items: center !important;
+        gap: 15px !important;
+    }
+
+    .footer-link {
+        color: rgba(255, 255, 255, 0.8) !important;
+        text-decoration: none !important;
+        font-size: 0.8rem !important; /* تم التعديل - أصغر */
+        transition: all 0.3s !important;
+    }
+
+        .footer-link:hover {
+            color: #fff !important;
+            text-decoration: underline !important;
+        }
+
+    .update-info {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        font-size: 0.75rem !important; /* تم التعديل - أصغر */
+        color: rgba(255, 255, 255, 0.7) !important;
+        background: rgba(0, 0, 0, 0.1) !important;
+        padding: 0.3rem 0.6rem !important;
+        border-radius: 20px !important;
+    }
+
+        .update-info i {
+            color: #fff !important;
+            font-size: 0.75rem !important;
+        }
+
+    /* تصميم متجاوب */
+    @@media (max-width: 992px) {
+        .footer-main {
+            flex-direction: column !important;
+            gap: 20px !important;
+            align-items: flex-start !important;
+        }
+
+        .footer-section {
+            width: 100% !important;
+        }
+
+        .footer-bottom-content {
+            flex-direction: column !important;
+            gap: 8px !important;
+            text-align: center !important;
+        }
+
+        .footer-links {
+            justify-content: center !important;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .footer {
+            padding: 0.6rem 0 0.3rem !important;
+            min-height: 110px !important;
+        }
+
+        .site-name {
+            font-size: 1rem !important;
+        }
+
+        .site-description {
+            font-size: 0.8rem !important;
+        }
+
+        .footer-social {
+            gap: 8px !important;
+        }
+
+        .social-icon {
+            width: 30px !important;
+            height: 30px !important;
+            font-size: 0.85rem !important;
+        }
+
+        .contact-item {
+            font-size: 0.8rem !important;
+        }
+
+        .contact-icon {
+            width: 26px !important;
+            height: 26px !important;
+        }
+    }
+
+    @@media (max-width: 576px) {
+        .footer {
+            min-height: 120px !important;
+        }
+
+        .footer-main {
+            gap: 15px !important;
+        }
+
+        .footer-links {
+            flex-direction: column !important;
+            gap: 8px !important;
+        }
+
+        .footer-bottom-content {
+            gap: 5px !important;
+        }
+
+        .copyright,
+        .footer-link,
+        .update-info {
+            font-size: 0.75rem !important;
+        }
+    }
+</style>
+
+<footer class="footer">
+    <div class="footer-container">
+        <!-- القسم الرئيسي -->
+        <div class="footer-main">
+            <!-- معلومات الموقع والوسائط الاجتماعية -->
+            <div class="footer-section">
+                <div class="site-info">
+                    <div class="site-name">
+                        <i class="bi bi-newspaper"></i>
+                         التنظيم السياسي
+                    </div>
+                    <p class="site-description">
+                        @siteSettings.SiteDescription
+                    </p>
+                </div>
+
+                <div class="footer-social">
+                    @if (!string.IsNullOrEmpty(siteSettings.FacebookUrl))
+                    {
+                        <a href="@siteSettings.FacebookUrl" target="_blank" class="social-icon" title="فيسبوك">
+                            <i class="bi bi-facebook"></i>
+                        </a>
+                    }
+                    @if (!string.IsNullOrEmpty(siteSettings.InstagramUrl))
+                    {
+                        <a href="@siteSettings.InstagramUrl" target="_blank" class="social-icon" title="إنستغرام">
+                            <i class="bi bi-instagram"></i>
+                        </a>
+                    }
+                    @if (!string.IsNullOrEmpty(siteSettings.WhatsAppNumber))
+                    {
+                        <a href="https://wa.me/@siteSettings.WhatsAppNumber.Replace("+", "")"
+                           target="_blank" class="social-icon" title="واتساب">
+                            <i class="bi bi-whatsapp"></i>
+                        </a>
+                    }
+                </div>
+            </div>
+
+            <!-- معلومات الاتصال -->
+            <div class="footer-section">
+                <div class="footer-contact">
+                    @if (!string.IsNullOrEmpty(siteSettings.ContactEmail))
+                    {
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i class="bi bi-envelope"></i>
+                            </div>
+                            <div class="contact-details">
+                                <div class="contact-label">البريد الإلكتروني</div>
+                                <div class="contact-value">@siteSettings.ContactEmail</div>
+                            </div>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(siteSettings.ContactPhone))
+                    {
+                        <div class="contact-item">
+                            <div class="contact-icon">
+                                <i class="bi bi-telephone"></i>
+                            </div>
+                            <div class="contact-details">
+                                <div class="contact-label">رقم الهاتف</div>
+                                <div class="contact-value">
+                                    <a class="contact-phone" dir="ltr" href="tel:@siteSettings.ContactPhone">
+                                        @siteSettings.ContactPhone
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- القسم السفلي -->
+        <div class="footer-bottom">
+            <div class="footer-bottom-content">
+                <div class="copyright">
+                    <i class="bi bi-c-circle"></i>
+                    <span> @DateTime.Now.Year </span>
+                </div>
+@* 
+                <div class="footer-links">
+                    <a href="/Home/Privacy" class="footer-link">الخصوصية</a>
+                </div> *@
+
+                @* <div class="update-info">
+                    <i class="bi bi-clock-history"></i>
+                    <span>@siteSettings.LastUpdated.ToString("yyyy/MM/dd")</span>
+                </div> *@
+            </div>
+        </div>
+    </div>
+</footer>

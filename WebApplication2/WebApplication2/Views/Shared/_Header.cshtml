@@ -1,0 +1,1060 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using WebApplication2.Data
+@inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager
+@inject ApplicationDbContext _context
+
+@{
+    var isNewsEditor = User.IsInRole("NewsEditor");
+    var isMapViewer = User.IsInRole("MapViewer");
+    var hidePromotionRequestsForCentralManager = false;
+    var showCentralManagersPage = false;
+
+    if (SignInManager.IsSignedIn(User) &&
+        User.IsInRole(clsRoles.Manager) &&
+        !User.IsInRole(clsRoles.AssistantManager))
+    {
+        var menuUserId = UserManager.GetUserId(User);
+        if (!string.IsNullOrWhiteSpace(menuUserId))
+        {
+            hidePromotionRequestsForCentralManager = await _context.ManagementAssignments
+                .AnyAsync(a =>
+                    a.UserId == menuUserId &&
+                    a.AssignmentRole == "Manager" &&
+                    (string.IsNullOrWhiteSpace(a.Governorate) ||
+                     a.Governorate == "مركزي" ||
+                     a.Governorate == "كل المحافظات" ||
+                     (a.Governorate == "بغداد" &&
+                      (string.IsNullOrWhiteSpace(a.BaghdadScope) || a.BaghdadScope == "مركزي"))));
+
+            showCentralManagersPage = await _context.ManagementAssignments
+                .AnyAsync(a =>
+                    a.UserId == menuUserId &&
+                    a.AssignmentRole == "Manager" &&
+                    (string.IsNullOrWhiteSpace(a.Governorate) ||
+                     a.Governorate == "مركزي" ||
+                     a.Governorate == "كل المحافظات"));
+        }
+    }
+
+    string ToLocalIraqPhoneForDisplay(string value)
+    {
+        var digits = new string((value ?? string.Empty).Where(char.IsDigit).ToArray());
+        if (digits.StartsWith("9647", StringComparison.Ordinal))
+            return "0" + digits[3..];
+
+        return value;
+    }
+}
+
+<header>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container position-relative">
+            <!-- القائمة - في أقصى اليمين -->
+            <div class="d-flex align-items-center">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="navbarMain">
+                    <ul class="navbar-nav">
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="menuDropdown" role="button"
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-list fs-5"></i> القائمة
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="menuDropdown">
+                                <li>
+                                    <a class="dropdown-item" asp-controller="Home" asp-action="Index">
+                                        <i class="bi bi-house-door me-2"></i> الرئيسية
+                                    </a>
+                                </li>
+
+                                @* ===== لوحة الأدمن ===== *@
+                                @if (SignInManager.IsSignedIn(User) && User.IsInRole(clsRoles.Admin))
+                                {
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="dropdown-header">👤 لوحة الأدمن</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="MapDashboard" asp-action="Index">
+                                            <i class="bi bi-map me-2"></i> الإحصائيات
+                                        </a>
+                                    </li>
+
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Admin" asp-action="Users">
+                                            <i class="bi bi-people me-2"></i> مستخدمي محافظتي
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Admin" asp-action="AdministrativeManagers">
+                                            <i class="bi bi-person-badge me-2"></i> المسؤولين والمعاونين
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Account" asp-action="CreateUserByAdmin">
+                                            <i class="bi bi-person-plus me-2"></i> اضافة مستخدم جديد
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Admin" asp-action="PendingBasicInfo">
+                                            <i class="bi bi-clock-history me-2"></i> طلبات المراجعة
+                                        </a>
+                                    </li>
+                                    @if (!User.IsInRole(clsRoles.AssistantManager))
+                                    {
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="Admin" asp-action="PromotionRequests">
+                                                <i class="bi bi-star-fill me-2"></i> طلبات الترقية
+                                            </a>
+                                        </li>
+                                    }
+                                   
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Request" asp-action="Index">
+                                            <i class="bi bi-inbox me-2" style="color: #17a2b8;"></i> نظام الطلبات
+                                        </a>
+                                    </li>
+                                }
+@if (SignInManager.IsSignedIn(User) && (User.IsInRole(clsRoles.Manager) || User.IsInRole(clsRoles.AssistantManager)) && !User.IsInRole(clsRoles.Admin) && !User.IsInRole(clsRoles.DistrictAdmin) && !User.IsInRole(clsRoles.SuperAdmin))
+{
+    <li><hr class="dropdown-divider"></li>
+    <li class="dropdown-header">🗂️ لوحة المسؤول الإداري</li>
+    <li>
+        <a class="dropdown-item" asp-controller="MapDashboard" asp-action="Index">
+            <i class="bi bi-map me-2"></i> الإحصائيات
+        </a>
+    </li>
+    <li>
+        <a class="dropdown-item" asp-controller="ManagerReview" asp-action="Users">
+            <i class="bi bi-people me-2"></i> المستخدمين التابعين لي
+        </a>
+    </li>
+    @if (showCentralManagersPage)
+    {
+        <li>
+            <a class="dropdown-item" asp-controller="ManagerReview" asp-action="Managers">
+                <i class="bi bi-person-badge me-2"></i> المسؤولين
+            </a>
+        </li>
+    }
+    @if (User.IsInRole(clsRoles.Manager) && !User.IsInRole(clsRoles.AssistantManager) && !hidePromotionRequestsForCentralManager)
+    {
+        <li>
+            <a class="dropdown-item" asp-controller="ManagerReview" asp-action="PromotionRequests">
+                <i class="bi bi-star-fill me-2"></i> طلبات الترقية
+            </a>
+        </li>
+    }
+    <li>
+        <a class="dropdown-item" asp-controller="Request" asp-action="Index">
+            <i class="bi bi-inbox me-2" style="color: #17a2b8;"></i> نظام الطلبات
+        </a>
+    </li>
+}
+
+                                @* ===== لوحة السوبر أدمن ===== *@
+                                @if (SignInManager.IsSignedIn(User) && User.IsInRole(clsRoles.SuperAdmin))
+                                {
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="dropdown-header">👑 لوحة السوبر أدمن</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="MapDashboard" asp-action="Index">
+                                            <i class="bi bi-map me-2"></i> الإحصائيات
+                                        </a>
+                                    </li>
+                                    
+                                   @*  <li>
+                                        <a class="dropdown-item" asp-controller="News" asp-action="Create">
+                                            <i class="bi bi-plus-circle me-2"></i> إضافة خبر
+                                        </a>
+                                    </li> *@
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="SuperAdmin" asp-action="Users">
+                                            <i class="bi bi-people me-2"></i> إدارة المستخدمين
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="SuperAdmin" asp-action="AdministrativeManagers">
+                                            <i class="bi bi-person-badge me-2"></i> المسؤولين والمعاونين
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="SuperAdmin" asp-action="Reports">
+                                            <i class="bi bi-bar-chart-fill me-2"></i> التقارير
+                                        </a>
+                                    </li>
+                               @*     <li>
+        <a class="dropdown-item" asp-controller="Evaluation" asp-action="Index">
+            <i class="fas fa-chart-line me-2"></i> نظام التقييم
+        </a>
+    </li>
+    
+    <!-- ✅ رابط إدارة الأحداث (جديد) -->
+    <li>
+        <a class="dropdown-item" asp-controller="Events" asp-action="Index">
+            <i class="fas fa-calendar-alt me-2"></i> إدارة الأحداث
+        </a>
+    </li> *@
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="SuperAdmin" asp-action="PendingBasicInfo">
+                                            <i class="bi bi-clock-history me-2" style="color: #ffc107;"></i> طلبات المراجعة
+                                        </a>
+                                    </li>
+                                    @if (!User.IsInRole(clsRoles.AssistantManager))
+                                    {
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="SuperAdmin" asp-action="PromotionRequests">
+                                                <i class="bi bi-star me-2" style="color: #ffc107;"></i> طلبات الترقية
+                                            </a>
+                                        </li>
+                                    }
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="News" asp-action="Index">
+                                            <i class="bi bi-newspaper me-2"></i> إدارة الأخبار
+                                        </a>
+                                    </li>
+
+                                   @*  <li>
+                                        <a class="dropdown-item" asp-controller="Account" asp-action="CreateUserByAdmin">
+                                            <i class="bi bi-person-plus me-2"></i> اضافة مستخدم جديد
+                                        </a>
+                                    </li> *@
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Request" asp-action="Index">
+                                            <i class="bi bi-inbox me-2" style="color: #17a2b8;"></i> نظام الطلبات
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="SiteSettings" asp-action="Index">
+                                            <i class="bi bi-gear me-2"></i> إعدادات الموقع
+                                        </a>
+                                    </li>
+                                    
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="ManageableEntities" asp-action="Dashboard">
+                                            <i class="bi bi-gear-wide me-2"></i> إدارة البيانات
+                                        </a>
+                                    </li>
+                                }
+
+                                @* ===== 📝 لوحة محرر الأخبار ===== *@
+                                @if (SignInManager.IsSignedIn(User) && isNewsEditor)
+                                {
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="dropdown-header">📝 لوحة محرر الأخبار</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="News" asp-action="Index">
+                                            <i class="bi bi-list me-2" style="color: #28a745;"></i> قائمة الأخبار
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="News" asp-action="Create">
+                                            <i class="bi bi-plus-circle me-2" style="color: #28a745;"></i> إضافة خبر جديد
+                                        </a>
+                                    </li>
+                                }
+
+                                @* ===== 🗺️ لوحة مشاهد الخريطة ===== *@
+                                @if (SignInManager.IsSignedIn(User) && isMapViewer)
+                                {
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="dropdown-header">🗺️ لوحة مشاهد الخريطة</li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="MapDashboard" asp-action="Index">
+                                            <i class="bi bi-map me-2" style="color: #17a2b8;"></i> الإحصائيات
+                                        </a>
+                                    </li>
+                                }
+
+                                @* ===== لوحة العضو (فرد) ===== *@
+                                @if (SignInManager.IsSignedIn(User) &&
+                                                                User.IsInRole(clsRoles.Member) &&
+                                                                !User.IsInRole(clsRoles.Manager) &&
+                                                                !User.IsInRole(clsRoles.AssistantManager) &&
+                                                                !User.IsInRole(clsRoles.Admin) &&
+                                                                !User.IsInRole(clsRoles.DistrictAdmin) &&
+                                                                !User.IsInRole(clsRoles.SuperAdmin))
+                                {
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li class="dropdown-header">⭐ لوحة العضو</li>
+                                    @* <li>
+                                        <a class="dropdown-item" asp-controller="Member" asp-action="Index">
+                                            <i class="bi bi-house-door me-2"></i> الرئيسية
+                                        </a>
+                                    </li> *@
+                                   @*  <li>
+                                        <a class="dropdown-item" asp-controller="Request" asp-action="Index">
+                                            <i class="bi bi-inbox me-2" style="color: #17a2b8;"></i> طلباتي
+                                        </a>
+                                    </li> *@
+                                }
+
+                                @if (SignInManager.IsSignedIn(User))
+                                {
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Register" asp-action="BasicInfo">
+                                            <i class="bi bi-person-badge me-2" style="color: #1e3c72;"></i> الملف الشخصي
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <form asp-area="Identity" asp-page="/Account/Logout" method="post" class="dropdown-item p-0"
+                                              onsubmit="return confirm('هل أنت متأكد من تسجيل الخروج؟');">
+                                            <button type="submit" class="dropdown-item logout-btn">
+                                                <i class="bi bi-box-arrow-right me-2"></i> تسجيل الخروج
+                                            </button>
+                                        </form>
+                                    </li>
+                                }
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- الشعار - في المنتصف تماماً -->
+            <a class="navbar-brand position-absolute start-50 translate-middle-x" asp-controller="Home" asp-action="Index">
+                <i class="bi bi-newspaper me-2"></i>
+                <span class="brand-title"> التنظيم السياسي</span>
+            </a>
+
+            <!-- العناصر الجانبية - في أقصى اليسار -->
+            <div class="d-flex align-items-center ms-auto">
+                @if (SignInManager.IsSignedIn(User))
+                {
+                    <!-- 1️⃣ الحساب (اسم المستخدم) -->
+                    <div class="dropdown me-1">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center p-2" href="#" id="userDropdown"
+                           role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                           <div class="user-avatar me-2">
+    @{
+        var currentUserId = UserManager.GetUserId(User);
+        var coverImage = "";
+        var headerDisplayName = User.Identity?.Name ?? "";
+        if (!string.IsNullOrEmpty(currentUserId))
+        {
+            try
+            {
+                var userProfile = await _context.Identifies
+                    .Where(i => i.UserId == currentUserId)
+                    .Select(i => new { i.CoverImage, i.FullName })
+                    .FirstOrDefaultAsync();
+                coverImage = userProfile?.CoverImage ?? "";
+                if (!string.IsNullOrWhiteSpace(userProfile?.FullName))
+                {
+                    headerDisplayName = userProfile.FullName;
+                }
+            }
+            catch { }
+        }
+        headerDisplayName = ToLocalIraqPhoneForDisplay(headerDisplayName);
+
+        if (!string.IsNullOrWhiteSpace(coverImage))
+        {
+            coverImage = coverImage.Trim();
+            if (coverImage.StartsWith("~/"))
+            {
+                coverImage = Url.Content(coverImage);
+            }
+            else if (!coverImage.StartsWith("/") && !coverImage.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            {
+                coverImage = Url.Content($"~/MyApp_Uploads/Profiles/{coverImage}");
+            }
+        }
+    }
+    
+    @if (!string.IsNullOrEmpty(coverImage))
+    {
+        <img src="@coverImage" class="header-avatar-img" alt="صورة المستخدم" />
+    }
+    else
+    {
+        var userName = headerDisplayName;
+        var initials = !string.IsNullOrEmpty(userName) ? userName.Substring(0, 1).ToUpper() : "U";
+        <span>@initials</span>
+    }
+</div>
+                            <div class="d-none d-lg-block text-end">
+                                <div class="fw-bold text-white small">@headerDisplayName</div>
+                                <small class="text-light opacity-75">
+                                    @{
+                                        string displayRole = "User";
+                                        string managedLocation = string.Empty;
+                                        var currentUser = await UserManager.GetUserAsync(User);
+                                        if (currentUser != null)
+                                        {
+                                            var userRoles = await UserManager.GetRolesAsync(currentUser);
+                                            string accountType = "عادي";
+                                            try
+                                            {
+                                                var userId = UserManager.GetUserId(User);
+                                                var userProfile = await _context.Identifies
+                                                .Where(i => i.UserId == userId)
+                                                .Select(i => i.AccountType)
+                                                .FirstOrDefaultAsync();
+
+                                                if (!string.IsNullOrEmpty(userProfile))
+                                                {
+                                                    accountType = userProfile;
+                                                }
+                                            }
+                                            catch { }
+
+                                            try
+                                            {
+                                                var userId = UserManager.GetUserId(User);
+                                                var adminProfile = await _context.Identifies
+                                                    .Where(i => i.UserId == userId)
+                                                    .Select(i => new { i.ManagedGovernorate, i.ManagedDistrict })
+                                                    .FirstOrDefaultAsync();
+
+                                                if (adminProfile != null)
+                                                {
+                                                    if ((userRoles.Contains("Admin") || userRoles.Contains("DistrictAdmin")) &&
+                                                             !string.IsNullOrWhiteSpace(adminProfile.ManagedGovernorate))
+                                                    {
+                                                        managedLocation = $"محافظة {adminProfile.ManagedGovernorate}";
+                                                    }
+                                                }
+                                            }
+                                            catch { }
+
+                                            try
+                                            {
+                                                var userId = UserManager.GetUserId(User);
+                                                var isAdministrativeManager =
+                                                    (userRoles.Contains(clsRoles.Manager) || userRoles.Contains(clsRoles.AssistantManager)) &&
+                                                    !userRoles.Contains(clsRoles.Admin) &&
+                                                    !userRoles.Contains(clsRoles.DistrictAdmin) &&
+                                                    !userRoles.Contains(clsRoles.SuperAdmin);
+
+                                                var managerAssignment = await _context.ManagementAssignments
+                                                    .Where(a => a.UserId == userId && (a.AssignmentRole == "Manager" || a.AssignmentRole == "Assistant"))
+                                                    .OrderBy(a => a.AssignmentRole == "Manager" ? 0 : 1)
+                                                    .ThenByDescending(a => a.CreatedAt)
+                                                    .Select(a => new
+                                                    {
+                                                        a.ManagementLevel,
+                                                        a.AssignmentRole,
+                                                        a.Governorate,
+                                                        a.AffiliationEntityId,
+                                                        a.DivisionId,
+                                                        a.SectionId,
+                                                        a.GroupId
+                                                    })
+                                                    .FirstOrDefaultAsync();
+
+                                                if (managerAssignment != null && isAdministrativeManager)
+                                                {
+                                                    string managerRoleName = managerAssignment.AssignmentRole == "Assistant" ? "معاون مسؤول" : "مسؤول";
+                                                    string managerLevelName = managerAssignment.ManagementLevel switch
+                                                    {
+                                                        "Entity" => "جهة",
+                                                        "Division" => "قسم",
+                                                        "Section" => "شعبة",
+                                                        "Group" => "وحدة",
+                                                        _ => "إداري"
+                                                    };
+                                                    string managedUnitName = string.Empty;
+
+                                                    if (managerAssignment.ManagementLevel == "Entity" && managerAssignment.AffiliationEntityId.HasValue)
+                                                    {
+                                                        managedUnitName = await _context.AffiliationEntities
+                                                            .Where(e => e.Id == managerAssignment.AffiliationEntityId.Value)
+                                                            .Select(e => e.Name)
+                                                            .FirstOrDefaultAsync() ?? string.Empty;
+                                                    }
+                                                    else if (managerAssignment.ManagementLevel == "Division" && managerAssignment.DivisionId.HasValue)
+                                                    {
+                                                        managedUnitName = await _context.Divisions
+                                                            .Where(d => d.Id == managerAssignment.DivisionId.Value)
+                                                            .Select(d => d.Name)
+                                                            .FirstOrDefaultAsync() ?? string.Empty;
+                                                    }
+                                                    else if (managerAssignment.ManagementLevel == "Section" && managerAssignment.SectionId.HasValue)
+                                                    {
+                                                        managedUnitName = await _context.Sections
+                                                            .Where(s => s.Id == managerAssignment.SectionId.Value)
+                                                            .Select(s => s.Name)
+                                                            .FirstOrDefaultAsync() ?? string.Empty;
+                                                    }
+                                                    else if (managerAssignment.ManagementLevel == "Group" && managerAssignment.GroupId.HasValue)
+                                                    {
+                                                        managedUnitName = await _context.Groups
+                                                            .Where(g => g.Id == managerAssignment.GroupId.Value)
+                                                            .Select(g => g.Name)
+                                                            .FirstOrDefaultAsync() ?? string.Empty;
+                                                    }
+
+                                                    displayRole = string.IsNullOrWhiteSpace(managedUnitName)
+                                                        ? $"{managerRoleName} {managerLevelName}"
+                                                        : $"{managerRoleName} {managerLevelName} {managedUnitName}";
+
+                                                    var managerProfileLocation = await _context.Identifies
+                                                        .Include(i => i.WorkLocation)
+                                                        .Where(i => i.UserId == userId)
+                                                        .Select(i => new
+                                                        {
+                                                            WorkGovernorate = i.WorkLocation != null && !string.IsNullOrWhiteSpace(i.WorkLocation.Governorate)
+                                                                ? i.WorkLocation.Governorate
+                                                                : i.WorkGovernorate,
+                                                            WorkDistrict = i.WorkLocation != null && !string.IsNullOrWhiteSpace(i.WorkLocation.District)
+                                                                ? i.WorkLocation.District
+                                                                : i.WorkDistrict
+                                                        })
+                                                        .FirstOrDefaultAsync();
+
+                                                    var managerDistrict = managerProfileLocation?.WorkGovernorate == "بغداد"
+                                                        ? managerProfileLocation.WorkDistrict
+                                                        : string.Empty;
+
+                                                    managedLocation = managerAssignment.Governorate == "بغداد" && !string.IsNullOrWhiteSpace(managerDistrict)
+                                                        ? $"محافظة {managerAssignment.Governorate} - قضاء {managerDistrict}"
+                                                        : $"محافظة {managerAssignment.Governorate}";
+                                                }
+                                            }
+                                            catch { }
+
+                                         if (userRoles.Contains("SuperAdmin")) { displayRole = "سوبر أدمن"; }
+else if (userRoles.Contains("DistrictAdmin")) { displayRole = "أدمن"; }
+else if (userRoles.Contains("Admin")) { displayRole = "أدمن"; }
+else if (userRoles.Contains(clsRoles.Manager) || userRoles.Contains(clsRoles.AssistantManager))
+{
+    if (displayRole == "User")
+    {
+        displayRole = userRoles.Contains(clsRoles.AssistantManager) ? "معاون مسؤول إداري" : "مسؤول إداري";
+    }
+}
+else if (userRoles.Contains("NewsEditor")) { displayRole = "محرر أخبار 📝"; }
+else if (userRoles.Contains("MapViewer")) { displayRole = "مشاهد خريطة 🗺️"; }
+else if (accountType == "فرد" || userRoles.Contains("فرد")) { displayRole = "فرد ⭐"; }
+else if (userRoles.Contains("User")) { displayRole = "مستخدم 👤"; }
+else { displayRole = userRoles.FirstOrDefault() ?? accountType ?? "زائر"; }
+                                        }
+                                    }
+                                    <span class="badge bg-success">@displayRole</span>
+                                    @if (!string.IsNullOrWhiteSpace(managedLocation))
+                                    {
+                                        <span class="d-block mt-1 small text-white">@managedLocation</span>
+                                    }
+                                </small>
+                            </div>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li>
+                                <a class="dropdown-item py-2" asp-controller="Register" asp-action="BasicInfo">
+                                    <i class="bi bi-person-badge me-2" style="color: #1e3c72;"></i> الملف الشخصي
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider my-1"></li>
+                            <li>
+                                <form asp-area="Identity" asp-page="/Account/Logout" method="post" class="dropdown-item p-0"
+                                      onsubmit="return confirm('هل أنت متأكد من تسجيل الخروج؟');">
+                                    <button type="submit" class="dropdown-item py-2 logout-btn">
+                                        <i class="bi bi-box-arrow-right me-2"></i> تسجيل الخروج
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- 2️⃣ إرسال إشعار (للسوبر أدمن فقط) -->
+                    @if (User.IsInRole(clsRoles.SuperAdmin))
+                    {
+                        <a class="nav-link btn btn-outline-warning btn-sm me-1"
+                           asp-controller="SuperAdmin"
+                           asp-action="SendNotification"
+                           title="إرسال إشعار جديد">
+                            <i class="bi bi-send fs-6"></i>
+                            <span class="d-none d-lg-inline">إرسال</span>
+                        </a>
+                    }
+
+                    <!-- 3️⃣ الجرس (للجميع) -->
+                    <div class="dropdown">
+                        <a class="nav-link p-2 position-relative" href="#" id="notificationsDropdown"
+                           role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-bell fs-5"></i>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                                  id="notificationsCount" style="display: none;">
+                                0
+                            </span>
+                        </a>
+
+                        <div class="dropdown-menu dropdown-menu-end notifications-dropdown"
+                             aria-labelledby="notificationsDropdown">
+                            <div class="dropdown-header d-flex justify-content-between align-items-center py-2 px-3">
+                                <span class="fw-bold">الإشعارات</span>
+                                <button class="btn btn-sm btn-link p-0" onclick="markAllAsRead()">
+                                    تحديد الكل كمقروء
+                                </button>
+                            </div>
+                            <div class="dropdown-divider m-0"></div>
+                            <div id="notificationsList" class="notifications-list">
+                                <div class="text-center text-muted py-4">
+                                    <i class="bi bi-bell-slash fs-3 d-block mb-2"></i>
+                                    <p class="mb-0 small">لا توجد إشعارات جديدة</p>
+                                </div>
+                            </div>
+                            <div class="dropdown-divider m-0"></div>
+                            <div class="text-center p-2">
+                                <a href="/Notifications" class="btn btn-sm btn-primary w-100">
+                                    عرض كل الإشعارات
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <a class="nav-link btn btn-outline-light login-btn"
+   asp-area="Identity"
+   asp-page="/Account/Login">
+    <i class="bi bi-box-arrow-in-right me-1"></i>
+    تسجيل الدخول
+</a>
+                }
+            </div>
+        </div>
+    </nav>
+
+    @* <!-- مسار الصفحات -->
+    <div class="bg-light py-2 border-bottom">
+        <div class="container">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 small">
+                    <li class="breadcrumb-item"><a asp-controller="Home" asp-action="Index">الرئيسية</a></li>
+                    @if (!string.IsNullOrEmpty(ViewData["Title"] as string))
+                    {
+                        <li class="breadcrumb-item active" aria-current="page">@ViewData["Title"]</li>
+                    }
+                </ol>
+            </nav>
+        </div> *@
+    </div>
+</header>
+
+<style>
+    /* ===== التصميم الأساسي للـ Header (ارتفاع 75px مع خطوط وأزرار أكبر) ===== */
+    .navbar {
+        min-height: 75px !important;
+        padding-top: 0px !important;
+        padding-bottom: 0px !important;
+        background: linear-gradient(135deg, #1e3c72, #2a5a9c);
+    }
+
+    .navbar-brand {
+        padding: 4px 0 !important;
+        color: white !important;
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        max-width: min(38vw, 360px);
+        overflow: hidden;
+    }
+
+    .navbar-brand i {
+        font-size: 1.05rem !important;
+        flex-shrink: 0;
+    }
+
+    .navbar-brand .brand-title {
+        display: inline-block;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 1.35rem !important;
+        font-weight: 700 !important;
+        line-height: 1.2;
+    }
+
+    .nav-link {
+        font-size: 0.95rem !important;
+        padding: 8px 12px !important;
+        color: rgba(255,255,255,0.9) !important;
+        transition: all 0.3s;
+    }
+
+    .nav-link:hover {
+        color: white !important;
+        transform: translateY(-1px);
+    }
+
+    /* ===== تنسيق القائمة ===== */
+    #menuDropdown {
+        background: rgba(255,255,255,0.1);
+        border-radius: 20px;
+        padding: 0.5rem 1.2rem !important;
+        font-size: 0.95rem !important;
+    }
+
+    #menuDropdown:hover {
+        background: rgba(255,255,255,0.2);
+    }
+
+    .dropdown-menu {
+        font-size: 0.95rem !important;
+        border-radius: 10px;
+        border: none;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        padding: 0.5rem 0;
+        min-width: 220px;
+        z-index: 1000;
+    }
+
+    .dropdown-header {
+        font-weight: 700;
+        color: #1e3c72;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem !important;
+    }
+
+    .dropdown-item {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem !important;
+        transition: all 0.2s;
+    }
+
+    .dropdown-item:hover {
+        background-color: #e8f0fe;
+        transform: translateX(5px);
+    }
+
+    .dropdown-item i {
+        color: #1e3c72;
+    }
+
+    .dropdown-divider {
+        margin: 0.3rem 0;
+    }
+
+    /* ===== صورة المستخدم ===== */
+    .user-avatar {
+        width: 35px !important;
+        height: 35px !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 14px !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+
+    .header-avatar-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+        display: block;
+    }
+
+    /* ===== معلومات المستخدم ===== */
+    .d-none.d-lg-block .fw-bold {
+        font-size: 0.8rem !important;
+        margin-bottom: 2px;
+    }
+
+    .d-none.d-lg-block small {
+        font-size: 0.7rem !important;
+    }
+
+    .d-none.d-lg-block .badge {
+        font-size: 0.65rem !important;
+        padding: 3px 8px !important;
+    }
+
+    /* ===== زر إرسال الإشعارات ===== */
+    .btn-outline-warning {
+        border: 1px solid #ffc107 !important;
+        color: #ffc107 !important;
+        background: transparent;
+        transition: all 0.3s;
+        white-space: nowrap;
+        padding: 5px 12px !important;
+        font-size: 0.85rem !important;
+    }
+
+    .btn-outline-warning:hover {
+        background: #ffc107 !important;
+        color: #1e3c72 !important;
+        transform: translateY(-2px);
+    }
+
+    /* ===== تنسيق قائمة الإشعارات ===== */
+    .notifications-dropdown {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        padding: 0;
+        min-width: 350px !important;
+    }
+
+    .notifications-list {
+        max-height: 450px;
+        overflow-y: auto;
+    }
+
+    .notification-item {
+        padding: 12px 15px !important;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background-color 0.2s;
+        cursor: pointer;
+    }
+
+    .notification-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .notification-item.unread {
+        background-color: #e8f0fe;
+    }
+
+    .notification-icon {
+        width: 36px !important;
+        height: 36px !important;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 16px !important;
+        flex-shrink: 0;
+    }
+
+    .notification-time {
+        font-size: 11px !important;
+        color: #6c757d;
+    }
+
+    .badge.bg-danger {
+        animation: pulse 2s infinite;
+        font-size: 10px !important;
+        padding: 0.25rem 0.5rem;
+        min-width: 18px;
+    }
+
+    @@keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+
+    /* ===== زر تسجيل الخروج ===== */
+    .logout-btn {
+        color: #dc3545 !important;
+        font-weight: 600;
+        width: 100%;
+        text-align: right;
+        background: none;
+        border: none;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+
+    .logout-btn i {
+        color: #dc3545 !important;
+    }
+
+    .logout-btn:hover {
+        background: linear-gradient(135deg, #fee, #fff5f5) !important;
+        color: #c82333 !important;
+    }
+
+    /* ===== أزرار عامة ===== */
+    .btn-sm {
+        padding: 4px 12px;
+        font-size: 0.85rem;
+    }
+
+    /* ===== شريط التنقل (Breadcrumb) ===== */
+    .breadcrumb {
+        font-size: 0.8rem !important;
+        margin-bottom: 0;
+    }
+
+    .breadcrumb-item a {
+        text-decoration: none;
+        color: #6c757d;
+    }
+
+    .breadcrumb-item a:hover {
+        color: #1e3c72;
+    }
+
+    .py-2 {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+    }
+
+    /* ===== المسافات ===== */
+    .me-1 {
+        margin-right: 0.25rem !important;
+    }
+
+    /* ===== تحسينات الموبايل ===== */
+    @@media (max-width: 768px) {
+        #navbarMain {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            left: 0;
+            background: linear-gradient(135deg, #1e3c72, #2a5a9c);
+            border-radius: 0 0 14px 14px;
+            padding: 0.5rem 0.75rem 0.9rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.18);
+            z-index: 1040;
+        }
+
+        #navbarMain .navbar-nav {
+            width: 100%;
+        }
+
+        #navbarMain .nav-item.dropdown {
+            width: 100%;
+        }
+
+        #navbarMain .dropdown-menu {
+            position: static !important;
+            transform: none !important;
+            float: none;
+            width: 100%;
+            margin-top: 0;
+            display: block !important;
+            background: transparent;
+            box-shadow: none;
+            border: none;
+            padding: 0.25rem 0 0;
+        }
+
+        #navbarMain .dropdown-menu.show {
+            display: block;
+        }
+
+        #menuDropdown {
+            display: none !important;
+        }
+
+        #navbarMain .dropdown-item,
+        #navbarMain .dropdown-header {
+            border-radius: 12px;
+        }
+
+        #navbarMain .dropdown-item {
+            margin-bottom: 0.2rem;
+            background: rgba(255,255,255,0.08);
+            color: white;
+        }
+
+        #navbarMain .dropdown-item i {
+            color: white;
+        }
+
+        #navbarMain .dropdown-header {
+            color: rgba(255,255,255,0.82);
+            padding-right: 0.25rem;
+        }
+
+        #navbarMain .dropdown-divider {
+            border-color: rgba(255,255,255,0.18);
+        }
+
+        .notifications-dropdown {
+            width: 320px !important;
+            min-width: 320px;
+        }
+
+        .notification-item {
+            padding: 10px;
+        }
+
+        .notification-icon {
+            width: 32px;
+            height: 32px;
+            font-size: 14px;
+        }
+
+        .navbar-brand {
+            position: static !important;
+            transform: none !important;
+            margin: 0 auto;
+            max-width: calc(100vw - 170px);
+        }
+
+        .navbar-brand i {
+            font-size: 0.9rem !important;
+        }
+
+        .navbar-brand .brand-title {
+            font-size: 0.72rem !important;
+        }
+
+        .user-avatar {
+            width: 30px !important;
+            height: 30px !important;
+            font-size: 12px !important;
+        }
+
+        .btn-outline-warning {
+            padding: 3px 8px !important;
+            font-size: 0.75rem !important;
+        }
+
+        .nav-link {
+            padding: 6px 8px !important;
+            font-size: 0.85rem !important;
+        }
+
+        .d-flex.align-items-center {
+            gap: 2px;
+        }
+    }
+    .login-btn{
+    font-size: 15px !important;      /* حجم النص */
+    padding: 8px 18px !important;   /* حجم الزر */
+    border-radius: 14px !important;
+    font-weight: 700;
+    min-width: 180px;               /* العرض */
+    text-align: center;
+}
+
+.login-btn i{
+    font-size: 22px !important;     /* حجم الأيقونة */
+}
+</style>
+
+<script src="~/js/notifications.js"></script> 
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const menuDropdown = document.getElementById('menuDropdown');
+        const navbarMain = document.getElementById('navbarMain');
+
+        if (!menuDropdown || !navbarMain) return;
+
+        function syncMobileMenuState() {
+            if (window.innerWidth > 768) return;
+
+            const dropdownMenu = menuDropdown.nextElementSibling;
+            if (!dropdownMenu) return;
+
+            dropdownMenu.classList.add('show');
+            menuDropdown.setAttribute('aria-expanded', 'true');
+        }
+
+        navbarMain.addEventListener('shown.bs.collapse', syncMobileMenuState);
+
+        if (window.innerWidth <= 768) {
+            syncMobileMenuState();
+        }
+    });
+</script>

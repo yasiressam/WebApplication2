@@ -1,0 +1,112 @@
+﻿@model ErrorViewModel
+@{
+   
+
+
+    ViewData["Title"] = "خطأ";
+    ViewData["Icon"] = "bi bi-exclamation-triangle";
+}
+
+<div class="error-container text-center">
+    <div class="error-icon">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+    </div>
+    
+    <h1 class="error-title">@ViewData["Title"]</h1>
+    <h2 class="error-subtitle">عذراً، حدث خطأ أثناء معالجة طلبك</h2>
+    
+    @if (Model.ShowRequestId)
+    {
+        <div class="request-id">
+            <strong>رقم الطلب:</strong> 
+            <code>@Model.RequestId</code>
+        </div>
+    }
+
+    <div class="development-info">
+        <h3>وضع التطوير</h3>
+        <p>
+            التبديل إلى بيئة <strong>التطوير</strong> سيعرض معلومات أكثر تفصيلاً عن الخطأ.
+        </p>
+        <p class="warning">
+            <i class="bi bi-exclamation-circle"></i>
+            لا ينبغي تفعيل بيئة التطوير في التطبيقات المنشورة.
+        </p>
+    </div>
+
+    <a asp-controller="Home" asp-action="Index" class="btn btn-primary mt-4">
+        <i class="bi bi-house-door"></i>
+        العودة للرئيسية
+    </a>
+</div>
+
+<style>
+    .error-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 40px 20px;
+    }
+
+    .error-icon {
+        font-size: 6rem;
+        color: var(--gold);
+        margin-bottom: 20px;
+        animation: pulse 2s infinite;
+    }
+
+    .error-title {
+        color: var(--navy);
+        font-size: 3rem;
+        font-weight: 800;
+        margin-bottom: 10px;
+    }
+
+    .error-subtitle {
+        color: var(--text-dark);
+        font-size: 1.3rem;
+        margin-bottom: 30px;
+        opacity: 0.9;
+    }
+
+    .request-id {
+        background: var(--cream);
+        padding: 15px 20px;
+        border-radius: 50px;
+        display: inline-block;
+        margin-bottom: 30px;
+        border: 1px solid var(--gold);
+    }
+
+    .request-id code {
+        background: var(--navy);
+        color: white;
+        padding: 5px 15px;
+        border-radius: 30px;
+        margin-right: 10px;
+    }
+
+    .development-info {
+        background: rgba(198, 161, 59, 0.05);
+        padding: 25px;
+        border-radius: 30px;
+        border: 1px solid rgba(198, 161, 59, 0.2);
+    }
+
+    .development-info h3 {
+        color: var(--gold);
+        margin-bottom: 15px;
+    }
+
+    .warning {
+        color: #e67e22;
+        background: rgba(230, 126, 34, 0.1);
+        padding: 10px 15px;
+        border-radius: 15px;
+        margin-top: 15px;
+    }
+
+    @@keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+</style>

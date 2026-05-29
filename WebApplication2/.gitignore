@@ -1,0 +1,6 @@
+.codex-temp/
+appsettings.Development.json
+.vs/
+bin/
+obj/
+*.user

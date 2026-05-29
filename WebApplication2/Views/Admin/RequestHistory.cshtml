@@ -1,0 +1,320 @@
+@model WebApplication2.Models.RequestHistoryViewModel
+
+@{
+    Layout = "_Layout";
+    var total = Model.TotalItems;
+    var approved = ViewBag.ApprovedCount is int approvedCount ? approvedCount : Model.Items.Count(i => i.StatusClass == "success");
+    var rejected = ViewBag.RejectedCount is int rejectedCount ? rejectedCount : Model.Items.Count(i => i.StatusClass == "danger");
+}
+
+<style>
+    .history-header {
+        background: linear-gradient(135deg, #1e3c72, #2a5a9c);
+        color: white;
+        padding: 25px;
+        border-radius: 15px;
+        margin-bottom: 25px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    }
+
+    .history-stat {
+        background: white;
+        border-radius: 12px;
+        padding: 18px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.06);
+        border: 1px solid #f0f0f0;
+        height: 100%;
+    }
+
+    .history-stat .value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1e3c72;
+        line-height: 1;
+    }
+
+    .history-table-card {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.07);
+        border: 1px solid #f0f0f0;
+    }
+
+    .history-avatar {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 3px solid white;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.16);
+    }
+
+    .history-avatar-fallback {
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #1e3c72, #2a5a9c);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        font-weight: 700;
+    }
+
+    .history-label {
+        color: #6c757d;
+        font-size: 0.8rem;
+        margin-bottom: 2px;
+    }
+
+    .history-value {
+        color: #212529;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .empty-state {
+        background: white;
+        border-radius: 15px;
+        padding: 45px 20px;
+        text-align: center;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    }
+
+    .history-table th {
+        background: #f8f9fa;
+        color: #495057;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
+    .history-table td {
+        vertical-align: middle;
+        font-size: 0.92rem;
+    }
+
+    .history-reason {
+        max-width: 260px;
+        white-space: normal;
+    }
+
+    .history-filter-card {
+        background: white;
+        border-radius: 12px;
+        padding: 18px;
+        margin-bottom: 20px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.06);
+        border: 1px solid #f0f0f0;
+    }
+</style>
+
+<div class="container mt-4" dir="rtl">
+    <div class="history-header d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h2 class="mb-1">
+                <i class="bi bi-clock-history me-2"></i> @Model.Title
+            </h2>
+            <p class="mb-0 opacity-75">@Model.Subtitle</p>
+        </div>
+        <div>
+            <a href="@Url.Action(Model.BackAction, Model.BackController)" class="btn btn-light">
+                <i class="bi bi-arrow-right"></i> الرجوع
+            </a>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="history-stat">
+                <div class="value">@total</div>
+                <div class="text-muted">إجمالي السجل</div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="history-stat">
+                <div class="value text-success">@approved</div>
+                <div class="text-muted">موافق عليها</div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="history-stat">
+                <div class="value text-danger">@rejected</div>
+                <div class="text-muted">مرفوضة</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="history-filter-card">
+        <form method="get" asp-action="RequestHistory" asp-controller="@Model.BackController" class="row g-3 align-items-end">
+            <input type="hidden" name="type" value="@Model.RequestType" />
+
+            <div class="col-md-3">
+                <label class="form-label fw-bold">الاسم</label>
+                <input type="text" name="searchName" value="@Model.SearchName" class="form-control" placeholder="ابحث بالاسم" />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label fw-bold">المحافظة</label>
+                <select name="searchGovernorate" class="form-select">
+                    <option value="">كل المحافظات</option>
+                    @foreach (var governorate in Model.GovernorateOptions)
+                    {
+                        <option value="@governorate" selected="@(Model.SearchGovernorate == governorate ? "selected" : null)">@governorate</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label fw-bold">رقم الهاتف</label>
+                <input type="text" name="searchPhone" value="@Model.SearchPhone" class="form-control" placeholder="ابحث برقم الهاتف" />
+            </div>
+
+            <div class="col-md-1">
+                <label class="form-label fw-bold">العدد</label>
+                <select name="pageSize" class="form-select">
+                    @foreach (var option in Model.PageSizeOptions)
+                    {
+                        <option value="@option" selected="@(Model.PageSize == option ? "selected" : null)">@option</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-fill">
+                    <i class="bi bi-search"></i> بحث
+                </button>
+                <a href="@Url.Action("RequestHistory", Model.BackController, new { type = Model.RequestType })" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-lg"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    @if (!Model.Items.Any())
+    {
+        <div class="empty-state">
+            <i class="bi bi-inbox" style="font-size: 70px; color: #dee2e6;"></i>
+            <h4 class="mt-3">لا يوجد سجل حتى الآن</h4>
+            <p class="text-muted mb-0">عند معالجة الطلبات ستظهر هنا الموافقات والرفض.</p>
+        </div>
+    }
+    else
+    {
+        <div class="history-table-card table-responsive">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 p-3 border-bottom">
+                <div class="fw-bold">عرض @Model.Items.Count من أصل @Model.TotalItems نتيجة</div>
+                <div class="text-muted small">الصفحة @Model.Page من @Model.TotalPages</div>
+            </div>
+            <table class="table table-hover history-table mb-0 align-middle">
+                <thead>
+                    <tr>
+                        <th>المستخدم</th>
+                        <th>البريد / الهاتف</th>
+                        <th>المحافظة</th>
+                        <th>تاريخ الطلب</th>
+                        <th>الحالة</th>
+                        <th>تمت بواسطة</th>
+                        <th>تاريخ المعالجة</th>
+                        <th>سبب الرفض</th>
+                        <th>التفاصيل</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Items)
+                    {
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    @if (!string.IsNullOrWhiteSpace(item.CoverImage))
+                                    {
+                                        <img src="@item.CoverImage" class="history-avatar" alt="@item.FullName" />
+                                    }
+                                    else
+                                    {
+                                        <div class="history-avatar-fallback">
+                                            @(string.IsNullOrWhiteSpace(item.FullName) ? "?" : item.FullName[0].ToString())
+                                        </div>
+                                    }
+                                    <div>
+                                        <div class="fw-bold">@item.FullName</div>
+                                        <div class="text-muted small">@item.UserId</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div>@item.UserEmail</div>
+                                <div class="text-muted small">@item.PhoneNumber</div>
+                            </td>
+                            <td>@item.Governorate @(string.IsNullOrWhiteSpace(item.District) ? "" : $" - {item.District}")</td>
+                            <td>@item.RequestDate.ToString("yyyy/MM/dd")</td>
+                            <td><span class="badge bg-@item.StatusClass">@item.Status</span></td>
+                            <td>@(string.IsNullOrWhiteSpace(item.ProcessedBy) ? "غير محفوظ" : item.ProcessedBy)</td>
+                            <td>@(item.ProcessedAt?.ToString("yyyy/MM/dd") ?? "غير محفوظ")</td>
+                            <td class="history-reason">@(!string.IsNullOrWhiteSpace(item.Reason) ? item.Reason : "---")</td>
+                            <td>
+                                <a href="@Url.Action(Model.DetailsAction, Model.DetailsController, new { id = item.UserId })" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            var firstPage = Math.Max(1, Model.Page - 2);
+            var lastPage = Math.Min(Model.TotalPages, Model.Page + 2);
+
+            <nav class="mt-3" aria-label="تنقل صفحات السجل">
+                <ul class="pagination justify-content-center mb-0">
+                    <li class="page-item @(Model.Page == 1 ? "disabled" : "")">
+                        <a class="page-link" href="@Url.Action("RequestHistory", Model.BackController, new { type = Model.RequestType, searchName = Model.SearchName, searchGovernorate = Model.SearchGovernorate, searchPhone = Model.SearchPhone, page = Model.Page - 1, pageSize = Model.PageSize })">السابق</a>
+                    </li>
+
+                    @if (firstPage > 1)
+                    {
+                        <li class="page-item">
+                            <a class="page-link" href="@Url.Action("RequestHistory", Model.BackController, new { type = Model.RequestType, searchName = Model.SearchName, searchGovernorate = Model.SearchGovernorate, searchPhone = Model.SearchPhone, page = 1, pageSize = Model.PageSize })">1</a>
+                        </li>
+
+                        @if (firstPage > 2)
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        }
+                    }
+
+                    @for (var i = firstPage; i <= lastPage; i++)
+                    {
+                        <li class="page-item @(Model.Page == i ? "active" : "")">
+                            <a class="page-link" href="@Url.Action("RequestHistory", Model.BackController, new { type = Model.RequestType, searchName = Model.SearchName, searchGovernorate = Model.SearchGovernorate, searchPhone = Model.SearchPhone, page = i, pageSize = Model.PageSize })">@i</a>
+                        </li>
+                    }
+
+                    @if (lastPage < Model.TotalPages)
+                    {
+                        @if (lastPage < Model.TotalPages - 1)
+                        {
+                            <li class="page-item disabled">
+                                <span class="page-link">...</span>
+                            </li>
+                        }
+
+                        <li class="page-item">
+                            <a class="page-link" href="@Url.Action("RequestHistory", Model.BackController, new { type = Model.RequestType, searchName = Model.SearchName, searchGovernorate = Model.SearchGovernorate, searchPhone = Model.SearchPhone, page = Model.TotalPages, pageSize = Model.PageSize })">@Model.TotalPages</a>
+                        </li>
+                    }
+
+                    <li class="page-item @(Model.Page == Model.TotalPages ? "disabled" : "")">
+                        <a class="page-link" href="@Url.Action("RequestHistory", Model.BackController, new { type = Model.RequestType, searchName = Model.SearchName, searchGovernorate = Model.SearchGovernorate, searchPhone = Model.SearchPhone, page = Model.Page + 1, pageSize = Model.PageSize })">التالي</a>
+                    </li>
+                </ul>
+            </nav>
+        }
+    }
+</div>

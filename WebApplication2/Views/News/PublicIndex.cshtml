@@ -1,0 +1,105 @@
+﻿@model IEnumerable<WebApplication2.Models.News>
+
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold" style="color: #1e3c72;">
+            <i class="bi bi-newspaper"></i> الأخبار
+        </h1>
+        <p class="text-muted">آخر الأخبار والتحديثات</p>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info text-center py-5">
+            <i class="bi bi-info-circle display-4 d-block mb-3"></i>
+            <h4>لا توجد أخبار حالياً</h4>
+            <p class="mb-0">سيتم إضافة الأخبار قريباً</p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var news in Model)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100 shadow-sm border-0 rounded-4 overflow-hidden">
+                        @if (!string.IsNullOrEmpty(news.ImageUrl))
+                        {
+                            <img src="@news.ImageUrl" class="card-img-top" alt="@news.Title" style="height: 220px; object-fit: cover;">
+                        }
+                        else
+                        {
+                            <div class="bg-light d-flex align-items-center justify-content-center" style="height: 220px;">
+                                <i class="bi bi-newspaper display-1 text-muted"></i>
+                            </div>
+                        }
+                        
+                        <div class="card-body">
+                            <div class="mb-2">
+                                <small class="text-muted">
+                                    <i class="bi bi-calendar"></i> @news.CreatedAt.ToString("yyyy/MM/dd - HH:mm")
+                                </small>
+                            </div>
+                            <h5 class="card-title fw-bold" style="color: #1e3c72;">@news.Title</h5>
+                            <p class="card-text text-muted">
+                                @{
+                                    var shortContent = news.Content.Length > 120
+                                        ? news.Content.Substring(0, 120) + "..."
+                                        : news.Content;
+                                }
+                                @shortContent
+                            </p>
+                        </div>
+                        
+                        <div class="card-footer bg-transparent border-0 pb-4">
+                            <a asp-action="NewsDetails" asp-route-id="@news.Id" class="btn btn-primary rounded-pill px-4 w-100">
+                                <i class="bi bi-arrow-left"></i> قراءة المزيد
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<style>
+    .card {
+        transition: all 0.3s ease;
+    }
+    
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.12) !important;
+        }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #1e3c72, #2a5a9c);
+        border: none;
+        transition: all 0.3s ease;
+    }
+    
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2a5a9c, #1e3c72);
+            transform: translateX(-5px);
+            box-shadow: 0 5px 15px rgba(30, 60, 114, 0.3);
+        }
+    
+    .card-img-top {
+        transition: transform 0.5s ease;
+    }
+    
+    .card:hover .card-img-top {
+        transform: scale(1.05);
+    }
+    
+    @@media (max-width: 768px) {
+        .container {
+            padding: 1rem !important;
+        }
+        
+        .display-4 {
+            font-size: 2rem;
+        }
+    }
+</style>

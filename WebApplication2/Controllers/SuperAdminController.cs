@@ -1801,7 +1801,15 @@ namespace WebApplication2.Controllers
                     return Json(new { success = false, message = "المستخدم غير موجود" });
 
                 var userRoles = await _userManager.GetRolesAsync(user);
-                var allRoles = new List<string> { "User", "Admin", "SuperAdmin", "NewsEditor", "MapViewer" };
+                var allRoles = new List<string>
+                {
+                    clsRoles.User,
+                    clsRoles.Member,
+                    clsRoles.Admin,
+                    clsRoles.SuperAdmin,
+                    clsRoles.NewsEditor,
+                    clsRoles.MapViewer
+                };
 
                 return Json(new
                 {
@@ -1828,23 +1836,46 @@ namespace WebApplication2.Controllers
                 if (user == null)
                     return Json(new { success = false, message = "المستخدم غير موجود" });
 
-                var currentRoles = await _userManager.GetRolesAsync(user);
-                if (currentRoles.Any())
+                var allowedRoles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 {
-                    var removeResult = await _userManager.RemoveFromRolesAsync(user, currentRoles);
-                    if (!removeResult.Succeeded)
-                        return Json(new { success = false, message = "فشل في إزالة الأدوار الحالية" });
-                }
+                    clsRoles.User,
+                    clsRoles.Member,
+                    clsRoles.Admin,
+                    clsRoles.SuperAdmin,
+                    clsRoles.NewsEditor,
+                    clsRoles.MapViewer
+                };
 
                 if (request.SelectedRoles != null)
                 {
                     request.SelectedRoles = request.SelectedRoles
                         .Select(role => role == clsRoles.DistrictAdmin ? clsRoles.Admin : role)
+                        .Where(role => allowedRoles.Contains(role))
                         .Distinct()
                         .ToList();
                 }
 
-                if (request.SelectedRoles != null && request.SelectedRoles.Any())
+                request.SelectedRoles ??= new List<string>();
+
+                if (request.SelectedRoles.Contains(clsRoles.Member))
+                    request.SelectedRoles.RemoveAll(role => string.Equals(role, clsRoles.User, StringComparison.OrdinalIgnoreCase));
+
+                if (!request.SelectedRoles.Any())
+                    return Json(new { success = false, message = "الرجاء اختيار دور واحد على الأقل" });
+
+                var currentRoles = await _userManager.GetRolesAsync(user);
+                var rolesToRemove = currentRoles
+                    .Where(role => role == clsRoles.User || allowedRoles.Contains(role))
+                    .ToList();
+
+                if (rolesToRemove.Any())
+                {
+                    var removeResult = await _userManager.RemoveFromRolesAsync(user, rolesToRemove);
+                    if (!removeResult.Succeeded)
+                        return Json(new { success = false, message = "فشل في إزالة الأدوار الحالية" });
+                }
+
+                if (request.SelectedRoles.Any())
                 {
                     var addResult = await _userManager.AddToRolesAsync(user, request.SelectedRoles);
                     if (!addResult.Succeeded)
@@ -1975,12 +2006,12 @@ namespace WebApplication2.Controllers
                             await _notificationService.CreateNotification("👑 تمت ترقيتك إلى سوبر أدمن", "تمت ترقية حسابك إلى سوبر أدمن", request.UserId, "bi-crown-fill", "/SuperAdmin/Users");
                         else if (request.SelectedRoles.Contains("Admin"))
                             await _notificationService.CreateNotification("🛡️ تمت ترقيتك إلى أدمن", "تمت ترقية حسابك إلى أدمن", request.UserId, "bi-shield-fill", "/Admin/Users");
-                        else if (request.SelectedRoles.Contains("فرد"))
-                            await _notificationService.CreateNotification("⭐ تمت ترقيتك إلى فرد", "تمت ترقية حسابك إلى فرد", request.UserId, "bi-star-fill", "/Register/ProfileDetails");
                         else if (request.SelectedRoles.Contains("NewsEditor"))
                             await _notificationService.CreateNotification("📝 تم تعيينك كمحرر أخبار", "يمكنك الآن إدارة الأخبار", request.UserId, "bi-newspaper", "/News/Index");
                         else if (request.SelectedRoles.Contains("MapViewer"))
                             await _notificationService.CreateNotification("🗺️ تم تعيينك كمشاهد خريطة", "يمكنك الآن مشاهدة الخريطة", request.UserId, "bi-map", "/MapDashboard/Index");
+                        else if (request.SelectedRoles.Contains("فرد"))
+                            await _notificationService.CreateNotification("⭐ تمت ترقيتك إلى فرد", "تمت ترقية حسابك إلى فرد", request.UserId, "bi-star-fill", "/Register/ProfileDetails");
                     }
                     catch (Exception ex) { _logger.LogError(ex, "خطأ في إرسال الإشعار"); }
                 }
@@ -1992,6 +2023,49 @@ namespace WebApplication2.Controllers
             {
                 return Json(new { success = false, message = $"❌ حدث خطأ: {ex.Message}" });
             }
+        }
+
+        private async Task RemoveUserRelatedDataAsync(string userId)
+        {
+            var managementAssignments = await _context.ManagementAssignments
+                .Where(a => a.UserId == userId)
+                .ToListAsync();
+            if (managementAssignments.Any()) _context.ManagementAssignments.RemoveRange(managementAssignments);
+
+            var managementRequests = await _context.ManagementAssignmentRequests
+                .Where(r => r.UserId == userId || r.RequestedByUserId == userId)
+                .ToListAsync();
+            if (managementRequests.Any()) _context.ManagementAssignmentRequests.RemoveRange(managementRequests);
+
+            var address = await GetUserAddressAsync(userId);
+            if (address != null) _context.Addresses.Remove(address);
+
+            var affiliation = await GetUserAffiliationInfoAsync(userId);
+            if (affiliation != null) _context.AffiliationInfos.Remove(affiliation);
+
+            var voterCard = await GetUserVoterCardAsync(userId);
+            if (voterCard != null) _context.VoterCards.Remove(voterCard);
+
+            var union = await GetUserUnionAsync(userId);
+            if (union != null) _context.UnionMemberships.Remove(union);
+
+            var federation = await GetUserFederationAsync(userId);
+            if (federation != null) _context.FederationMemberships.Remove(federation);
+
+            var association = await GetUserAssociationAsync(userId);
+            if (association != null) _context.AssociationMemberships.Remove(association);
+
+            var ngo = await GetUserNgoAsync(userId);
+            if (ngo != null) _context.NgoMemberships.Remove(ngo);
+
+            var notifications = await _context.Notifications.Where(n => n.TargetUserId == userId).ToListAsync();
+            if (notifications.Any()) _context.Notifications.RemoveRange(notifications);
+
+            var devices = await _context.UserDevices.Where(d => d.UserId == userId).ToListAsync();
+            if (devices.Any()) _context.UserDevices.RemoveRange(devices);
+
+            var userProfile = await _context.Identifies.FirstOrDefaultAsync(i => i.UserId == userId);
+            if (userProfile != null) _context.Identifies.Remove(userProfile);
         }
 
         // ========== حذف مستخدم واحد ==========
@@ -2012,37 +2086,14 @@ namespace WebApplication2.Controllers
                 if (roles.Contains(clsRoles.SuperAdmin))
                     return Json(new { success = false, message = "لا يمكن حذف حساب سوبر أدمن" });
 
-                // حذف جميع البيانات المرتبطة
-                var address = await GetUserAddressAsync(request.UserId);
-                if (address != null) _context.Addresses.Remove(address);
+                if (roles.Any())
+                {
+                    var removeRolesResult = await _userManager.RemoveFromRolesAsync(user, roles);
+                    if (!removeRolesResult.Succeeded)
+                        return Json(new { success = false, message = "❌ فشل في إزالة أدوار المستخدم قبل الحذف" });
+                }
 
-                var affiliation = await GetUserAffiliationInfoAsync(request.UserId);
-                if (affiliation != null) _context.AffiliationInfos.Remove(affiliation);
-
-                var voterCard = await GetUserVoterCardAsync(request.UserId);
-                if (voterCard != null) _context.VoterCards.Remove(voterCard);
-
-                var union = await GetUserUnionAsync(request.UserId);
-                if (union != null) _context.UnionMemberships.Remove(union);
-
-                var federation = await GetUserFederationAsync(request.UserId);
-                if (federation != null) _context.FederationMemberships.Remove(federation);
-
-                var association = await GetUserAssociationAsync(request.UserId);
-                if (association != null) _context.AssociationMemberships.Remove(association);
-
-                var ngo = await GetUserNgoAsync(request.UserId);
-                if (ngo != null) _context.NgoMemberships.Remove(ngo);
-
-                var notifications = await _context.Notifications.Where(n => n.TargetUserId == request.UserId).ToListAsync();
-                if (notifications.Any()) _context.Notifications.RemoveRange(notifications);
-
-                var devices = await _context.UserDevices.Where(d => d.UserId == request.UserId).ToListAsync();
-                if (devices.Any()) _context.UserDevices.RemoveRange(devices);
-
-                var userProfile = await _context.Identifies.FirstOrDefaultAsync(i => i.UserId == request.UserId);
-                if (userProfile != null) _context.Identifies.Remove(userProfile);
-
+                await RemoveUserRelatedDataAsync(request.UserId);
                 await _context.SaveChangesAsync();
 
                 var result = await _userManager.DeleteAsync(user);
@@ -2078,37 +2129,13 @@ namespace WebApplication2.Controllers
                         var roles = await _userManager.GetRolesAsync(user);
                         if (roles.Contains(clsRoles.SuperAdmin)) { failCount++; continue; }
 
-                        // حذف جميع البيانات المرتبطة
-                        var address = await GetUserAddressAsync(userId);
-                        if (address != null) _context.Addresses.Remove(address);
+                        if (roles.Any())
+                        {
+                            var removeRolesResult = await _userManager.RemoveFromRolesAsync(user, roles);
+                            if (!removeRolesResult.Succeeded) { failCount++; continue; }
+                        }
 
-                        var affiliation = await GetUserAffiliationInfoAsync(userId);
-                        if (affiliation != null) _context.AffiliationInfos.Remove(affiliation);
-
-                        var voterCard = await GetUserVoterCardAsync(userId);
-                        if (voterCard != null) _context.VoterCards.Remove(voterCard);
-
-                        var union = await GetUserUnionAsync(userId);
-                        if (union != null) _context.UnionMemberships.Remove(union);
-
-                        var federation = await GetUserFederationAsync(userId);
-                        if (federation != null) _context.FederationMemberships.Remove(federation);
-
-                        var association = await GetUserAssociationAsync(userId);
-                        if (association != null) _context.AssociationMemberships.Remove(association);
-
-                        var ngo = await GetUserNgoAsync(userId);
-                        if (ngo != null) _context.NgoMemberships.Remove(ngo);
-
-                        var notifications = await _context.Notifications.Where(n => n.TargetUserId == userId).ToListAsync();
-                        if (notifications.Any()) _context.Notifications.RemoveRange(notifications);
-
-                        var devices = await _context.UserDevices.Where(d => d.UserId == userId).ToListAsync();
-                        if (devices.Any()) _context.UserDevices.RemoveRange(devices);
-
-                        var userProfile = await _context.Identifies.FirstOrDefaultAsync(i => i.UserId == userId);
-                        if (userProfile != null) _context.Identifies.Remove(userProfile);
-
+                        await RemoveUserRelatedDataAsync(userId);
                         await _context.SaveChangesAsync();
 
                         var result = await _userManager.DeleteAsync(user);
@@ -2369,8 +2396,8 @@ namespace WebApplication2.Controllers
                 NormalizeWorkLocation(model.WorkLocation);
                 var normalizedWorkGovernorate = string.Equals(model.WorkLocation.Governorate, "كل المحافظات", StringComparison.OrdinalIgnoreCase)
                     ? "مركزي"
-                    : string.Equals(model.WorkLocation.Governorate, "بغداد مركزي", StringComparison.OrdinalIgnoreCase)
-                    ? "بغداد مركزي"
+                    : string.Equals(model.WorkLocation.Governorate, "بغداد عامة", StringComparison.OrdinalIgnoreCase)
+                    ? "بغداد عامة"
                     : model.WorkLocation.Governorate;
 
                 profile.WorkGovernorate = normalizedWorkGovernorate;
@@ -3325,7 +3352,7 @@ namespace WebApplication2.Controllers
                             "بغداد",
                             StringComparison.OrdinalIgnoreCase)))
                     {
-                        values.Add("بغداد مركزي");
+                        values.Add("بغداد عامة");
                     }
                     break;
 
@@ -3697,9 +3724,9 @@ namespace WebApplication2.Controllers
             var normalizedSelectedValue = selectedValue.Trim();
 
             if (key == "governorate" &&
-                string.Equals(normalizedSelectedValue, "بغداد مركزي", StringComparison.OrdinalIgnoreCase))
+                string.Equals(normalizedSelectedValue, "بغداد عامة", StringComparison.OrdinalIgnoreCase))
             {
-                return string.Equals(normalizedValue, "بغداد مركزي", StringComparison.OrdinalIgnoreCase) ||
+                return string.Equals(normalizedValue, "بغداد عامة", StringComparison.OrdinalIgnoreCase) ||
                        normalizedValue.StartsWith("بغداد - ", StringComparison.OrdinalIgnoreCase);
             }
 
@@ -3715,7 +3742,7 @@ namespace WebApplication2.Controllers
                 return governorate.Trim();
 
             return string.IsNullOrWhiteSpace(district)
-                ? "بغداد مركزي"
+                ? "بغداد عامة"
                 : $"بغداد - {district.Trim()}";
         }
 

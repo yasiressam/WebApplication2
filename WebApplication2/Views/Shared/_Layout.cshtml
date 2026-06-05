@@ -14,18 +14,21 @@
     <link rel="icon" type="image/jpeg" href="~/images/background1.jpg" asp-append-version="true" />
     <link rel="shortcut icon" type="image/jpeg" href="~/images/background1.jpg" asp-append-version="true" />
     <link rel="apple-touch-icon" href="~/images/background1.jpg" asp-append-version="true" />
-    <meta name="description" content="نظام التنظيم السياسي لإدارة المستخدمين والطلبات والإحصائيات." />
+    <link rel="manifest" href="~/manifest.json" />
+    <meta name="theme-color" content="#3498db" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="التنظيم السياسي" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta property="og:type" content="website" />
     <meta property="og:locale" content="ar_IQ" />
     <meta property="og:site_name" content="التنظيم السياسي" />
     <meta property="og:title" content="@pageTitle" />
-    <meta property="og:description" content="نظام التنظيم السياسي لإدارة المستخدمين والطلبات والإحصائيات." />
     <meta property="og:url" content="@siteUrl" />
     <meta property="og:image" content="@siteImageUrl" />
     <meta property="og:image:secure_url" content="@siteImageUrl" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="@pageTitle" />
-    <meta name="twitter:description" content="نظام التنظيم السياسي لإدارة المستخدمين والطلبات والإحصائيات." />
     <meta name="twitter:image" content="@siteImageUrl" />
     <link rel="image_src" href="@siteImageUrl" />
     <script type="application/ld+json">
@@ -547,97 +550,85 @@
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <script>
         window.OneSignalDeferred = window.OneSignalDeferred || [];
+        const oneSignalAllowedHosts = ["assaib.com", "www.assaib.com"];
 
-        // تهيئة OneSignal
-        window.OneSignalDeferred.push(function(OneSignal) {
-            OneSignal.init({
-                appId: "880334b8-c814-42b1-8bd1-61087237bc61",
-                serviceWorkerPath: "OneSignalSDKWorker.js",
+        async function registerOneSignalDevice(OneSignal, attempt = 1) {
+            try {
+                const pushSubscription = OneSignal?.User?.PushSubscription;
+                const subscriptionId = pushSubscription?.id || null;
+                const isSubscribed = pushSubscription?.optedIn !== false;
+
+                if (!subscriptionId || !isSubscribed) {
+                    console.log("⚠️ لا يوجد OneSignal Subscription ID بعد أو المستخدم لم يوافق على الإشعارات");
+                    if (attempt < 8) {
+                        setTimeout(() => registerOneSignalDevice(OneSignal, attempt + 1), 2500);
+                    }
+                    return;
+                }
+
+                const response = await fetch('/api/notifications/register-device', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        playerId: subscriptionId,
+                        deviceType: 'web',
+                        browser: navigator.userAgent,
+                        operatingSystem: navigator.platform
+                    })
+                });
+
+                if (response.status === 401) {
+                    console.log("⚠️ المستخدم غير مسجل الدخول، سيتم تسجيل جهاز OneSignal بعد تسجيل الدخول");
+                    return;
+                }
+
+                const data = await response.json();
+                console.log("✅ تم تسجيل جهاز OneSignal:", data);
+            } catch (e) {
+                console.error("❌ خطأ في تسجيل جهاز OneSignal:", e);
+            }
+        }
+
+        window.OneSignalDeferred.push(async function(OneSignal) {
+            if (!oneSignalAllowedHosts.includes(window.location.hostname)) {
+                console.log("⚠️ OneSignal يعمل فقط على الدومين الرسمي: https://assaib.com");
+                return;
+            }
+
+            await OneSignal.init({
+                appId: "2c9d0c87-7631-42d9-923a-be7b2a7381e1",
+                serviceWorkerPath: "/OneSignalSDKWorker.js",
                 notifyButton: {
                     enable: true,
                 },
             });
+
             console.log("✅ OneSignal initialized");
-        });
 
-        // تسجيل الجهاز بعد التهيئة
-        window.OneSignalDeferred.push(async function(OneSignal) {
-            try {
-                // انتظار قليل للتأكد من اكتمال التهيئة
-                await new Promise(resolve => setTimeout(resolve, 7000));
-
-                // محاولة الحصول على User ID بالطريقة الصحيحة للإصدار الحديث
-                let userId = null;
-
-                try {
-                    // الطريقة الصحيحة للإصدار الحديث من OneSignal
-                    if (OneSignal && OneSignal.User && OneSignal.User.PushSubscription) {
-                        const subscription = await OneSignal.User.PushSubscription;
-                        userId = subscription?.id || null;
-                        console.log("✅ OneSignal Subscription:", subscription);
-                    }
-                } catch (innerError) {
-                    console.log("⚠️ لم نتمكن من الحصول على User ID:", innerError.message);
-                }
-
-                if (userId) {
-                    console.log("✅ OneSignal User ID:", userId);
-
-                    const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
-
-                    if (token) {
-                        console.log("📤 جاري تسجيل جهاز OneSignal...");
-
-                        const response = await fetch('/api/notifications/register-device', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'RequestVerificationToken': token
-                            },
-                            body: JSON.stringify({
-                                playerId: userId,
-                                deviceType: 'web',
-                                browser: navigator.userAgent,
-                                operatingSystem: navigator.platform
-                            })
-                        });
-
-                        const data = await response.json();
-                        console.log("✅ تم تسجيل الجهاز في OneSignal:", data);
-                    } else {
-                        console.log("⚠️ CSRF token غير موجود");
-                    }
-                } else {
-                    console.log("⚠️ لم يتم الحصول على OneSignal User ID - قد يحتاج المستخدم للموافقة على الإشعارات أولاً");
-                }
-            } catch (e) {
-                console.error("❌ خطأ في تسجيل OneSignal:", e);
+            const currentUserId = "@User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value";
+            if (currentUserId) {
+                await OneSignal.login(currentUserId);
+                console.log("✅ تم ربط OneSignal بالمستخدم الحالي");
             }
-        });
 
-        // طلب إذن الإشعارات من المتصفح
-        if (Notification.permission === "default") {
-            Notification.requestPermission().then(permission => {
-                console.log("✅ Notification permission:", permission);
-            });
-        }
+            await registerOneSignalDevice(OneSignal);
 
-        // طلب إذن الإشعارات من OneSignal (يظهر النافذة المنبثقة)
-        window.OneSignalDeferred.push(function(OneSignal) {
-            // تأخير قليل قبل عرض النافذة
-            setTimeout(() => {
-                OneSignal.Notifications.requestPermission().then(accepted => {
-                    console.log("✅ تم عرض طلب الإشعارات - المستخدم وافق:", accepted);
-                    if (accepted) {
-                        // إذا وافق المستخدم، حاول تسجيل الجهاز مرة أخرى
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 2000);
-                    }
-                }).catch(err => {
-                    console.log("⚠️ لم يتم عرض طلب الإشعارات:", err);
+            if (OneSignal.User?.PushSubscription?.addEventListener) {
+                OneSignal.User.PushSubscription.addEventListener("change", async function() {
+                    await registerOneSignalDevice(OneSignal);
                 });
-            }, 6000);
+            }
+
+            if (OneSignal.Notifications.permission === "default") {
+                const accepted = await OneSignal.Notifications.requestPermission();
+                console.log("✅ تم عرض طلب الإشعارات - المستخدم وافق:", accepted);
+                if (accepted) {
+                    setTimeout(() => registerOneSignalDevice(OneSignal), 1000);
+                }
+            }
         });
     </script>
 

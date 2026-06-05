@@ -118,6 +118,9 @@ namespace WebApplication2.Controllers.Api
                 if (string.IsNullOrEmpty(userId))
                     return Unauthorized();
 
+                if (string.IsNullOrWhiteSpace(model.PlayerId))
+                    return BadRequest(new { success = false, message = "OneSignal subscription id is missing" });
+
                 var existingDevice = await _context.UserDevices
                     .FirstOrDefaultAsync(d => d.PlayerId == model.PlayerId);
 
@@ -143,12 +146,41 @@ namespace WebApplication2.Controllers.Api
                 }
 
                 await _context.SaveChangesAsync();
-                return Ok(new { success = true });
+                return Ok(new { success = true, playerId = model.PlayerId });
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new { error = ex.Message });
             }
+        }
+
+        [HttpGet("device-status")]
+        public async Task<IActionResult> GetDeviceStatus()
+        {
+            var userId = _userManager.GetUserId(User);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var devices = await _context.UserDevices
+                .Where(device => device.UserId == userId)
+                .OrderByDescending(device => device.LastActive)
+                .Select(device => new
+                {
+                    device.PlayerId,
+                    device.DeviceType,
+                    device.Browser,
+                    device.OperatingSystem,
+                    device.LastActive,
+                    device.IsSubscribed
+                })
+                .ToListAsync();
+
+            return Ok(new
+            {
+                success = true,
+                count = devices.Count,
+                devices
+            });
         }
 
         [HttpPost("send-test")]
@@ -165,12 +197,7 @@ namespace WebApplication2.Controllers.Api
                     model.ClickUrl
                 );
 
-                var result = await _notificationService.SendToOneSignal(notification);
-
-                if (result)
-                    return Ok(new { success = true, message = "تم الإرسال بنجاح" });
-                else
-                    return StatusCode(500, new { success = false, message = "فشل الإرسال" });
+                return Ok(new { success = true, message = "تم إنشاء الإشعار وإرساله عبر القنوات المفعلة", notificationId = notification.Id });
             }
             catch (Exception ex)
             {

@@ -34,7 +34,14 @@ namespace WebApplication2.Services
                     _logger.LogError(ex, "خطأ أثناء حذف الطلبات القديمة");
                 }
 
-                await Task.Delay(CleanupInterval, stoppingToken);
+                try
+                {
+                    await Task.Delay(CleanupInterval, stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
             }
         }
 

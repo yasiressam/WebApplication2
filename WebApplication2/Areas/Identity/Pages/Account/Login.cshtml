@@ -1,6 +1,30 @@
 ﻿@page
 @model LoginModel
 
+<style>
+    .identity-create-account-btn {
+        background: transparent !important;
+        border: 2px solid #3498db !important;
+        color: #2c3e50 !important;
+        padding: 0.8rem 1.5rem !important;
+        border-radius: 50px !important;
+        font-weight: 600 !important;
+        transition: all 0.3s !important;
+        text-decoration: none !important;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .identity-create-account-btn:hover {
+        background: linear-gradient(135deg, #3498db, #2c3e50) !important;
+        border-color: transparent !important;
+        color: white !important;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3) !important;
+    }
+</style>
+
 <div class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
     <div class="card shadow p-4" style="max-width: 450px; width: 100%;">
         <div class="card-header text-center text-white" style="background: linear-gradient(135deg, #3498db, #2c3e50); border-radius: 15px 15px 0 0;">
@@ -37,9 +61,11 @@
                 <!-- روابط مساعدة -->
                 <div class="text-center">
                     <p><a asp-page="./ForgotPassword">نسيت كلمة المرور؟</a></p>
+                    <p class="text-muted mb-2">ليس لديك حساب؟</p>
                     <p>
-                        ليس لديك حساب؟
-                        <a asp-controller="Register" asp-action="Index">إنشاء حساب جديد</a>
+                        <a asp-controller="Register" asp-action="Index" class="identity-create-account-btn">
+                            <i class="bi bi-person-plus me-1"></i> إنشاء حساب جديد
+                        </a>
                     </p>
 
                     <p><a asp-page="./ResendEmailConfirmation">إعادة إرسال تأكيد البريد</a></p>

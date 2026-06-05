@@ -80,9 +80,33 @@
                 @Html.AntiForgeryToken()
                 <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
+                <!-- طريقة التسجيل -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">طريقة إنشاء الحساب</label>
+                    <div class="btn-group w-100" role="group" aria-label="طريقة إنشاء الحساب">
+                        <input type="radio" class="btn-check" asp-for="RegisterMethod" id="registerByWhatsApp" value="WhatsApp" />
+                        <label class="btn btn-outline-success" for="registerByWhatsApp">
+                            <i class="bi bi-whatsapp me-1"></i> واتساب
+                        </label>
+
+                        <input type="radio" class="btn-check" asp-for="RegisterMethod" id="registerByEmail" value="Email" />
+                        <label class="btn btn-outline-primary" for="registerByEmail">
+                            <i class="bi bi-envelope me-1"></i> البريد الإلكتروني
+                        </label>
+                    </div>
+                </div>
+
+                <!-- رقم الواتساب -->
+                <div class="form-floating mb-3" id="whatsAppField">
+                    <input asp-for="PhoneNumber" class="form-control" autocomplete="tel" placeholder="07xxxxxxxxx" />
+                    <label asp-for="PhoneNumber">رقم الواتساب</label>
+                    <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                    <small class="text-muted">مثال: 07xxxxxxxxx</small>
+                </div>
+
                 <!-- البريد الإلكتروني -->
-                <div class="form-floating mb-3">
-                    <input asp-for="Email" class="form-control" autocomplete="username" placeholder="name@example.com" />
+                <div class="form-floating mb-3" id="emailField">
+                    <input asp-for="Email" class="form-control" autocomplete="email" placeholder="name@example.com" />
                     <label asp-for="Email">البريد الإلكتروني</label>
                     <span asp-validation-for="Email" class="text-danger"></span>
                 </div>
@@ -133,6 +157,27 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
+        const whatsAppMethod = document.getElementById('registerByWhatsApp');
+        const emailMethod = document.getElementById('registerByEmail');
+        const whatsAppField = document.getElementById('whatsAppField');
+        const emailField = document.getElementById('emailField');
+        const phoneInput = document.getElementById('PhoneNumber');
+        const emailInput = document.getElementById('Email');
+
+        function updateRegisterFields() {
+            const useWhatsApp = whatsAppMethod?.checked;
+
+            whatsAppField.style.display = useWhatsApp ? '' : 'none';
+            emailField.style.display = useWhatsApp ? 'none' : '';
+
+            phoneInput.toggleAttribute('required', useWhatsApp);
+            emailInput.toggleAttribute('required', !useWhatsApp);
+        }
+
+        whatsAppMethod?.addEventListener('change', updateRegisterFields);
+        emailMethod?.addEventListener('change', updateRegisterFields);
+        updateRegisterFields();
+
         // منع الإرسال المزدوج
         document.getElementById('registerForm')?.addEventListener('submit', function() {
             var submitBtn = this.querySelector('button[type="submit"]');

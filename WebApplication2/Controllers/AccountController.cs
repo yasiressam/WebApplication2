@@ -53,181 +53,15 @@ namespace WebApplication2.Controllers
         [HttpGet]
         public IActionResult Login(string returnUrl = null)
         {
-            ViewData["ReturnUrl"] = returnUrl;
-
-            if (TempData["NewlyConfirmedUserId"] != null)
-            {
-                ViewBag.ShowWelcomeMessage = true;
-            }
-
-            if (TempData["SuccessMessage"] != null)
-            {
-                ViewBag.SuccessMessage = TempData["SuccessMessage"];
-            }
-
-            if (TempData["ErrorMessage"] != null)
-            {
-                ViewBag.ErrorMessage = TempData["ErrorMessage"];
-            }
-
-            return View();
+            return RedirectToIdentityLogin(returnUrl);
         }
 
         // POST: /Account/Login
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Login(LoginViewModel model, string returnUrl = null)
+        public IActionResult Login(LoginViewModel model, string returnUrl = null)
         {
-            ViewData["ReturnUrl"] = returnUrl;
-
-            if (!ModelState.IsValid)
-            {
-                ViewBag.ErrorMessage = "يوجد أخطاء في البيانات المدخلة.";
-                return View(model);
-            }
-
-            try
-            {
-                var loginIdentifier = model.Email.Trim();
-                var loginByPhone = !loginIdentifier.Contains('@');
-
-                IdentityUser? user;
-                if (loginByPhone)
-                {
-                    var normalizedPhone = NormalizeIraqPhoneNumber(loginIdentifier);
-                    var identify = await _context.Identifies
-                        .FirstOrDefaultAsync(i =>
-                            i.IsWhatsAppVerified &&
-                            i.WhatsAppNumber == normalizedPhone);
-
-                    user = identify != null
-                        ? await _userManager.FindByIdAsync(identify.UserId)
-                        : null;
-                }
-                else
-                {
-                    user = await _userManager.FindByEmailAsync(loginIdentifier);
-                }
-
-                if (user == null)
-                {
-                    ModelState.AddModelError("", "بيانات الدخول أو كلمة المرور غير صحيحة.");
-                    ViewBag.ErrorMessage = "بيانات الدخول أو كلمة المرور غير صحيحة.";
-                    return View(model);
-                }
-
-                var result = await _signInManager.PasswordSignInAsync(
-                    user.UserName ?? loginIdentifier,
-                    model.Password,
-                    model.RememberMe,
-                    lockoutOnFailure: true);
-
-                if (result.Succeeded)
-                {
-                    _logger.LogInformation("✅ تم تسجيل الدخول: {LoginIdentifier}", loginIdentifier);
-
-                    var roles = await _userManager.GetRolesAsync(user);
-                    var userId = user.Id;
-
-                    if (roles.Contains(clsRoles.SuperAdmin))
-                    {
-                        return RedirectToAction("Users", "SuperAdmin");
-                    }
-                    else if (roles.Contains(clsRoles.Admin) || roles.Contains(clsRoles.DistrictAdmin))
-                    {
-                        return RedirectToAction("Users", "Admin");
-                    }
-                    else if (roles.Contains(clsRoles.Manager))
-                    {
-                        return RedirectToAction("PromotionRequests", "ManagerReview");
-                    }
-
-                    var profile = await _context.Identifies
-                        .FirstOrDefaultAsync(i => i.UserId == userId);
-
-                    var address = await GetUserAddressAsync(userId);
-                    var voterCard = await GetUserVoterCardAsync(userId);
-
-                    if (profile == null)
-                    {
-                        profile = new Identify
-                        {
-                            UserId = userId,
-                            CreatedAt = DateTime.UtcNow,
-                            AccountType = "عادي",
-                            IsPromoted = false,
-                            Email = user.Email,
-                            FullName = "",
-                            MotherName = "",
-                            PhoneNumber = "",
-                            IdentityCardN = "",
-                            Date = DateTime.Now,
-                            IsBasicInfoApproved = false
-                        };
-                        _context.Identifies.Add(profile);
-                        await _context.SaveChangesAsync();
-
-                        TempData["InfoMessage"] = "مرحباً بك! يرجى إكمال بياناتك الأساسية أولاً.";
-                        return RedirectToAction("BasicInfo", "Register");
-                    }
-
-                    // ✅ التحقق من البيانات الأساسية (بعد التعديل)
-                    if (string.IsNullOrWhiteSpace(profile.FullName) ||
-                        string.IsNullOrWhiteSpace(profile.MotherName) ||
-                        string.IsNullOrWhiteSpace(profile.IdentityCardN) ||
-                        string.IsNullOrWhiteSpace(profile.PhoneNumber) ||
-                        string.IsNullOrWhiteSpace(profile.Gender))
-                    {
-                        TempData["InfoMessage"] = "يرجى إكمال بياناتك الأساسية أولاً.";
-                        return RedirectToAction("BasicInfo", "Register");
-                    }
-
-                    if (string.IsNullOrWhiteSpace(profile.WorkGovernorate))
-                    {
-                        TempData["InfoMessage"] = "يرجى إكمال بيانات محافظة العمل التنظيمي أولاً.";
-                        return RedirectToAction("BasicInfo", "Register");
-                    }
-
-                    if (!profile.IsBasicInfoApproved)
-                    {
-                        TempData["InfoMessage"] = "بياناتك الأساسية قيد المراجعة. سيتم إشعارك عند الموافقة.";
-                        return RedirectToAction("BasicInfoPending", "Register");
-                    }
-
-                    if (!IsAdditionalInfoComplete(profile, voterCard))
-                    {
-                        TempData["InfoMessage"] = "الرجاء إكمال البيانات الإضافية.";
-                        return RedirectToAction("AdditionalInfo", "Register");
-                    }
-
-                    if (profile.RequestedPromotion && !profile.IsPromoted)
-                    {
-                        TempData["InfoMessage"] = "طلب الترقية الخاص بك قيد المراجعة.";
-                        return RedirectToAction("PromotionPending", "Register");
-                    }
-
-                    return RedirectToLocal(returnUrl);
-                }
-
-                if (result.IsLockedOut)
-                {
-                    _logger.LogWarning("⚠️ الحساب مقفل: {Email}", model.Email);
-                    return View("Lockout");
-                }
-                else
-                {
-                    ModelState.AddModelError("", "محاولة تسجيل دخول غير صحيحة.");
-                    ViewBag.ErrorMessage = "بيانات الدخول أو كلمة المرور غير صحيحة.";
-                    return View(model);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ خطأ أثناء تسجيل الدخول");
-                ModelState.AddModelError("", "حدث خطأ أثناء تسجيل الدخول.");
-                ViewBag.ErrorMessage = "حدث خطأ أثناء تسجيل الدخول. يرجى المحاولة مرة أخرى.";
-                return View(model);
-            }
+            return RedirectToIdentityLogin(returnUrl);
         }
 
         // POST: /Account/Logout
@@ -271,6 +105,17 @@ namespace WebApplication2.Controllers
             {
                 return RedirectToAction("Index", "Home");
             }
+        }
+
+        private IActionResult RedirectToIdentityLogin(string? returnUrl = null)
+        {
+            var loginUrl = "/Identity/Account/Login";
+            if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+            {
+                loginUrl += "?returnUrl=" + Uri.EscapeDataString(returnUrl);
+            }
+
+            return LocalRedirect(loginUrl);
         }
 
         // =============== دوال إنشاء المستخدم من قبل الأدمن ===============
@@ -436,7 +281,7 @@ namespace WebApplication2.Controllers
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
             {
-                return RedirectToAction("Login");
+                return RedirectToIdentityLogin();
             }
 
             var userId = user.Id;

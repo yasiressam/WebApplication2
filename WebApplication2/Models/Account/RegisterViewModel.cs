@@ -12,7 +12,7 @@ namespace WebApplication2.Models
         public string PhoneNumber { get; set; } = string.Empty;
 
         [Display(Name = "طريقة التسجيل")]
-        public string RegisterMethod { get; set; } = "Email";
+        public string RegisterMethod { get; set; } = "WhatsApp";
 
         [Required]
         [DataType(DataType.Password)]

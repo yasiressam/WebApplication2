@@ -23,14 +23,22 @@
                         <label class="form-label fw-bold">طريقة التسجيل</label>
                         <div class="d-flex gap-3">
                             <label class="form-check">
-                                <input class="form-check-input" type="radio" asp-for="RegisterMethod" value="Email" checked />
-                                <span class="form-check-label">البريد الإلكتروني</span>
-                            </label>
-                            <label class="form-check">
                                 <input class="form-check-input" type="radio" asp-for="RegisterMethod" value="WhatsApp" />
                                 <span class="form-check-label">واتساب</span>
                             </label>
+                            <label class="form-check">
+                                <input class="form-check-input" type="radio" asp-for="RegisterMethod" value="Email" />
+                                <span class="form-check-label">البريد الإلكتروني</span>
+                            </label>
                         </div>
+                    </div>
+
+                    <div class="mb-3" id="phoneRegisterBox">
+                        <label asp-for="PhoneNumber" class="form-label">
+                            <i class="fab fa-whatsapp me-1"></i> رقم الواتساب
+                        </label>
+                        <input asp-for="PhoneNumber" class="form-control" placeholder="07XXXXXXXXX" autocomplete="off" />
+                        <span asp-validation-for="PhoneNumber" class="text-danger"></span>
                     </div>
 
                     <div class="mb-3">
@@ -39,14 +47,6 @@
                         </label>
                         <input asp-for="Email" class="form-control" placeholder="example@email.com" autocomplete="off" />
                         <span asp-validation-for="Email" class="text-danger"></span>
-                    </div>
-
-                    <div class="mb-3" id="phoneRegisterBox" style="display:none;">
-                        <label asp-for="PhoneNumber" class="form-label">
-                            <i class="fab fa-whatsapp me-1"></i> رقم الواتساب
-                        </label>
-                        <input asp-for="PhoneNumber" class="form-control" placeholder="07XXXXXXXXX" autocomplete="off" />
-                        <span asp-validation-for="PhoneNumber" class="text-danger"></span>
                     </div>
 
                     <div class="mb-3">
@@ -149,7 +149,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const phoneInput = document.querySelector('[name="PhoneNumber"]');
 
     function syncRegisterMethod() {
-        const selected = document.querySelector('input[name="RegisterMethod"]:checked')?.value || "Email";
+        const selected = document.querySelector('input[name="RegisterMethod"]:checked')?.value || "WhatsApp";
         const byWhatsApp = selected === "WhatsApp";
         if (emailBox) emailBox.style.display = byWhatsApp ? "none" : "block";
         if (phoneBox) phoneBox.style.display = byWhatsApp ? "block" : "none";

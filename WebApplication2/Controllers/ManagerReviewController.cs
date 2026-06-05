@@ -1,4 +1,4 @@
-using ClosedXML.Excel;
+﻿using ClosedXML.Excel;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -113,17 +113,17 @@ namespace WebApplication2.Controllers
         {
             string levelName = level switch
             {
-                "Entity" => "جهة",
-                "Division" => "قسم",
-                "Section" => "شعبة",
-                "Group" => "وحدة",
+                "Entity" => "Ø¬Ù‡Ø©",
+                "Division" => "Ù‚Ø³Ù…",
+                "Section" => "Ø´Ø¹Ø¨Ø©",
+                "Group" => "ÙˆØ­Ø¯Ø©",
                 _ => level
             };
 
             string roleName = role switch
             {
-                "Manager" => "مسؤول",
-                "Assistant" => "مساعد",
+                "Manager" => "Ù…Ø³Ø¤ÙˆÙ„",
+                "Assistant" => "Ù…Ø³Ø§Ø¹Ø¯",
                 _ => role
             };
 
@@ -149,12 +149,12 @@ namespace WebApplication2.Controllers
                 ? _context.WorkLocations.AsNoTracking().FirstOrDefault(w => w.IdentifyId == profile.Id) ?? profile.WorkLocation
                 : null;
 
-            if (!string.IsNullOrWhiteSpace(workLocation?.Governorate) && workLocation.Governorate == "بغداد")
+            if (!string.IsNullOrWhiteSpace(workLocation?.Governorate) && workLocation.Governorate == "Ø¨ØºØ¯Ø§Ø¯")
             {
                 return workLocation.District ?? string.Empty;
             }
 
-            if (!string.IsNullOrWhiteSpace(profile?.WorkGovernorate) && profile.WorkGovernorate == "بغداد")
+            if (!string.IsNullOrWhiteSpace(profile?.WorkGovernorate) && profile.WorkGovernorate == "Ø¨ØºØ¯Ø§Ø¯")
             {
                 return profile.WorkDistrict ?? string.Empty;
             }
@@ -195,8 +195,8 @@ namespace WebApplication2.Controllers
         private static bool IsCentralAssignment(ManagementAssignment assignment)
         {
             return string.IsNullOrWhiteSpace(assignment.Governorate) ||
-                   assignment.Governorate == "مركزي" ||
-                   assignment.Governorate == "كل المحافظات";
+                   assignment.Governorate == "Ù…Ø±ÙƒØ²ÙŠ" ||
+                   assignment.Governorate == "ÙƒÙ„ Ø§Ù„Ù…Ø­Ø§ÙØ¸Ø§Øª";
         }
 
         private static bool IsGovernorateInManagedScope(string? governorate, string? managedGovernorate)
@@ -210,31 +210,31 @@ namespace WebApplication2.Controllers
             if (string.Equals(current, managed, StringComparison.OrdinalIgnoreCase))
                 return true;
 
-            return managed == "بغداد مركزي" &&
-                   (current == "بغداد" || current.StartsWith("بغداد -", StringComparison.OrdinalIgnoreCase));
+            return managed == "Ø¨ØºØ¯Ø§Ø¯ Ù…Ø±ÙƒØ²ÙŠ" &&
+                   (current == "Ø¨ØºØ¯Ø§Ø¯" || current.StartsWith("Ø¨ØºØ¯Ø§Ø¯ -", StringComparison.OrdinalIgnoreCase));
         }
 
         private static bool ShouldHidePromotionRequestsForAssignment(ManagementAssignment assignment)
         {
             return IsCentralAssignment(assignment) ||
-                   (assignment.Governorate == "بغداد" &&
-                    (string.IsNullOrWhiteSpace(assignment.BaghdadScope) || assignment.BaghdadScope == "مركزي"));
+                   (assignment.Governorate == "Ø¨ØºØ¯Ø§Ø¯" &&
+                    (string.IsNullOrWhiteSpace(assignment.BaghdadScope) || assignment.BaghdadScope == "Ù…Ø±ÙƒØ²ÙŠ"));
         }
 
         private static string NormalizeBaghdadScope(string? district)
         {
-            return string.IsNullOrWhiteSpace(district) ? "مركزي" : district;
+            return string.IsNullOrWhiteSpace(district) ? "Ù…Ø±ÙƒØ²ÙŠ" : district;
         }
 
         private static bool MatchesBaghdadScope(ManagementAssignment assignment, string governorate, string district)
         {
-            if (governorate != "بغداد" || IsCentralAssignment(assignment))
+            if (governorate != "Ø¨ØºØ¯Ø§Ø¯" || IsCentralAssignment(assignment))
             {
                 return true;
             }
 
             var assignmentScope = NormalizeBaghdadScope(assignment.BaghdadScope);
-            return assignmentScope == "مركزي" || assignmentScope == NormalizeBaghdadScope(district);
+            return assignmentScope == "Ù…Ø±ÙƒØ²ÙŠ" || assignmentScope == NormalizeBaghdadScope(district);
         }
 
         private bool MatchesAssignmentScope(ManagementAssignment assignment, string governorate, string district, AffiliationInfo? affiliationInfo)
@@ -399,7 +399,7 @@ namespace WebApplication2.Controllers
 
                 if (!centralAssignments.Any())
                 {
-                    TempData["ErrorMessage"] = "هذه الصفحة مخصصة للمسؤول المركزي لكل المحافظات.";
+                    TempData["ErrorMessage"] = "Ù‡Ø°Ù‡ Ø§Ù„ØµÙØ­Ø© Ù…Ø®ØµØµØ© Ù„Ù„Ù…Ø³Ø¤ÙˆÙ„ Ø§Ù„Ù…Ø±ÙƒØ²ÙŠ Ù„ÙƒÙ„ Ø§Ù„Ù…Ø­Ø§ÙØ¸Ø§Øª.";
                     return RedirectToAction(nameof(Users));
                 }
 
@@ -440,19 +440,19 @@ namespace WebApplication2.Controllers
                     model.Add(new CentralManagedManagerVM
                     {
                         UserId = assignment.UserId,
-                        FullName = profile?.FullName ?? user?.Email ?? "غير مكتمل",
+                        FullName = profile?.FullName ?? user?.Email ?? "ØºÙŠØ± Ù…ÙƒØªÙ…Ù„",
                         Email = user?.Email ?? profile?.Email ?? "",
                         PhoneNumber = profile?.PhoneNumber ?? "",
                         Governorate = assignment.Governorate,
                         AssignmentRole = assignment.AssignmentRole,
-                        AssignmentRoleArabic = assignment.AssignmentRole == "Assistant" ? "معاون" : "مسؤول",
+                        AssignmentRoleArabic = assignment.AssignmentRole == "Assistant" ? "Ù…Ø¹Ø§ÙˆÙ†" : "Ù…Ø³Ø¤ÙˆÙ„",
                         ManagementLevel = assignment.ManagementLevel,
                         ManagementLevelArabic = assignment.ManagementLevel switch
                         {
-                            "Entity" => "جهة",
-                            "Division" => "قسم",
-                            "Section" => "شعبة",
-                            "Group" => "وحدة",
+                            "Entity" => "Ø¬Ù‡Ø©",
+                            "Division" => "Ù‚Ø³Ù…",
+                            "Section" => "Ø´Ø¹Ø¨Ø©",
+                            "Group" => "ÙˆØ­Ø¯Ø©",
                             _ => assignment.ManagementLevel
                         },
                         ManagedUnitName = unitName,
@@ -476,13 +476,13 @@ namespace WebApplication2.Controllers
                 }
 
                 ViewBag.Search = search;
-                ViewBag.CentralScopes = string.Join("، ", centralAssignments.Select(a => GetArabicLevelName(a.ManagementLevel, a.AssignmentRole)).Distinct());
+                ViewBag.CentralScopes = string.Join("ØŒ ", centralAssignments.Select(a => GetArabicLevelName(a.ManagementLevel, a.AssignmentRole)).Distinct());
                 return View(model);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "خطأ في عرض مسؤولي نطاق المسؤول المركزي");
-                TempData["ErrorMessage"] = "حدث خطأ في تحميل المسؤولين.";
+                _logger.LogError(ex, "Ø®Ø·Ø£ ÙÙŠ Ø¹Ø±Ø¶ Ù…Ø³Ø¤ÙˆÙ„ÙŠ Ù†Ø·Ø§Ù‚ Ø§Ù„Ù…Ø³Ø¤ÙˆÙ„ Ø§Ù„Ù…Ø±ÙƒØ²ÙŠ");
+                TempData["ErrorMessage"] = "Ø­Ø¯Ø« Ø®Ø·Ø£ ÙÙŠ ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù…Ø³Ø¤ÙˆÙ„ÙŠÙ†.";
                 return RedirectToAction(nameof(Users));
             }
         }
@@ -532,7 +532,7 @@ namespace WebApplication2.Controllers
                 var assignments = await GetCurrentManagerAssignmentsAsync();
                 if (!assignments.Any())
                 {
-                    TempData["ErrorMessage"] = "لا توجد مسؤولية إدارية فعالة مرتبطة بحسابك.";
+                    TempData["ErrorMessage"] = "Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ø³Ø¤ÙˆÙ„ÙŠØ© Ø¥Ø¯Ø§Ø±ÙŠØ© ÙØ¹Ø§Ù„Ø© Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ø­Ø³Ø§Ø¨Ùƒ.";
                     ViewBag.CurrentPage = 1;
                     ViewBag.TotalPages = 1;
                     ViewBag.TotalUsers = 0;
@@ -591,7 +591,7 @@ namespace WebApplication2.Controllers
                     usersById.TryGetValue(i.UserId, out var user) && user.EmailConfirmed);
                 var totalPromotedUsers = scopedIdentifies.Count(i =>
                     !string.IsNullOrWhiteSpace(i.Education) &&
-                    (i.AccountType == "فرد" || i.IsPromoted));
+                    (i.AccountType == "ÙØ±Ø¯" || i.IsPromoted));
 
                 if (!string.IsNullOrWhiteSpace(search))
                 {
@@ -625,7 +625,7 @@ namespace WebApplication2.Controllers
                 {
                     scopedIdentifies = scopedIdentifies
                         .Where(i => !string.IsNullOrWhiteSpace(i.Education) &&
-                                    (i.AccountType == "فرد" || i.IsPromoted))
+                                    (i.AccountType == "ÙØ±Ø¯" || i.IsPromoted))
                         .ToList();
                 }
                 scopedIdentifies = scopedIdentifies
@@ -658,7 +658,7 @@ namespace WebApplication2.Controllers
                     {
                         Id = identify.Id,
                         UserId = identify.UserId,
-                        FullName = identify.FullName ?? "غير مكتمل",
+                        FullName = identify.FullName ?? "ØºÙŠØ± Ù…ÙƒØªÙ…Ù„",
                         Email = user?.Email ?? identify.Email ?? "",
                         PhoneNumber = identify.PhoneNumber ?? "",
                         Governorate = GetEffectiveGovernorate(identify, address),
@@ -668,18 +668,18 @@ namespace WebApplication2.Controllers
                         Section = affiliationInfo?.Section?.Name ?? "",
                         Group = affiliationInfo?.Group?.Name ?? "",
                         BadgeNumber = affiliationInfo?.BadgeNumber ?? "",
-                        AccountType = identify.AccountType ?? "عادي",
+                        AccountType = identify.AccountType ?? "Ø¹Ø§Ø¯ÙŠ",
                         IsActive = user?.EmailConfirmed ?? false,
                         IsPromoted = identify.IsPromoted,
                         RequestedPromotion = identify.RequestedPromotion,
                         IsManager = primaryAssignment != null,
-                        ManagementRoleArabic = primaryAssignment?.AssignmentRole == "Assistant" ? "معاون" : primaryAssignment != null ? "مسؤول" : "",
+                        ManagementRoleArabic = primaryAssignment?.AssignmentRole == "Assistant" ? "Ù…Ø¹Ø§ÙˆÙ†" : primaryAssignment != null ? "Ù…Ø³Ø¤ÙˆÙ„" : "",
                         ManagementLevelArabic = primaryAssignment?.ManagementLevel switch
                         {
-                            "Entity" => "جهة",
-                            "Division" => "قسم",
-                            "Section" => "شعبة",
-                            "Group" => "وحدة",
+                            "Entity" => "Ø¬Ù‡Ø©",
+                            "Division" => "Ù‚Ø³Ù…",
+                            "Section" => "Ø´Ø¹Ø¨Ø©",
+                            "Group" => "ÙˆØ­Ø¯Ø©",
                             _ => ""
                         },
                         CompletionPercentage = CalculateCompletionPercentage(identify, address, voterCard),
@@ -694,7 +694,7 @@ namespace WebApplication2.Controllers
                 ViewBag.FilteredUsers = filteredUsers;
                 ViewBag.ActiveUsers = totalActiveUsers;
                 ViewBag.PromotedUsers = totalPromotedUsers;
-                ViewBag.ManagedScope = string.Join("، ", assignments.Select(a => a.Governorate).Distinct());
+                ViewBag.ManagedScope = string.Join("ØŒ ", assignments.Select(a => a.Governorate).Distinct());
                 ViewBag.Search = search;
                 ViewBag.StatusFilter = status;
 
@@ -702,8 +702,8 @@ namespace WebApplication2.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "خطأ في عرض مستخدمي المسؤول الإداري");
-                TempData["ErrorMessage"] = "حدث خطأ في تحميل بيانات المستخدمين.";
+                _logger.LogError(ex, "Ø®Ø·Ø£ ÙÙŠ Ø¹Ø±Ø¶ Ù…Ø³ØªØ®Ø¯Ù…ÙŠ Ø§Ù„Ù…Ø³Ø¤ÙˆÙ„ Ø§Ù„Ø¥Ø¯Ø§Ø±ÙŠ");
+                TempData["ErrorMessage"] = "Ø­Ø¯Ø« Ø®Ø·Ø£ ÙÙŠ ØªØ­Ù…ÙŠÙ„ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ†.";
                 return View(new List<ManagerScopedUserVM>());
             }
         }
@@ -717,13 +717,13 @@ namespace WebApplication2.Controllers
                 var scopedIdentifies = await GetScopedManagerIdentifiesAsync();
                 var memberUserIds = scopedIdentifies
                     .Where(i => !string.IsNullOrWhiteSpace(i.Education))
-                    .Where(i => i.AccountType == "فرد" || i.IsPromoted)
+                    .Where(i => i.AccountType == "ÙØ±Ø¯" || i.IsPromoted)
                     .Select(i => i.UserId)
                     .ToHashSet();
 
                 if (!memberUserIds.Any())
                 {
-                    TempData["WarningMessage"] = "لا توجد أفراد ضمن صلاحياتك للتصدير";
+                    TempData["WarningMessage"] = "Ù„Ø§ ØªÙˆØ¬Ø¯ Ø£ÙØ±Ø§Ø¯ Ø¶Ù…Ù† ØµÙ„Ø§Ø­ÙŠØ§ØªÙƒ Ù„Ù„ØªØµØ¯ÙŠØ±";
                     return RedirectToAction(nameof(Users));
                 }
 
@@ -738,8 +738,8 @@ namespace WebApplication2.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "خطأ في تصدير Excel لأفراد المسؤول الإداري");
-                TempData["ErrorMessage"] = $"حدث خطأ: {ex.Message}";
+                _logger.LogError(ex, "Ø®Ø·Ø£ ÙÙŠ ØªØµØ¯ÙŠØ± Excel Ù„Ø£ÙØ±Ø§Ø¯ Ø§Ù„Ù…Ø³Ø¤ÙˆÙ„ Ø§Ù„Ø¥Ø¯Ø§Ø±ÙŠ");
+                TempData["ErrorMessage"] = $"Ø­Ø¯Ø« Ø®Ø·Ø£: {ex.Message}";
                 return RedirectToAction(nameof(Users));
             }
         }
@@ -750,24 +750,24 @@ namespace WebApplication2.Controllers
 
             data.Add(new object[]
             {
-                "الصورة الشخصية", "الاسم الرباعي", "اللقب", "اسم الأم", "تاريخ الميلاد",
-                "الجنس", "الحالة الاجتماعية", "رقم الهاتف", "التحصيل الدراسي", "الاختصاص",
-                "نوع الجامعة", "نوع المؤسسة", "اسم الجامعة/المعهد", "الكلية/القسم", "نوع الدراسة",
-                "المرحلة الدراسية", "محافظة العمل التنظيمي", "قضاء العمل التنظيمي", "محافظة السكن", "قضاء السكن",
-                "المنطقة", "المحلة", "الزقاق",
-                "الدار", "أقرب نقطة دالة", "رقم البطاقة الموحدة", "تاريخ الإصدار",
-                "رقم بطاقة الناخب", "رقم مركز الاقتراع", "الحالة الوظيفية", "جهة العمل",
-                "الوزارة", "الدائرة", "المنصب", "العنوان الوظيفي", "الدرجة الوظيفية",
-                "جهة الانتساب", "القسم", "الشعبة", "الوحدة", "اسم المزكي", "رقم هاتف المزكي",
-                "رقم الباج", "تاريخ الانتماء", "اسم النقابة", "المنصب في النقابة",
-                "رقم العضوية في النقابة", "تاريخ النفاذ/الانتهاء للنقابة", "اسم الاتحاد",
-                "قسم الاتحاد", "شعبة الاتحاد", "وحدة الاتحاد", "المنصب في الاتحاد",
-                "رقم العضوية في الاتحاد", "تاريخ النفاذ/الانتهاء للاتحاد", "اسم الجمعية",
-                "المنصب في الجمعية", "رقم العضوية في الجمعية", "تاريخ النفاذ/الانتهاء للجمعية",
-                "اسم المنظمة", "المنصب في المنظمة", "رقم العضوية في المنظمة",
-                "تاريخ النفاذ/الانتهاء للمنظمة", "البريد الإلكتروني", "الأدوار", "نشط؟",
-                "نوع الحساب", "مصعد؟", "تاريخ التصعيد", "مصعد بواسطة", "طلب ترقية؟",
-                "تاريخ الطلب", "سبب الرفض", "المسؤوليات الإدارية", "المحافظة المُدارة", "القضاء المُدار"
+                "Ø§Ù„ØµÙˆØ±Ø© Ø§Ù„Ø´Ø®ØµÙŠØ©", "Ø§Ù„Ø§Ø³Ù… Ø§Ù„Ø±Ø¨Ø§Ø¹ÙŠ", "Ø§Ù„Ù„Ù‚Ø¨", "Ø§Ø³Ù… Ø§Ù„Ø£Ù…", "ØªØ§Ø±ÙŠØ® Ø§Ù„Ù…ÙŠÙ„Ø§Ø¯",
+                "Ø§Ù„Ø¬Ù†Ø³", "Ø§Ù„Ø­Ø§Ù„Ø© Ø§Ù„Ø§Ø¬ØªÙ…Ø§Ø¹ÙŠØ©", "Ø±Ù‚Ù… Ø§Ù„Ù‡Ø§ØªÙ", "Ø§Ù„ØªØ­ØµÙŠÙ„ Ø§Ù„Ø¯Ø±Ø§Ø³ÙŠ", "Ø§Ù„Ø§Ø®ØªØµØ§Øµ",
+                "Ù†ÙˆØ¹ Ø§Ù„Ø¬Ø§Ù…Ø¹Ø©", "Ù†ÙˆØ¹ Ø§Ù„Ù…Ø¤Ø³Ø³Ø©", "Ø§Ø³Ù… Ø§Ù„Ø¬Ø§Ù…Ø¹Ø©/Ø§Ù„Ù…Ø¹Ù‡Ø¯", "Ø§Ù„ÙƒÙ„ÙŠØ©/Ø§Ù„Ù‚Ø³Ù…", "Ù†ÙˆØ¹ Ø§Ù„Ø¯Ø±Ø§Ø³Ø©",
+                "Ø§Ù„Ù…Ø±Ø­Ù„Ø© Ø§Ù„Ø¯Ø±Ø§Ø³ÙŠØ©", "Ù…Ø­Ø§ÙØ¸Ø© Ø§Ù„Ø¹Ù…Ù„ Ø§Ù„ØªÙ†Ø¸ÙŠÙ…ÙŠ", "Ù‚Ø¶Ø§Ø¡ Ø§Ù„Ø¹Ù…Ù„ Ø§Ù„ØªÙ†Ø¸ÙŠÙ…ÙŠ", "Ù…Ø­Ø§ÙØ¸Ø© Ø§Ù„Ø³ÙƒÙ†", "Ù‚Ø¶Ø§Ø¡ Ø§Ù„Ø³ÙƒÙ†",
+                "Ø§Ù„Ù…Ù†Ø·Ù‚Ø©", "Ø§Ù„Ù…Ø­Ù„Ø©", "Ø§Ù„Ø²Ù‚Ø§Ù‚",
+                "Ø§Ù„Ø¯Ø§Ø±", "Ø£Ù‚Ø±Ø¨ Ù†Ù‚Ø·Ø© Ø¯Ø§Ù„Ø©", "Ø±Ù‚Ù… Ø§Ù„Ø¨Ø·Ø§Ù‚Ø© Ø§Ù„Ù…ÙˆØ­Ø¯Ø©", "ØªØ§Ø±ÙŠØ® Ø§Ù„Ø¥ØµØ¯Ø§Ø±",
+                "Ø±Ù‚Ù… Ø¨Ø·Ø§Ù‚Ø© Ø§Ù„Ù†Ø§Ø®Ø¨", "Ø±Ù‚Ù… Ù…Ø±ÙƒØ² Ø§Ù„Ø§Ù‚ØªØ±Ø§Ø¹", "Ø§Ù„Ø­Ø§Ù„Ø© Ø§Ù„ÙˆØ¸ÙŠÙÙŠØ©", "Ø¬Ù‡Ø© Ø§Ù„Ø¹Ù…Ù„",
+                "Ø§Ù„ÙˆØ²Ø§Ø±Ø©", "Ø§Ù„Ø¯Ø§Ø¦Ø±Ø©", "Ø§Ù„Ù…Ù†ØµØ¨", "Ø§Ù„Ø¹Ù†ÙˆØ§Ù† Ø§Ù„ÙˆØ¸ÙŠÙÙŠ", "Ø§Ù„Ø¯Ø±Ø¬Ø© Ø§Ù„ÙˆØ¸ÙŠÙÙŠØ©",
+                "Ø¬Ù‡Ø© Ø§Ù„Ø§Ù†ØªØ³Ø§Ø¨", "Ø§Ù„Ù‚Ø³Ù…", "Ø§Ù„Ø´Ø¹Ø¨Ø©", "Ø§Ù„ÙˆØ­Ø¯Ø©", "Ø§Ø³Ù… Ø§Ù„Ù…Ø²ÙƒÙŠ", "Ø±Ù‚Ù… Ù‡Ø§ØªÙ Ø§Ù„Ù…Ø²ÙƒÙŠ",
+                "Ø±Ù‚Ù… Ø§Ù„Ø¨Ø§Ø¬", "ØªØ§Ø±ÙŠØ® Ø§Ù„Ø§Ù†ØªÙ…Ø§Ø¡", "Ø§Ø³Ù… Ø§Ù„Ù†Ù‚Ø§Ø¨Ø©", "Ø§Ù„Ù…Ù†ØµØ¨ ÙÙŠ Ø§Ù„Ù†Ù‚Ø§Ø¨Ø©",
+                "Ø±Ù‚Ù… Ø§Ù„Ø¹Ø¶ÙˆÙŠØ© ÙÙŠ Ø§Ù„Ù†Ù‚Ø§Ø¨Ø©", "ØªØ§Ø±ÙŠØ® Ø§Ù„Ù†ÙØ§Ø°/Ø§Ù„Ø§Ù†ØªÙ‡Ø§Ø¡ Ù„Ù„Ù†Ù‚Ø§Ø¨Ø©", "Ø§Ø³Ù… Ø§Ù„Ø§ØªØ­Ø§Ø¯",
+                "Ù‚Ø³Ù… Ø§Ù„Ø§ØªØ­Ø§Ø¯", "Ø´Ø¹Ø¨Ø© Ø§Ù„Ø§ØªØ­Ø§Ø¯", "ÙˆØ­Ø¯Ø© Ø§Ù„Ø§ØªØ­Ø§Ø¯", "Ø§Ù„Ù…Ù†ØµØ¨ ÙÙŠ Ø§Ù„Ø§ØªØ­Ø§Ø¯",
+                "Ø±Ù‚Ù… Ø§Ù„Ø¹Ø¶ÙˆÙŠØ© ÙÙŠ Ø§Ù„Ø§ØªØ­Ø§Ø¯", "ØªØ§Ø±ÙŠØ® Ø§Ù„Ù†ÙØ§Ø°/Ø§Ù„Ø§Ù†ØªÙ‡Ø§Ø¡ Ù„Ù„Ø§ØªØ­Ø§Ø¯", "Ø§Ø³Ù… Ø§Ù„Ø¬Ù…Ø¹ÙŠØ©",
+                "Ø§Ù„Ù…Ù†ØµØ¨ ÙÙŠ Ø§Ù„Ø¬Ù…Ø¹ÙŠØ©", "Ø±Ù‚Ù… Ø§Ù„Ø¹Ø¶ÙˆÙŠØ© ÙÙŠ Ø§Ù„Ø¬Ù…Ø¹ÙŠØ©", "ØªØ§Ø±ÙŠØ® Ø§Ù„Ù†ÙØ§Ø°/Ø§Ù„Ø§Ù†ØªÙ‡Ø§Ø¡ Ù„Ù„Ø¬Ù…Ø¹ÙŠØ©",
+                "Ø§Ø³Ù… Ø§Ù„Ù…Ù†Ø¸Ù…Ø©", "Ø§Ù„Ù…Ù†ØµØ¨ ÙÙŠ Ø§Ù„Ù…Ù†Ø¸Ù…Ø©", "Ø±Ù‚Ù… Ø§Ù„Ø¹Ø¶ÙˆÙŠØ© ÙÙŠ Ø§Ù„Ù…Ù†Ø¸Ù…Ø©",
+                "ØªØ§Ø±ÙŠØ® Ø§Ù„Ù†ÙØ§Ø°/Ø§Ù„Ø§Ù†ØªÙ‡Ø§Ø¡ Ù„Ù„Ù…Ù†Ø¸Ù…Ø©", "Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ", "Ø§Ù„Ø£Ø¯ÙˆØ§Ø±", "Ù†Ø´Ø·ØŸ",
+                "Ù†ÙˆØ¹ Ø§Ù„Ø­Ø³Ø§Ø¨", "Ù…ØµØ¹Ø¯ØŸ", "ØªØ§Ø±ÙŠØ® Ø§Ù„ØªØµØ¹ÙŠØ¯", "Ù…ØµØ¹Ø¯ Ø¨ÙˆØ§Ø³Ø·Ø©", "Ø·Ù„Ø¨ ØªØ±Ù‚ÙŠØ©ØŸ",
+                "ØªØ§Ø±ÙŠØ® Ø§Ù„Ø·Ù„Ø¨", "Ø³Ø¨Ø¨ Ø§Ù„Ø±ÙØ¶", "Ø§Ù„Ù…Ø³Ø¤ÙˆÙ„ÙŠØ§Øª Ø§Ù„Ø¥Ø¯Ø§Ø±ÙŠØ©", "Ø§Ù„Ù…Ø­Ø§ÙØ¸Ø© Ø§Ù„Ù…ÙØ¯Ø§Ø±Ø©", "Ø§Ù„Ù‚Ø¶Ø§Ø¡ Ø§Ù„Ù…ÙØ¯Ø§Ø±"
             });
 
             foreach (var user in users)
@@ -798,7 +798,7 @@ namespace WebApplication2.Controllers
                 var residenceGovernorate = address?.Governorate ?? "";
                 var residenceDistrict = address?.District ?? "";
                 var workGovernorate = workLocation?.Governorate ?? userProfile?.WorkGovernorate ?? "";
-                var workDistrict = workGovernorate == "بغداد"
+                var workDistrict = workGovernorate == "Ø¨ØºØ¯Ø§Ø¯"
                     ? workLocation?.District ?? userProfile?.WorkDistrict ?? ""
                     : "";
 
@@ -849,7 +849,7 @@ namespace WebApplication2.Controllers
                     }
                 }
 
-                if (managedGovernorate == "بغداد" && string.IsNullOrWhiteSpace(managedDistrict))
+                if (managedGovernorate == "Ø¨ØºØ¯Ø§Ø¯" && string.IsNullOrWhiteSpace(managedDistrict))
                 {
                     managedDistrict = userProfile?.ManagedDistrict
                         ?? userProfile?.WorkDistrict
@@ -860,7 +860,7 @@ namespace WebApplication2.Controllers
                 data.Add(new object[]
                 {
                     userProfile?.CoverImage ?? "",
-                    userProfile?.FullName ?? "غير مكتمل",
+                    userProfile?.FullName ?? "ØºÙŠØ± Ù…ÙƒØªÙ…Ù„",
                     userProfile?.LastName ?? "",
                     userProfile?.MotherName ?? "",
                     userProfile?.Date.ToString("yyyy-MM-dd") ?? "",
@@ -894,7 +894,7 @@ namespace WebApplication2.Controllers
                     userProfile?.Department ?? "",
                     userProfile?.Position ?? "",
                     userProfile?.JobTitle ?? "",
-                    CleanExcelPlaceholder(userProfile?.JobGrade, "-- اختر الدرجة الوظيفية --"),
+                    CleanExcelPlaceholder(userProfile?.JobGrade, "-- Ø§Ø®ØªØ± Ø§Ù„Ø¯Ø±Ø¬Ø© Ø§Ù„ÙˆØ¸ÙŠÙÙŠØ© --"),
                     affiliationEntityName ?? "",
                     divisionName ?? "",
                     sectionName ?? "",
@@ -924,12 +924,12 @@ namespace WebApplication2.Controllers
                     ngo?.AffiliationDate?.ToString("yyyy-MM-dd") ?? "",
                     user.Email ?? "",
                     string.Join(", ", roles),
-                    user.EmailConfirmed ? "نشط" : "غير نشط",
-                    userProfile?.AccountType ?? "عادي",
-                    userProfile?.IsPromoted == true ? "مصعد" : "غير مصعد",
+                    user.EmailConfirmed ? "Ù†Ø´Ø·" : "ØºÙŠØ± Ù†Ø´Ø·",
+                    userProfile?.AccountType ?? "Ø¹Ø§Ø¯ÙŠ",
+                    userProfile?.IsPromoted == true ? "Ù…ØµØ¹Ø¯" : "ØºÙŠØ± Ù…ØµØ¹Ø¯",
                     userProfile?.PromotionDate?.ToString("yyyy-MM-dd") ?? "",
                     userProfile?.PromotedBy ?? "",
-                    userProfile?.RequestedPromotion == true ? "نعم" : "لا",
+                    userProfile?.RequestedPromotion == true ? "Ù†Ø¹Ù…" : "Ù„Ø§",
                     userProfile?.RequestedPromotionDate?.ToString("yyyy-MM-dd") ?? "",
                     userProfile?.RejectionReason ?? "",
                     string.Join(", ", managementDisplayParts),
@@ -993,7 +993,7 @@ namespace WebApplication2.Controllers
                 var assignments = await GetCurrentManagerAssignmentsAsync();
                 if (!assignments.Any())
                 {
-                    TempData["ErrorMessage"] = "❌ لا توجد مسؤولية إدارية فعالة مرتبطة بحسابك.";
+                    TempData["ErrorMessage"] = "âŒ Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ø³Ø¤ÙˆÙ„ÙŠØ© Ø¥Ø¯Ø§Ø±ÙŠØ© ÙØ¹Ø§Ù„Ø© Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ø­Ø³Ø§Ø¨Ùƒ.";
                     return View("~/Views/Admin/PendingBasicInfo.cshtml", new List<PromotionRequestViewModel>());
                 }
 
@@ -1035,7 +1035,7 @@ namespace WebApplication2.Controllers
                         District = GetEffectiveDistrict(request, userAddress),
                         IdentityCardN = request.IdentityCardN,
                         RequestDate = request.CreatedAt,
-                        AccountType = request.AccountType ?? "عادي",
+                        AccountType = request.AccountType ?? "Ø¹Ø§Ø¯ÙŠ",
                         CoverImage = request.CoverImage,
                         HasCompleteProfile = IsProfileComplete(request, userAddress, null, null),
                         CompletionPercentage = CalculateCompletionPercentage(request, userAddress, null),
@@ -1043,7 +1043,7 @@ namespace WebApplication2.Controllers
                     });
                 }
 
-                ViewBag.ManagedGovernorate = string.Join("، ", assignments.Select(a => a.Governorate).Distinct());
+                ViewBag.ManagedGovernorate = string.Join("ØŒ ", assignments.Select(a => a.Governorate).Distinct());
                 ViewBag.CurrentPage = page;
                 ViewBag.TotalPages = totalPages;
                 ViewBag.TotalRequests = totalRequests;
@@ -1052,8 +1052,8 @@ namespace WebApplication2.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "خطأ في عرض طلبات المراجعة للمسؤول الإداري");
-                TempData["ErrorMessage"] = "حدث خطأ في تحميل البيانات";
+                _logger.LogError(ex, "Ø®Ø·Ø£ ÙÙŠ Ø¹Ø±Ø¶ Ø·Ù„Ø¨Ø§Øª Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø© Ù„Ù„Ù…Ø³Ø¤ÙˆÙ„ Ø§Ù„Ø¥Ø¯Ø§Ø±ÙŠ");
+                TempData["ErrorMessage"] = "Ø­Ø¯Ø« Ø®Ø·Ø£ ÙÙŠ ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª";
                 return View("~/Views/Admin/PendingBasicInfo.cshtml", new List<PromotionRequestViewModel>());
             }
         }
@@ -1068,13 +1068,13 @@ namespace WebApplication2.Controllers
                 var assignments = await GetCurrentManagerAssignmentsAsync();
                 if (!assignments.Any())
                 {
-                    TempData["ErrorMessage"] = "❌ لا توجد مسؤولية إدارية فعالة مرتبطة بحسابك.";
+                    TempData["ErrorMessage"] = "âŒ Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ø³Ø¤ÙˆÙ„ÙŠØ© Ø¥Ø¯Ø§Ø±ÙŠØ© ÙØ¹Ø§Ù„Ø© Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ø­Ø³Ø§Ø¨Ùƒ.";
                     return View("~/Views/Admin/PromotionRequests.cshtml", new List<PromotionRequestViewModel>());
                 }
 
                 if (assignments.Any(ShouldHidePromotionRequestsForAssignment))
                 {
-                    TempData["ErrorMessage"] = "طلبات الترقية لا تظهر للمسؤول المركزي لكل المحافظات.";
+                    TempData["ErrorMessage"] = "Ø·Ù„Ø¨Ø§Øª Ø§Ù„ØªØ±Ù‚ÙŠØ© Ù„Ø§ ØªØ¸Ù‡Ø± Ù„Ù„Ù…Ø³Ø¤ÙˆÙ„ Ø§Ù„Ù…Ø±ÙƒØ²ÙŠ Ù„ÙƒÙ„ Ø§Ù„Ù…Ø­Ø§ÙØ¸Ø§Øª.";
                     return RedirectToAction(nameof(Users));
                 }
 
@@ -1117,7 +1117,7 @@ namespace WebApplication2.Controllers
                         Section = affiliationInfo?.Section?.Name,
                         Group = affiliationInfo?.Group?.Name,
                         RequestDate = request.RequestedPromotionDate ?? request.CreatedAt,
-                        AccountType = request.AccountType ?? "عادي",
+                        AccountType = request.AccountType ?? "Ø¹Ø§Ø¯ÙŠ",
                         CoverImage = request.CoverImage,
                         CompletionPercentage = CalculateCompletionPercentage(request, userAddress, voterCard),
                         HasCompleteProfile = IsProfileComplete(request, userAddress, voterCard, null),
@@ -1125,7 +1125,7 @@ namespace WebApplication2.Controllers
                     });
                 }
 
-                ViewBag.ManagedGovernorate = string.Join("، ", assignments.Select(a => a.Governorate).Distinct());
+                ViewBag.ManagedGovernorate = string.Join("ØŒ ", assignments.Select(a => a.Governorate).Distinct());
                 ViewBag.CurrentPage = page;
                 ViewBag.TotalPages = totalPages;
                 ViewBag.TotalRequests = totalRequests;
@@ -1134,8 +1134,8 @@ namespace WebApplication2.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "خطأ في عرض طلبات الترقية للمسؤول الإداري");
-                TempData["ErrorMessage"] = "حدث خطأ في تحميل البيانات";
+                _logger.LogError(ex, "Ø®Ø·Ø£ ÙÙŠ Ø¹Ø±Ø¶ Ø·Ù„Ø¨Ø§Øª Ø§Ù„ØªØ±Ù‚ÙŠØ© Ù„Ù„Ù…Ø³Ø¤ÙˆÙ„ Ø§Ù„Ø¥Ø¯Ø§Ø±ÙŠ");
+                TempData["ErrorMessage"] = "Ø­Ø¯Ø« Ø®Ø·Ø£ ÙÙŠ ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª";
                 return View("~/Views/Admin/PromotionRequests.cshtml", new List<PromotionRequestViewModel>());
             }
         }
@@ -1147,21 +1147,21 @@ namespace WebApplication2.Controllers
             {
                 if (string.IsNullOrWhiteSpace(id))
                 {
-                    TempData["ErrorMessage"] = "معرف المستخدم مطلوب";
+                    TempData["ErrorMessage"] = "Ù…Ø¹Ø±Ù Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… Ù…Ø·Ù„ÙˆØ¨";
                     return RedirectToAction(nameof(PendingBasicInfo));
                 }
 
                 var user = await _userManager.FindByIdAsync(id);
                 if (user == null)
                 {
-                    TempData["ErrorMessage"] = "المستخدم غير موجود";
+                    TempData["ErrorMessage"] = "Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯";
                     return RedirectToAction(nameof(PendingBasicInfo));
                 }
 
                 var userProfile = await GetUserProfileAsync(id);
                 if (userProfile == null || !await CanCurrentManagerReviewUserAsync(userProfile, allowGovernorateOnlyWhenNoAffiliation: true))
                 {
-                    TempData["ErrorMessage"] = "❌ لا تملك صلاحية عرض تفاصيل هذا المستخدم";
+                    TempData["ErrorMessage"] = "âŒ Ù„Ø§ ØªÙ…Ù„Ùƒ ØµÙ„Ø§Ø­ÙŠØ© Ø¹Ø±Ø¶ ØªÙØ§ØµÙŠÙ„ Ù‡Ø°Ø§ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…";
                     return RedirectToAction(nameof(PendingBasicInfo));
                 }
 
@@ -1175,8 +1175,8 @@ namespace WebApplication2.Controllers
                 var affiliationInfo = await GetUserAffiliationInfoAsync(id);
 
                 var rolesList = roles.ToList();
-                if (userProfile.AccountType == "فرد" && !rolesList.Contains("فرد"))
-                    rolesList.Add("فرد");
+                if (userProfile.AccountType == "ÙØ±Ø¯" && !rolesList.Contains("ÙØ±Ø¯"))
+                    rolesList.Add("ÙØ±Ø¯");
 
                 var affiliationEntityName = await GetAffiliationEntityNameAsync(affiliationInfo?.AffiliationEntityId);
                 var divisionName = await GetDivisionNameAsync(affiliationInfo?.DivisionId);
@@ -1239,11 +1239,11 @@ namespace WebApplication2.Controllers
                     PhoneNumber = userProfile.PhoneNumber ?? "",
                     IsActive = user.EmailConfirmed,
                     Roles = string.Join(", ", rolesList),
-                    FullName = userProfile.FullName ?? "غير مكتمل",
+                    FullName = userProfile.FullName ?? "ØºÙŠØ± Ù…ÙƒØªÙ…Ù„",
                     LastName = userProfile.LastName ?? "",
                     MotherName = userProfile.MotherName ?? "",
                     DateOfBirth = userProfile.Date,
-                    Gender = userProfile.Gender ?? "غير محدد",
+                    Gender = userProfile.Gender ?? "ØºÙŠØ± Ù…Ø­Ø¯Ø¯",
                     MaritalStatus = userProfile.MaritalStatus ?? "",
                     Education = userProfile.Education ?? "",
                     Specialization = userProfile.Specialization ?? "",
@@ -1271,7 +1271,7 @@ namespace WebApplication2.Controllers
                     RequestedPromotion = userProfile.RequestedPromotion,
                     RequestedPromotionDate = userProfile.RequestedPromotionDate,
                     RejectionReason = userProfile.RejectionReason,
-                    AccountType = userProfile.AccountType ?? "عادي",
+                    AccountType = userProfile.AccountType ?? "Ø¹Ø§Ø¯ÙŠ",
                     IsPromoted = userProfile.IsPromoted,
                     PromotionDate = userProfile.PromotionDate,
                     PromotedBy = userProfile.PromotedBy,
@@ -1311,8 +1311,8 @@ namespace WebApplication2.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "خطأ في عرض تفاصيل المستخدم للمسؤول الإداري");
-                TempData["ErrorMessage"] = "حدث خطأ في تحميل البيانات";
+                _logger.LogError(ex, "Ø®Ø·Ø£ ÙÙŠ Ø¹Ø±Ø¶ ØªÙØ§ØµÙŠÙ„ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… Ù„Ù„Ù…Ø³Ø¤ÙˆÙ„ Ø§Ù„Ø¥Ø¯Ø§Ø±ÙŠ");
+                TempData["ErrorMessage"] = "Ø­Ø¯Ø« Ø®Ø·Ø£ ÙÙŠ ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª";
                 return RedirectToAction(nameof(PendingBasicInfo));
             }
         }
@@ -1330,7 +1330,7 @@ namespace WebApplication2.Controllers
             var assignments = await GetCurrentManagerAssignmentsAsync();
             if (!assignments.Any())
             {
-                TempData["ErrorMessage"] = "لا توجد مسؤولية إدارية فعالة مرتبطة بحسابك.";
+                TempData["ErrorMessage"] = "Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ø³Ø¤ÙˆÙ„ÙŠØ© Ø¥Ø¯Ø§Ø±ÙŠØ© ÙØ¹Ø§Ù„Ø© Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ø­Ø³Ø§Ø¨Ùƒ.";
                 return RedirectToAction(nameof(Users));
             }
 
@@ -1399,7 +1399,7 @@ namespace WebApplication2.Controllers
                     ProcessedBy = normalizedType == "basic"
                         ? identify.BasicInfoApprovedBy
                         : identify.PromotedBy,
-                    Status = isRejected ? "مرفوض" : "تمت الموافقة",
+                    Status = isRejected ? "Ù…Ø±ÙÙˆØ¶" : "ØªÙ…Øª Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø©",
                     StatusClass = isRejected ? "danger" : "success",
                     Reason = normalizedType == "basic"
                         ? identify.BasicInfoRejectionReason
@@ -1411,8 +1411,8 @@ namespace WebApplication2.Controllers
             var model = new RequestHistoryViewModel
             {
                 RequestType = normalizedType,
-                Title = normalizedType == "basic" ? "سجل طلبات المراجعة" : "سجل طلبات الترقية",
-                Subtitle = "الطلبات المعالجة مرتبة من الأحدث إلى الأقدم",
+                Title = normalizedType == "basic" ? "Ø³Ø¬Ù„ Ø·Ù„Ø¨Ø§Øª Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©" : "Ø³Ø¬Ù„ Ø·Ù„Ø¨Ø§Øª Ø§Ù„ØªØ±Ù‚ÙŠØ©",
+                Subtitle = "Ø§Ù„Ø·Ù„Ø¨Ø§Øª Ø§Ù„Ù…Ø¹Ø§Ù„Ø¬Ø© Ù…Ø±ØªØ¨Ø© Ù…Ù† Ø§Ù„Ø£Ø­Ø¯Ø« Ø¥Ù„Ù‰ Ø§Ù„Ø£Ù‚Ø¯Ù…",
                 BackAction = normalizedType == "basic" ? nameof(PendingBasicInfo) : nameof(PromotionRequests),
                 BackController = "ManagerReview",
                 DetailsAction = nameof(Details),
@@ -1502,10 +1502,10 @@ namespace WebApplication2.Controllers
             {
                 var identify = await _context.Identifies.FindAsync(id);
                 if (identify == null)
-                    return Json(new { success = false, message = "المستخدم غير موجود" });
+                    return Json(new { success = false, message = "Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯" });
 
                 if (!await CanCurrentManagerReviewUserAsync(identify, allowGovernorateOnlyWhenNoAffiliation: true))
-                    return Json(new { success = false, message = "❌ لا تملك صلاحية الموافقة على هذا المستخدم" });
+                    return Json(new { success = false, message = "âŒ Ù„Ø§ ØªÙ…Ù„Ùƒ ØµÙ„Ø§Ø­ÙŠØ© Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø¹Ù„Ù‰ Ù‡Ø°Ø§ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…" });
 
                 identify.IsBasicInfoApproved = true;
                 identify.BasicInfoApprovedBy = User.Identity?.Name ?? "Manager";
@@ -1515,18 +1515,18 @@ namespace WebApplication2.Controllers
                 await _context.SaveChangesAsync();
 
                 await _notificationService.CreateNotification(
-                    "✅ تمت الموافقة على بياناتك الأساسية",
-                    "يمكنك الآن إكمال البيانات الإضافية",
+                    "âœ… ØªÙ…Øª Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø¹Ù„Ù‰ Ø¨ÙŠØ§Ù†Ø§ØªÙƒ Ø§Ù„Ø£Ø³Ø§Ø³ÙŠØ©",
+                    "ÙŠÙ…ÙƒÙ†Ùƒ Ø§Ù„Ø¢Ù† Ø¥ÙƒÙ…Ø§Ù„ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¥Ø¶Ø§ÙÙŠØ©",
                     identify.UserId,
                     "bi-check-circle",
                     "/Register/AdditionalInfo");
 
-                return Json(new { success = true, message = "✅ تمت الموافقة على البيانات الأساسية" });
+                return Json(new { success = true, message = "âœ… ØªÙ…Øª Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø¹Ù„Ù‰ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø£Ø³Ø§Ø³ÙŠØ©" });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "خطأ في الموافقة على البيانات الأساسية من قبل المسؤول الإداري");
-                return Json(new { success = false, message = $"❌ حدث خطأ: {ex.Message}" });
+                _logger.LogError(ex, "Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø¹Ù„Ù‰ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø£Ø³Ø§Ø³ÙŠØ© Ù…Ù† Ù‚Ø¨Ù„ Ø§Ù„Ù…Ø³Ø¤ÙˆÙ„ Ø§Ù„Ø¥Ø¯Ø§Ø±ÙŠ");
+                return Json(new { success = false, message = $"âŒ Ø­Ø¯Ø« Ø®Ø·Ø£: {ex.Message}" });
             }
         }
 
@@ -1538,14 +1538,14 @@ namespace WebApplication2.Controllers
             try
             {
                 if (string.IsNullOrWhiteSpace(reason))
-                    return Json(new { success = false, message = "❌ الرجاء كتابة سبب الرفض" });
+                    return Json(new { success = false, message = "âŒ Ø§Ù„Ø±Ø¬Ø§Ø¡ ÙƒØªØ§Ø¨Ø© Ø³Ø¨Ø¨ Ø§Ù„Ø±ÙØ¶" });
 
                 var identify = await _context.Identifies.FindAsync(id);
                 if (identify == null)
-                    return Json(new { success = false, message = "❌ المستخدم غير موجود" });
+                    return Json(new { success = false, message = "âŒ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯" });
 
                 if (!await CanCurrentManagerReviewUserAsync(identify, allowGovernorateOnlyWhenNoAffiliation: true))
-                    return Json(new { success = false, message = "❌ لا تملك صلاحية رفض هذا المستخدم" });
+                    return Json(new { success = false, message = "âŒ Ù„Ø§ ØªÙ…Ù„Ùƒ ØµÙ„Ø§Ø­ÙŠØ© Ø±ÙØ¶ Ù‡Ø°Ø§ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…" });
 
                 identify.BasicInfoRejectionReason = reason;
                 identify.IsBasicInfoApproved = false;
@@ -1556,18 +1556,18 @@ namespace WebApplication2.Controllers
                 await _context.SaveChangesAsync();
 
                 await _notificationService.CreateNotification(
-                    "❌ لم يتم الموافقة على بياناتك الأساسية",
-                    $"سبب الرفض: {reason}",
+                    "âŒ Ù„Ù… ÙŠØªÙ… Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø¹Ù„Ù‰ Ø¨ÙŠØ§Ù†Ø§ØªÙƒ Ø§Ù„Ø£Ø³Ø§Ø³ÙŠØ©",
+                    $"Ø³Ø¨Ø¨ Ø§Ù„Ø±ÙØ¶: {reason}",
                     identify.UserId,
                     "bi-x-circle-fill",
                     "/Register/BasicInfo");
 
-                return Json(new { success = true, message = "✅ تم رفض الطلب بنجاح" });
+                return Json(new { success = true, message = "âœ… ØªÙ… Ø±ÙØ¶ Ø§Ù„Ø·Ù„Ø¨ Ø¨Ù†Ø¬Ø§Ø­" });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "خطأ في رفض البيانات الأساسية من قبل المسؤول الإداري");
-                return Json(new { success = false, message = $"❌ حدث خطأ: {ex.Message}" });
+                _logger.LogError(ex, "Ø®Ø·Ø£ ÙÙŠ Ø±ÙØ¶ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø£Ø³Ø§Ø³ÙŠØ© Ù…Ù† Ù‚Ø¨Ù„ Ø§Ù„Ù…Ø³Ø¤ÙˆÙ„ Ø§Ù„Ø¥Ø¯Ø§Ø±ÙŠ");
+                return Json(new { success = false, message = $"âŒ Ø­Ø¯Ø« Ø®Ø·Ø£: {ex.Message}" });
             }
         }
 
@@ -1580,12 +1580,12 @@ namespace WebApplication2.Controllers
             {
                 var identify = await _context.Identifies.FindAsync(id);
                 if (identify == null)
-                    return Json(new { success = false, message = "المستخدم غير موجود" });
+                    return Json(new { success = false, message = "Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯" });
 
                 if (!await CanCurrentManagerReviewUserAsync(identify))
-                    return Json(new { success = false, message = "❌ لا تملك صلاحية الموافقة على هذا الطلب" });
+                    return Json(new { success = false, message = "âŒ Ù„Ø§ ØªÙ…Ù„Ùƒ ØµÙ„Ø§Ø­ÙŠØ© Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø¹Ù„Ù‰ Ù‡Ø°Ø§ Ø§Ù„Ø·Ù„Ø¨" });
 
-                identify.AccountType = "فرد";
+                identify.AccountType = "ÙØ±Ø¯";
                 identify.IsPromoted = true;
                 identify.PromotionDate = DateTime.Now;
                 identify.PromotedBy = User.Identity?.Name ?? "Manager";
@@ -1605,18 +1605,18 @@ namespace WebApplication2.Controllers
                 }
 
                 await _notificationService.CreateNotification(
-                    "🎉 تهانينا! تمت الموافقة على طلب الترقية",
-                    "تمت ترقية حسابك إلى 'فرد' بنجاح.",
+                    "ðŸŽ‰ ØªÙ‡Ø§Ù†ÙŠÙ†Ø§! ØªÙ…Øª Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø¹Ù„Ù‰ Ø·Ù„Ø¨ Ø§Ù„ØªØ±Ù‚ÙŠØ©",
+                    "ØªÙ…Øª ØªØ±Ù‚ÙŠØ© Ø­Ø³Ø§Ø¨Ùƒ Ø¥Ù„Ù‰ 'ÙØ±Ø¯' Ø¨Ù†Ø¬Ø§Ø­.",
                     identify.UserId,
                     "bi-star-fill",
                     "/Register/ProfileDetails");
 
-                return Json(new { success = true, message = "✅ تمت الموافقة على الترقية بنجاح" });
+                return Json(new { success = true, message = "âœ… ØªÙ…Øª Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø¹Ù„Ù‰ Ø§Ù„ØªØ±Ù‚ÙŠØ© Ø¨Ù†Ø¬Ø§Ø­" });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "خطأ في الموافقة على الترقية من قبل المسؤول الإداري");
-                return Json(new { success = false, message = $"حدث خطأ: {ex.Message}" });
+                _logger.LogError(ex, "Ø®Ø·Ø£ ÙÙŠ Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø¹Ù„Ù‰ Ø§Ù„ØªØ±Ù‚ÙŠØ© Ù…Ù† Ù‚Ø¨Ù„ Ø§Ù„Ù…Ø³Ø¤ÙˆÙ„ Ø§Ù„Ø¥Ø¯Ø§Ø±ÙŠ");
+                return Json(new { success = false, message = $"Ø­Ø¯Ø« Ø®Ø·Ø£: {ex.Message}" });
             }
         }
 
@@ -1628,14 +1628,14 @@ namespace WebApplication2.Controllers
             try
             {
                 if (string.IsNullOrWhiteSpace(reason))
-                    return Json(new { success = false, message = "الرجاء كتابة سبب الرفض" });
+                    return Json(new { success = false, message = "Ø§Ù„Ø±Ø¬Ø§Ø¡ ÙƒØªØ§Ø¨Ø© Ø³Ø¨Ø¨ Ø§Ù„Ø±ÙØ¶" });
 
                 var identify = await _context.Identifies.FindAsync(id);
                 if (identify == null)
-                    return Json(new { success = false, message = "المستخدم غير موجود" });
+                    return Json(new { success = false, message = "Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯" });
 
                 if (!await CanCurrentManagerReviewUserAsync(identify))
-                    return Json(new { success = false, message = "❌ لا تملك صلاحية رفض هذا الطلب" });
+                    return Json(new { success = false, message = "âŒ Ù„Ø§ ØªÙ…Ù„Ùƒ ØµÙ„Ø§Ø­ÙŠØ© Ø±ÙØ¶ Ù‡Ø°Ø§ Ø§Ù„Ø·Ù„Ø¨" });
 
                 identify.RequestedPromotion = false;
                 identify.RejectionReason = reason;
@@ -1646,18 +1646,18 @@ namespace WebApplication2.Controllers
                 await _context.SaveChangesAsync();
 
                 await _notificationService.CreateNotification(
-                    "❌ عذراً، لم يتم الموافقة على طلبك",
-                    $"سبب الرفض: {reason}",
+                    "âŒ Ø¹Ø°Ø±Ø§Ù‹ØŒ Ù„Ù… ÙŠØªÙ… Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø¹Ù„Ù‰ Ø·Ù„Ø¨Ùƒ",
+                    $"Ø³Ø¨Ø¨ Ø§Ù„Ø±ÙØ¶: {reason}",
                     identify.UserId,
                     "bi-x-circle-fill",
                     "/Register/ProfileDetails");
 
-                return Json(new { success = true, message = "✅ تم رفض الطلب بنجاح" });
+                return Json(new { success = true, message = "âœ… ØªÙ… Ø±ÙØ¶ Ø§Ù„Ø·Ù„Ø¨ Ø¨Ù†Ø¬Ø§Ø­" });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "خطأ في رفض الترقية من قبل المسؤول الإداري");
-                return Json(new { success = false, message = $"❌ حدث خطأ: {ex.Message}" });
+                _logger.LogError(ex, "Ø®Ø·Ø£ ÙÙŠ Ø±ÙØ¶ Ø§Ù„ØªØ±Ù‚ÙŠØ© Ù…Ù† Ù‚Ø¨Ù„ Ø§Ù„Ù…Ø³Ø¤ÙˆÙ„ Ø§Ù„Ø¥Ø¯Ø§Ø±ÙŠ");
+                return Json(new { success = false, message = $"âŒ Ø­Ø¯Ø« Ø®Ø·Ø£: {ex.Message}" });
             }
         }
     }

@@ -52,70 +52,70 @@ namespace WebApplication2.Migrations
                         new
                         {
                             Id = "1",
-                            ConcurrencyStamp = "63efb922-14b0-4a35-82af-ee2d923a271f",
+                            ConcurrencyStamp = "887a49d3-7614-4bd8-84e1-d13f454e319a",
                             Name = "SuperAdmin",
                             NormalizedName = "SUPERADMIN"
                         },
                         new
                         {
                             Id = "2",
-                            ConcurrencyStamp = "e9327dbe-39d0-4414-848e-479b311b139b",
+                            ConcurrencyStamp = "2d1f0260-448c-4fcb-b485-64d45d3fd05b",
                             Name = "Admin",
                             NormalizedName = "ADMIN"
                         },
                         new
                         {
                             Id = "3",
-                            ConcurrencyStamp = "d3bad52d-8d0f-44de-a820-8fe712990d6f",
+                            ConcurrencyStamp = "b488d1aa-f024-44e0-9fd0-ecf7ef261c32",
                             Name = "User",
                             NormalizedName = "USER"
                         },
                         new
                         {
                             Id = "4",
-                            ConcurrencyStamp = "6cfdc475-2ae1-4a36-989e-81a825cfaf4f",
+                            ConcurrencyStamp = "3a34e72c-a450-41b8-be14-ed661e1799d0",
                             Name = "فرد",
                             NormalizedName = "فرد"
                         },
                         new
                         {
                             Id = "5",
-                            ConcurrencyStamp = "52390416-bc49-4a46-be95-d37f8e5e0b07",
+                            ConcurrencyStamp = "a5839ac4-cee9-4261-a0a9-e317c37df565",
                             Name = "NewsEditor",
                             NormalizedName = "NEWSEDITOR"
                         },
                         new
                         {
                             Id = "6",
-                            ConcurrencyStamp = "497d2730-e824-4728-9515-8293d1f7921e",
+                            ConcurrencyStamp = "8e1df8ec-369f-4810-a21e-30845934ff91",
                             Name = "MapViewer",
                             NormalizedName = "MAPVIEWER"
                         },
                         new
                         {
                             Id = "7",
-                            ConcurrencyStamp = "077e4076-62f6-431d-a0d2-dab19b7aca83",
+                            ConcurrencyStamp = "63a13cc3-569b-4f33-8e82-f320fa268e18",
                             Name = "DistrictAdmin",
                             NormalizedName = "DISTRICTADMIN"
                         },
                         new
                         {
                             Id = "8",
-                            ConcurrencyStamp = "b11a9725-f9d7-4c3b-9ee4-99b3f4d616cb",
+                            ConcurrencyStamp = "b916431e-85d7-4f52-9af6-c8f9fb3eb344",
                             Name = "Manager",
                             NormalizedName = "MANAGER"
                         },
                         new
                         {
                             Id = "9",
-                            ConcurrencyStamp = "5cab5421-c19f-49e1-9e83-f654607d3ee5",
+                            ConcurrencyStamp = "95174884-6e95-4387-9423-097fbd35abe2",
                             Name = "AssistantManager",
                             NormalizedName = "ASSISTANTMANAGER"
                         },
                         new
                         {
                             Id = "10",
-                            ConcurrencyStamp = "db2a5a05-2620-401a-b9eb-427f443efda9",
+                            ConcurrencyStamp = "0426a2ac-6196-4b07-8e88-d71a2a64f5af",
                             Name = "ManagerViewer",
                             NormalizedName = "MANAGERVIEWER"
                         });

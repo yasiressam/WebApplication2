@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using WebApplication2.Data;
 
 namespace WebApplication2.Services
@@ -15,33 +15,33 @@ namespace WebApplication2.Services
                     return governorate;
 
                 var normalizedGovernorate = governorate.Trim();
-                if (normalizedGovernorate != "بغداد")
+                if (normalizedGovernorate != "Ø¨ØºØ¯Ø§Ø¯")
                     return normalizedGovernorate;
 
                 var normalizedDistrict = district?.Trim();
                 return normalizedDistrict switch
                 {
-                    "الكرخ" => "بغداد - الكرخ",
-                    "الرصافة" => "بغداد - الرصافة",
-                    _ => "بغداد مركزي"
+                    "Ø§Ù„ÙƒØ±Ø®" => "Ø¨ØºØ¯Ø§Ø¯ - Ø§Ù„ÙƒØ±Ø®",
+                    "Ø§Ù„Ø±ØµØ§ÙØ©" => "Ø¨ØºØ¯Ø§Ø¯ - Ø§Ù„Ø±ØµØ§ÙØ©",
+                    _ => "Ø¨ØºØ¯Ø§Ø¯ Ù…Ø±ÙƒØ²ÙŠ"
                 };
             }
 
             static bool IsBaghdadWorkGovernorate(string? governorate)
             {
-                return governorate?.Trim() == "بغداد" ||
-                       governorate?.Trim().StartsWith("بغداد -", StringComparison.OrdinalIgnoreCase) == true ||
-                       governorate?.Trim() == "بغداد مركزي";
+                return governorate?.Trim() == "Ø¨ØºØ¯Ø§Ø¯" ||
+                       governorate?.Trim().StartsWith("Ø¨ØºØ¯Ø§Ø¯ -", StringComparison.OrdinalIgnoreCase) == true ||
+                       governorate?.Trim() == "Ø¨ØºØ¯Ø§Ø¯ Ù…Ø±ÙƒØ²ÙŠ";
             }
 
             var identifies = await context.Identifies
                 .Where(i =>
-                    i.WorkGovernorate == "بغداد" ||
-                    i.ManagedGovernorate == "بغداد" ||
-                    (i.WorkGovernorate != null && i.WorkGovernorate.StartsWith("بغداد -") && i.WorkDistrict != null) ||
-                    (i.ManagedGovernorate != null && i.ManagedGovernorate.StartsWith("بغداد -") && i.ManagedDistrict != null) ||
-                    (i.WorkGovernorate == "بغداد مركزي" && i.WorkDistrict != null) ||
-                    (i.ManagedGovernorate == "بغداد مركزي" && i.ManagedDistrict != null))
+                    i.WorkGovernorate == "Ø¨ØºØ¯Ø§Ø¯" ||
+                    i.ManagedGovernorate == "Ø¨ØºØ¯Ø§Ø¯" ||
+                    (i.WorkGovernorate != null && i.WorkGovernorate.StartsWith("Ø¨ØºØ¯Ø§Ø¯ -") && i.WorkDistrict != null) ||
+                    (i.ManagedGovernorate != null && i.ManagedGovernorate.StartsWith("Ø¨ØºØ¯Ø§Ø¯ -") && i.ManagedDistrict != null) ||
+                    (i.WorkGovernorate == "Ø¨ØºØ¯Ø§Ø¯ Ù…Ø±ÙƒØ²ÙŠ" && i.WorkDistrict != null) ||
+                    (i.ManagedGovernorate == "Ø¨ØºØ¯Ø§Ø¯ Ù…Ø±ÙƒØ²ÙŠ" && i.ManagedDistrict != null))
                 .ToListAsync();
 
             foreach (var identify in identifies)
@@ -80,9 +80,9 @@ namespace WebApplication2.Services
 
             var workLocations = await context.WorkLocations
                 .Where(w =>
-                    w.Governorate == "بغداد" ||
-                    (w.Governorate.StartsWith("بغداد -") && w.District != null) ||
-                    (w.Governorate == "بغداد مركزي" && w.District != null))
+                    w.Governorate == "Ø¨ØºØ¯Ø§Ø¯" ||
+                    (w.Governorate.StartsWith("Ø¨ØºØ¯Ø§Ø¯ -") && w.District != null) ||
+                    (w.Governorate == "Ø¨ØºØ¯Ø§Ø¯ Ù…Ø±ÙƒØ²ÙŠ" && w.District != null))
                 .ToListAsync();
 
             foreach (var workLocation in workLocations)
@@ -107,7 +107,7 @@ namespace WebApplication2.Services
             }
 
             var assignments = await context.ManagementAssignments
-                .Where(a => a.Governorate == "بغداد" || (a.Governorate.StartsWith("بغداد -") && a.BaghdadScope != null))
+                .Where(a => a.Governorate == "Ø¨ØºØ¯Ø§Ø¯" || (a.Governorate.StartsWith("Ø¨ØºØ¯Ø§Ø¯ -") && a.BaghdadScope != null))
                 .ToListAsync();
 
             foreach (var assignment in assignments)
@@ -132,12 +132,12 @@ namespace WebApplication2.Services
             }
 
             var assignmentRequests = await context.ManagementAssignmentRequests
-                .Where(r => r.Governorate == "بغداد")
+                .Where(r => r.Governorate == "Ø¨ØºØ¯Ø§Ø¯")
                 .ToListAsync();
 
             foreach (var request in assignmentRequests)
             {
-                request.Governorate = "بغداد مركزي";
+                request.Governorate = "Ø¨ØºØ¯Ø§Ø¯ Ù…Ø±ÙƒØ²ÙŠ";
                 updatedCount++;
             }
 

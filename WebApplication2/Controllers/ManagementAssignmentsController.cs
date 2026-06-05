@@ -89,7 +89,7 @@ namespace WebApplication2.Controllers
             if (string.Equals(current, managed, StringComparison.OrdinalIgnoreCase))
                 return true;
 
-            return managed == "بغداد مركزي" &&
+            return managed == "بغداد عامة" &&
                    (current == "بغداد" || current.StartsWith("بغداد -", StringComparison.OrdinalIgnoreCase));
         }
 

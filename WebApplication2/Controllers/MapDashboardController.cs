@@ -210,7 +210,7 @@ namespace WebApplication2.Controllers
             return IsAllGovernoratesScope(normalizedGovernorate)
                 ? new[] { AllGovernoratesScopeName }
                 : IsBaghdadGeneralScope(normalizedGovernorate)
-                ? new[] { BaghdadGeneralScopeName, "بغداد - الكرخ", "بغداد - الرصافة", "بغداد", "بغداد مركزي" }
+                ? new[] { BaghdadGeneralScopeName, "بغداد - الكرخ", "بغداد - الرصافة", "بغداد" }
                 : new[] { managedGovernorate.Trim() };
         }
 
@@ -231,7 +231,7 @@ namespace WebApplication2.Controllers
                 return false;
 
             var value = governorate.Trim();
-            return value == BaghdadGeneralScopeName || value == "بغداد مركزي";
+            return value == BaghdadGeneralScopeName || value == "بغداد عامة";
         }
 
         private static bool IsBaghdadGovernorateScope(string? governorate)
@@ -241,7 +241,7 @@ namespace WebApplication2.Controllers
 
             var value = governorate.Trim();
             return value == "بغداد" ||
-                   value == "بغداد مركزي" ||
+                   value == "بغداد عامة" ||
                    value == BaghdadGeneralScopeName ||
                    value.StartsWith("بغداد -", StringComparison.OrdinalIgnoreCase);
         }
@@ -437,7 +437,7 @@ namespace WebApplication2.Controllers
                     return GetGovernoratesList();
                 }
 
-                return ExpandManagedGovernorateScope(scope.ManagedGovernorate).ToList();
+                return ExpandManagedGovernorateScope(scope.ManagedGovernorate).Distinct().ToList();
             }
 
             if (scope.Assignments.Any())
@@ -451,7 +451,7 @@ namespace WebApplication2.Controllers
                     .Select(a => a.Governorate)
                     .Where(g => !string.IsNullOrWhiteSpace(g))
                     .SelectMany(ExpandManagedGovernorateScope)
-                    .Where(g => g != "بغداد" && g != "بغداد مركزي")
+                    .Where(g => g != "بغداد" && g != "بغداد عامة")
                     .Distinct()
                     .ToList();
             }
@@ -2774,7 +2774,6 @@ namespace WebApplication2.Controllers
                 "بغداد" => 2,
                 "مركزي لكل المحافظات" => 1000,
                 "بغداد عامة" => 1001,
-                "بغداد مركزي" => 2,
                 "بغداد - الكرخ" => 1002,
                 "بغداد - الرصافة" => 1003,
                 "كربلاء" => 13,
@@ -2797,7 +2796,6 @@ namespace WebApplication2.Controllers
                 "مركزي لكل المحافظات" => (44.0, 33.0),
                 "بغداد عامة" => (44.3661, 33.3152),
                 "بغداد" => (44.3661, 33.3152),
-                "بغداد مركزي" => (44.3661, 33.3152),
                 "بغداد - الكرخ" => (44.2600, 33.3152),
                 "بغداد - الرصافة" => (44.4700, 33.3152),
                 "الأنبار" => (41.0, 33.0),

@@ -178,7 +178,7 @@ namespace WebApplication2.Controllers
             if (string.Equals(current, managed, StringComparison.OrdinalIgnoreCase))
                 return true;
 
-            return managed == "بغداد مركزي" &&
+            return managed == "بغداد عامة" &&
                    (current == "بغداد" || current.StartsWith("بغداد -", StringComparison.OrdinalIgnoreCase));
         }
 
@@ -310,7 +310,7 @@ namespace WebApplication2.Controllers
             string adminTypeIcon = "";
             string adminTypeColor = "";
 
-            if (adminGovernorate == "بغداد مركزي")
+            if (adminGovernorate == "بغداد عامة")
             {
                 adminTypeMessage = "أنت تدير بغداد بالكامل (الكرخ والرصافة)";
                 adminTypeIcon = "🌍";
@@ -860,7 +860,7 @@ namespace WebApplication2.Controllers
             }
 
             var currentUserId = _userManager.GetUserId(User);
-            var isBaghdadCentralScope = string.Equals(adminGovernorate, "بغداد مركزي", StringComparison.OrdinalIgnoreCase);
+            var isBaghdadCentralScope = string.Equals(adminGovernorate, "بغداد عامة", StringComparison.OrdinalIgnoreCase);
 
             var scopedQuery = _context.Identifies.AsNoTracking().Where(i =>
                 !_context.UserRoles
@@ -1998,7 +1998,6 @@ namespace WebApplication2.Controllers
                     PromotionDate = profile?.PromotionDate,
                     PromotedBy = profile?.PromotedBy
                 };
-
                 await LoadDropdownLists(viewModel);
                 ViewBag.TargetUserName = profile?.FullName ?? user.Email;
                 ViewBag.IsEditing = true;
@@ -2025,7 +2024,6 @@ namespace WebApplication2.Controllers
             try
             {
                 await LoadDropdownLists(model);
-
                 if (model.Address?.Governorate == "بغداد" && string.IsNullOrWhiteSpace(model.Address.District))
                 {
                     ModelState.AddModelError("Address.District", "القضاء مطلوب عند اختيار محافظة السكن بغداد");

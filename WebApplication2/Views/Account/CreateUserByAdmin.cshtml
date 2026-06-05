@@ -6,7 +6,7 @@
     var isSuperAdmin = User.IsInRole("SuperAdmin");
     var managedGovernorates = ((IEnumerable<string>)ViewBag.Governorates)
         .SelectMany(governorate => governorate == "بغداد"
-            ? new[] { "بغداد مركزي", "بغداد - الكرخ", "بغداد - الرصافة" }
+            ? new[] { "بغداد عامة", "بغداد - الكرخ", "بغداد - الرصافة" }
             : new[] { governorate })
         .ToList();
 }

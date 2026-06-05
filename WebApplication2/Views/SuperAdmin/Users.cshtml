@@ -592,7 +592,7 @@
                     <select class="form-select" id="workGovernorateFilter">
                         <option value="">جميع المحافظات</option>
                         <option value="مركزي">مركزي (كل المحافظات)</option>
-                        <option value="بغداد مركزي">بغداد مركزي</option>
+                        <option value="بغداد عامة">بغداد عامة</option>
                         <option value="بغداد - الكرخ">بغداد - الكرخ</option>
                         <option value="بغداد - الرصافة">بغداد - الرصافة</option>
                         <option value="الأنبار">الأنبار</option>
@@ -1046,33 +1046,33 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
                 <input type="hidden" id="currentUserDistrict">
 
                 <div class="mb-3">
-                    <label class="form-label fw-bold small">اختر الدور:</label>
+                    <label class="form-label fw-bold small">اختر الأدوار:</label>
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-check mb-1">
-                                <input class="form-check-input" type="radio" name="roleOption" id="roleUser" value="User">
+                                <input class="form-check-input role-option" type="checkbox" name="roleOption" id="roleUser" value="User">
                                 <label class="form-check-label small" for="roleUser"><i class="fas fa-user"></i> مستخدم عادي</label>
                             </div>
                             <div class="form-check mb-1">
-                                <input class="form-check-input" type="radio" name="roleOption" id="roleMember" value="فرد">
+                                <input class="form-check-input role-option" type="checkbox" name="roleOption" id="roleMember" value="فرد">
                                 <label class="form-check-label small" for="roleMember"><i class="fas fa-star"></i> فرد</label>
                             </div>
                             <div class="form-check mb-1">
-                                <input class="form-check-input" type="radio" name="roleOption" id="roleAdmin" value="Admin">
+                                <input class="form-check-input role-option" type="checkbox" name="roleOption" id="roleAdmin" value="Admin">
                                 <label class="form-check-label small" for="roleAdmin"><i class="fas fa-user-shield"></i> مدير محافظة</label>
+                            </div>
+                            <div class="form-check mb-1">
+                                <input class="form-check-input role-option" type="checkbox" name="roleOption" id="roleNewsEditor" value="NewsEditor">
+                                <label class="form-check-label small" for="roleNewsEditor"><i class="fas fa-newspaper"></i> محرر أخبار</label>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-check mb-1">
-                                <input class="form-check-input" type="radio" name="roleOption" id="roleSuperAdmin" value="SuperAdmin">
+                                <input class="form-check-input role-option" type="checkbox" name="roleOption" id="roleSuperAdmin" value="SuperAdmin">
                                 <label class="form-check-label small" for="roleSuperAdmin"><i class="fas fa-crown"></i> سوبر أدمن</label>
                             </div>
                             <div class="form-check mb-1">
-                                <input class="form-check-input" type="radio" name="roleOption" id="roleNewsEditor" value="NewsEditor">
-                                <label class="form-check-label small" for="roleNewsEditor"><i class="fas fa-newspaper"></i> محرر أخبار</label>
-                            </div>
-                            <div class="form-check mb-1">
-                                <input class="form-check-input" type="radio" name="roleOption" id="roleMapViewer" value="MapViewer">
+                                <input class="form-check-input role-option" type="checkbox" name="roleOption" id="roleMapViewer" value="MapViewer">
                                 <label class="form-check-label small" for="roleMapViewer"><i class="fas fa-map"></i> مشاهد خريطة</label>
                             </div>
                         </div>
@@ -1087,7 +1087,7 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
                         <select id="adminGovernorate" class="form-select">
                             <option value="">-- عرض مركزي لكل المحافظات --</option>
                             @{
-                                var governorates = new List<string> { "بغداد مركزي", "بغداد - الكرخ", "بغداد - الرصافة", "الأنبار", "بابل", "البصرة", "ذي قار", "القادسية", "ديالى", "دهوك", "أربيل", "كربلاء", "كركوك", "ميسان", "المثنى", "النجف", "نينوى", "صلاح الدين", "السليمانية", "واسط" };
+                                var governorates = new List<string> { "بغداد عامة", "بغداد - الكرخ", "بغداد - الرصافة", "الأنبار", "بابل", "البصرة", "ذي قار", "القادسية", "ديالى", "دهوك", "أربيل", "كربلاء", "كركوك", "ميسان", "المثنى", "النجف", "نينوى", "صلاح الدين", "السليمانية", "واسط" };
                             }
                             @foreach (var gov in governorates)
                             {
@@ -1190,17 +1190,18 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
 
         // ========== التحكم في ظهور حقول الأدمن ==========
         function toggleAdminFields() {
-            const selectedRole = document.querySelector('input[name="roleOption"]:checked');
+            const isAdminSelected = document.getElementById('roleAdmin')?.checked === true;
+            const isMapViewerSelected = document.getElementById('roleMapViewer')?.checked === true;
             const adminFields = document.getElementById('adminFields');
             const adminWarning = document.getElementById('adminWarning');
             
             const scopeHelpText = document.getElementById('scopeHelpText');
 
-            if (selectedRole && (selectedRole.value === 'Admin' || selectedRole.value === 'MapViewer')) {
+            if (isAdminSelected || isMapViewerSelected) {
                 adminFields.style.display = 'block';
                 adminWarning.style.display = 'block';
                 
-                if (selectedRole.value === 'MapViewer') {
+                if (isMapViewerSelected && !isAdminSelected) {
                     if (scopeHelpText) scopeHelpText.textContent = 'اتركها فارغة للعرض المركزي، أو اختر محافظة محددة للمشاهدة';
                 } else {
                     if (scopeHelpText) scopeHelpText.textContent = 'اختر المحافظة التي سيديرها هذا الأدمن';
@@ -1212,8 +1213,16 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
         }
         
         // ربط الأحداث
-        document.querySelectorAll('input[name="roleOption"]').forEach(radio => {
-            radio.addEventListener('change', toggleAdminFields);
+        document.querySelectorAll('input[name="roleOption"]').forEach(input => {
+            input.addEventListener('change', function() {
+                if (this.id === 'roleMember' && this.checked) {
+                    document.getElementById('roleUser').checked = false;
+                }
+                if (this.id === 'roleUser' && this.checked) {
+                    document.getElementById('roleMember').checked = false;
+                }
+                toggleAdminFields();
+            });
         });
         
         
@@ -1438,22 +1447,22 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
                     .then(data => {
                         Swal.close();
                         if (data.success) {
-                            document.querySelectorAll('input[name="roleOption"]').forEach(radio => radio.checked = false);
+                            document.querySelectorAll('input[name="roleOption"]').forEach(input => input.checked = false);
                             let isAdmin = false;
                             let isMapViewer = false;
                             if (data.data && data.data.CurrentRoles) {
                                 data.data.CurrentRoles.forEach(role => {
-                                    let radioId = '';
+                                    let inputId = '';
                                     switch(role) {
-                                        case 'User': radioId = 'roleUser'; break;
-                                        case 'فرد': radioId = 'roleMember'; break;
-                                        case 'Admin': radioId = 'roleAdmin'; isAdmin = true; break;
-                                        case 'DistrictAdmin': radioId = 'roleAdmin'; isAdmin = true; break;
-                                        case 'SuperAdmin': radioId = 'roleSuperAdmin'; break;
-                                        case 'NewsEditor': radioId = 'roleNewsEditor'; break;
-                                        case 'MapViewer': radioId = 'roleMapViewer'; isMapViewer = true; break;
+                                        case 'User': inputId = 'roleUser'; break;
+                                        case 'فرد': inputId = 'roleMember'; break;
+                                        case 'Admin': inputId = 'roleAdmin'; isAdmin = true; break;
+                                        case 'DistrictAdmin': inputId = 'roleAdmin'; isAdmin = true; break;
+                                        case 'SuperAdmin': inputId = 'roleSuperAdmin'; break;
+                                        case 'NewsEditor': inputId = 'roleNewsEditor'; break;
+                                        case 'MapViewer': inputId = 'roleMapViewer'; isMapViewer = true; break;
                                     }
-                                    if (radioId) document.getElementById(radioId).checked = true;
+                                    if (inputId) document.getElementById(inputId).checked = true;
                                 });
                             }
                             
@@ -1463,7 +1472,7 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
                                     userGovernorate === 'بغداد' && userDistrict
                                         ? 'بغداد - ' + userDistrict
                                         : userGovernorate === 'بغداد'
-                                        ? 'بغداد مركزي'
+                                        ? 'بغداد عامة'
                                         : userGovernorate;
                             }
                             
@@ -1484,19 +1493,17 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
         // ========== حفظ الأدوار ==========
         document.getElementById('saveRolesBtn')?.addEventListener('click', async function() {
             const userId = document.getElementById('modalUserId').value;
-            const selectedRole = document.querySelector('input[name="roleOption"]:checked');
-            if (!selectedRole) {
-                Swal.fire('تنبيه', 'الرجاء اختيار دور', 'warning');
-                return;
-            }
-            
-            const selectedRoles = [selectedRole.value];
+            const selectedRoles = Array.from(document.querySelectorAll('input[name="roleOption"]:checked'))
+                .map(input => input.value);
+
             let managedGovernorate = null;
             let managedDistrict = null;
+            const isAdminSelected = selectedRoles.includes('Admin');
+            const isMapViewerSelected = selectedRoles.includes('MapViewer');
             
-            if (selectedRole.value === 'Admin' || selectedRole.value === 'MapViewer') {
+            if (isAdminSelected || isMapViewerSelected) {
                 managedGovernorate = document.getElementById('adminGovernorate').value;
-                if (selectedRole.value === 'Admin' && !managedGovernorate) {
+                if (isAdminSelected && !managedGovernorate) {
                     Swal.fire('تنبيه', 'الرجاء اختيار المحافظة', 'warning');
                     return;
                 }

@@ -53,7 +53,43 @@ namespace WebApplication2.Services
                 await TrySendWhatsAppNotification(title, message, targetUserId);
             }
 
+            await TrySendOneSignalNotification(notification);
+
             return notification;
+        }
+
+        private async Task TrySendOneSignalNotification(Notification notification)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(notification.TargetUserId))
+                {
+                    var playerIds = await _context.UserDevices
+                        .AsNoTracking()
+                        .Where(device =>
+                            device.UserId == notification.TargetUserId &&
+                            device.IsSubscribed &&
+                            !string.IsNullOrWhiteSpace(device.PlayerId))
+                        .Select(device => device.PlayerId)
+                        .Distinct()
+                        .ToListAsync();
+
+                    if (!playerIds.Any())
+                    {
+                        _logger.LogInformation("No OneSignal devices found for user {UserId}.", notification.TargetUserId);
+                        return;
+                    }
+
+                    await SendToOneSignal(notification, playerIds);
+                    return;
+                }
+
+                await SendToOneSignal(notification);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while sending OneSignal notification {NotificationId}.", notification.Id);
+            }
         }
 
         private bool ShouldSendWhatsAppNotification()
@@ -168,7 +204,7 @@ namespace WebApplication2.Services
                 }
 
                 var client = _httpClientFactory.CreateClient();
-                client.DefaultRequestHeaders.Add("Authorization", $"Basic {apiKey}");
+                client.DefaultRequestHeaders.Add("Authorization", $"Key {apiKey}");
                 client.DefaultRequestHeaders.Add("Accept", "application/json");
 
                 object targetAudience;

@@ -24,6 +24,7 @@ namespace WebApplication2.Controllers
         private readonly INotificationService _notificationService;
         private readonly ILogger<SuperAdminController> _logger;
         private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _configuration;
         private static readonly string[] ReportIncludedRoleNames =
         {
             clsRoles.Member,
@@ -38,12 +39,28 @@ namespace WebApplication2.Controllers
             UserManager<IdentityUser> userManager,
             ApplicationDbContext context,
             INotificationService notificationService,
-            ILogger<SuperAdminController> logger)
+            ILogger<SuperAdminController> logger,
+            IConfiguration configuration)
         {
             _userManager = userManager;
             _context = context;
             _notificationService = notificationService;
             _logger = logger;
+            _configuration = configuration;
+        }
+
+        private async Task<bool> IsCurrentUserPasswordResetAllowedAsync()
+        {
+            var currentUser = await _userManager.GetUserAsync(User);
+            if (currentUser == null)
+                return false;
+
+            var allowedEmails = _configuration
+                .GetSection("SuperAdminPasswordReset:AllowedEmails")
+                .Get<string[]>() ?? Array.Empty<string>();
+
+            return allowedEmails.Any(email =>
+                string.Equals(email?.Trim(), currentUser.Email, StringComparison.OrdinalIgnoreCase));
         }
 
         // ===== دوال مساعدة لجلب البيانات المرتبطة =====
@@ -1020,6 +1037,7 @@ namespace WebApplication2.Controllers
             ViewBag.AdministrativeManagers = await _context.ManagementAssignments.AsNoTracking().CountAsync(x => x.AssignmentRole == "Manager");
             ViewBag.AdministrativeAssistants = await _context.ManagementAssignments.AsNoTracking().CountAsync(x => x.AssignmentRole == "Assistant");
             ViewBag.TotalIndividuals = await _context.Identifies.AsNoTracking().CountAsync(i => i.Education != null && i.Education != "" && (i.AccountType == "فرد" || i.IsPromoted));
+            ViewBag.CanResetUserPasswords = await IsCurrentUserPasswordResetAllowedAsync();
 
             viewName = viewName == "AdministrativeManagers" ? viewName : "Users";
             return View(viewName, list);
@@ -2149,6 +2167,42 @@ namespace WebApplication2.Controllers
             }
             catch (Exception ex)
             {
+                return Json(new { success = false, message = $"❌ حدث خطأ: {ex.Message}" });
+            }
+        }
+
+        // ========== تغيير كلمة مرور مستخدم ==========
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetUserPassword([FromBody] ResetUserPasswordRequest request)
+        {
+            try
+            {
+                if (!await IsCurrentUserPasswordResetAllowedAsync())
+                    return Json(new { success = false, message = "ليست لديك صلاحية تغيير كلمات المرور" });
+
+                if (request == null || string.IsNullOrWhiteSpace(request.UserId))
+                    return Json(new { success = false, message = "معرف المستخدم مطلوب" });
+
+                if (string.IsNullOrWhiteSpace(request.NewPassword))
+                    return Json(new { success = false, message = "كلمة المرور الجديدة مطلوبة" });
+
+                var user = await _userManager.FindByIdAsync(request.UserId);
+                if (user == null)
+                    return Json(new { success = false, message = "المستخدم غير موجود" });
+
+                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var result = await _userManager.ResetPasswordAsync(user, token, request.NewPassword);
+
+                if (result.Succeeded)
+                    return Json(new { success = true, message = "✅ تم تغيير كلمة المرور بنجاح" });
+
+                var errors = string.Join("، ", result.Errors.Select(e => e.Description));
+                return Json(new { success = false, message = $"❌ فشل تغيير كلمة المرور: {errors}" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "خطأ في تغيير كلمة مرور المستخدم");
                 return Json(new { success = false, message = $"❌ حدث خطأ: {ex.Message}" });
             }
         }
@@ -4336,6 +4390,11 @@ namespace WebApplication2.Controllers
         public class BulkDeleteRequest { public List<string> UserIds { get; set; } = new(); }
         public class DeleteUserRequest { public string UserId { get; set; } = string.Empty; }
         public class ToggleStatusRequest { public string UserId { get; set; } = string.Empty; }
+        public class ResetUserPasswordRequest
+        {
+            public string UserId { get; set; } = string.Empty;
+            public string NewPassword { get; set; } = string.Empty;
+        }
         public class UpdateRolesRequest
         {
             public string UserId { get; set; } = string.Empty;

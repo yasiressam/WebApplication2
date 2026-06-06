@@ -21,6 +21,7 @@
     var currentStatusFilter = ViewBag.StatusFilter as string ?? "";
     var currentManagerLevelFilter = ViewBag.ManagerLevelFilter as string ?? "";
     var currentEducationFilter = ViewBag.EducationFilter as string ?? "";
+    var canResetUserPasswords = ViewBag.CanResetUserPasswords is bool canResetPasswordsValue && canResetPasswordsValue;
     
     // حساب الأدمن (الذين لديهم دور Admin وليس SuperAdmin)
     var admins = ViewBag.Admins is int adminsValue ? adminsValue : Model.Count(u => u.Roles != null &&
@@ -334,6 +335,21 @@
         color: white;
     }
 
+    .btn-password {
+        background: linear-gradient(135deg, #6f42c1, #563d7c);
+        color: white;
+        min-width: 36px;
+        width: 36px;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+        .btn-password .password-key-icon {
+            display: inline-block;
+            font-size: 0.95rem;
+            line-height: 1;
+        }
+
     .btn-toggle {
         background: linear-gradient(135deg, #ffc107, #e0a800);
         color: #212529;
@@ -559,6 +575,7 @@
                         <option value="user">مستخدم</option>
                         <option value="admin">أدمن محافظة</option>
                         <option value="mapviewer">مشاهد خريطة</option>
+                        <option value="NewsEditor">محرر أخبار</option>
                         <option value="superadmin">سوبر أدمن</option>
                         <option value="member">فرد</option>
                     </select>
@@ -953,6 +970,18 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
                                                 <i class="fas fa-trash-alt"></i> <span>حذف</span>
                                             </button>
                                         }
+
+                                        @if (canResetUserPasswords)
+                                        {
+                                            <button class="btn-action btn-password reset-password-btn"
+                                                    data-user-id="@user.Id"
+                                                    data-user-email="@user.Email"
+                                                    data-user-name="@user.FullName"
+                                                    title="تغيير كلمة المرور"
+                                                    aria-label="تغيير كلمة المرور">
+                                                <span class="password-key-icon" aria-hidden="true">&#128273;</span>
+                                            </button>
+                                        }
                                     </div>
                                 </td>
                             </tr>
@@ -1133,6 +1162,42 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
             <div class="modal-footer py-2">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
                 <button type="button" class="btn btn-danger btn-sm" id="confirmDeleteBtn">حذف</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal تغيير كلمة المرور -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header text-white py-2" style="background: linear-gradient(135deg, #6f42c1, #563d7c);">
+                <h5 class="modal-title"><i class="fas fa-key"></i> تغيير كلمة المرور</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="resetPasswordUserInfo" class="alert alert-info py-2 small text-center"></div>
+                <input type="hidden" id="resetPasswordUserId">
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small" for="newPassword">كلمة المرور الجديدة</label>
+                    <input type="password" class="form-control" id="newPassword" autocomplete="new-password">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small" for="confirmNewPassword">تأكيد كلمة المرور</label>
+                    <input type="password" class="form-control" id="confirmNewPassword" autocomplete="new-password">
+                </div>
+
+                <div class="alert alert-warning py-2 small mb-0">
+                    <i class="fas fa-info-circle"></i> سيتم استبدال كلمة مرور هذا الحساب مباشرة.
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-primary btn-sm" id="confirmResetPasswordBtn">
+                    <i class="fas fa-save"></i> حفظ كلمة المرور
+                </button>
             </div>
         </div>
     </div>
@@ -1450,8 +1515,9 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
                             document.querySelectorAll('input[name="roleOption"]').forEach(input => input.checked = false);
                             let isAdmin = false;
                             let isMapViewer = false;
-                            if (data.data && data.data.CurrentRoles) {
-                                data.data.CurrentRoles.forEach(role => {
+                            const currentRoles = data.data?.currentRoles || data.data?.CurrentRoles || [];
+                            if (currentRoles.length) {
+                                currentRoles.forEach(role => {
                                     let inputId = '';
                                     switch(role) {
                                         case 'User': inputId = 'roleUser'; break;
@@ -1529,6 +1595,60 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
 }
              else {
                 Swal.fire('خطأ', result.message, 'error');
+            }
+        });
+
+        // ========== تغيير كلمة المرور ==========
+        document.querySelectorAll('.reset-password-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                document.getElementById('resetPasswordUserId').value = this.dataset.userId;
+                document.getElementById('newPassword').value = '';
+                document.getElementById('confirmNewPassword').value = '';
+                document.getElementById('resetPasswordUserInfo').innerHTML = '<strong>' + this.dataset.userName + '</strong><br><small>' + this.dataset.userEmail + '</small>';
+                new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
+            });
+        });
+
+        document.getElementById('confirmResetPasswordBtn')?.addEventListener('click', async function() {
+            const userId = document.getElementById('resetPasswordUserId').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+
+            if (!newPassword || !confirmNewPassword) {
+                Swal.fire('تنبيه', 'الرجاء إدخال كلمة المرور وتأكيدها', 'warning');
+                return;
+            }
+
+            if (newPassword !== confirmNewPassword) {
+                Swal.fire('تنبيه', 'كلمتا المرور غير متطابقتين', 'warning');
+                return;
+            }
+
+            const confirmation = await Swal.fire({
+                title: 'تأكيد تغيير كلمة المرور',
+                text: 'هل تريد حفظ كلمة المرور الجديدة لهذا الحساب؟',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'نعم، حفظ',
+                cancelButtonText: 'إلغاء'
+            });
+
+            if (!confirmation.isConfirmed) return;
+
+            const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+            const response = await fetch('/SuperAdmin/ResetUserPassword', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': csrfToken },
+                body: JSON.stringify({ UserId: userId, NewPassword: newPassword })
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal'))?.hide();
+                Swal.fire('تم', result.message, 'success');
+            } else {
+                Swal.fire('خطأ', result.message || 'فشل تغيير كلمة المرور', 'error');
             }
         });
 

@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
+using WebApplication2.Models.Audit;
+using WebApplication2.Services;
 
 namespace WebApplication2.Areas.Identity.Pages.Account
 {
@@ -16,15 +18,32 @@ namespace WebApplication2.Areas.Identity.Pages.Account
     {
         private readonly SignInManager<IdentityUser> _signInManager;
         private readonly ILogger<LogoutModel> _logger;
+        private readonly IAuditTrailService _auditTrailService;
 
-        public LogoutModel(SignInManager<IdentityUser> signInManager, ILogger<LogoutModel> logger)
+        public LogoutModel(SignInManager<IdentityUser> signInManager, ILogger<LogoutModel> logger, IAuditTrailService auditTrailService)
         {
             _signInManager = signInManager;
             _logger = logger;
+            _auditTrailService = auditTrailService;
         }
 
         public async Task<IActionResult> OnPost(string returnUrl = null)
         {
+            var user = HttpContext.User;
+            await _auditTrailService.LogActivityAsync(new AuditLogEntry
+            {
+                TimestampUtc = DateTime.UtcNow,
+                Severity = "Information",
+                EventType = "Logout",
+                Message = "تم تسجيل الخروج",
+                UserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
+                UserEmail = user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value,
+                UserName = user.Identity?.Name,
+                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                Path = HttpContext.Request.Path,
+                HttpMethod = HttpContext.Request.Method
+            });
+
             await _signInManager.SignOutAsync();
             _logger.LogInformation("User logged out.");
             if (returnUrl != null)

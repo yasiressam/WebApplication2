@@ -2,9 +2,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -12,6 +14,7 @@ using System.Threading.Tasks;
 using WebApplication2.Data;
 
 using WebApplication2.Models;
+using WebApplication2.Models.Audit;
 using WebApplication2.Models.Profile;
 using WebApplication2.Services;
 
@@ -20,11 +23,14 @@ namespace WebApplication2.Controllers
     [Authorize(Roles = clsRoles.SuperAdmin)]
     public class SuperAdminController : Controller
     {
+        private const string SqlBackupDirectoryFallback = @"C:\Program Files\Microsoft SQL Server\MSSQL17.MSSQLSERVER\MSSQL\Backup";
+        private const string ReportNotificationRecipientsSessionKey = "SuperAdmin.ReportNotificationRecipients";
         private readonly UserManager<IdentityUser> _userManager;
         private readonly INotificationService _notificationService;
         private readonly ILogger<SuperAdminController> _logger;
         private readonly ApplicationDbContext _context;
         private readonly IConfiguration _configuration;
+        private readonly IAuditTrailService _auditTrailService;
         private static readonly string[] ReportIncludedRoleNames =
         {
             clsRoles.Member,
@@ -40,13 +46,15 @@ namespace WebApplication2.Controllers
             ApplicationDbContext context,
             INotificationService notificationService,
             ILogger<SuperAdminController> logger,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IAuditTrailService auditTrailService)
         {
             _userManager = userManager;
             _context = context;
             _notificationService = notificationService;
             _logger = logger;
             _configuration = configuration;
+            _auditTrailService = auditTrailService;
         }
 
         private async Task<bool> IsCurrentUserPasswordResetAllowedAsync()
@@ -289,6 +297,537 @@ namespace WebApplication2.Controllers
             return View();
         }
 
+        [HttpGet]
+        public async Task<IActionResult> AuditTrail()
+        {
+            if (!await IsCurrentUserPasswordResetAllowedAsync())
+            {
+                return Forbid();
+            }
+
+            var model = await _auditTrailService.GetTrailAsync();
+            return View(model);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> LoginAudit()
+        {
+            if (!await IsCurrentUserPasswordResetAllowedAsync())
+            {
+                return Forbid();
+            }
+
+            var model = await _auditTrailService.GetTrailAsync(50);
+            return View("AuditTrailCategory", new AuditTrailCategoryViewModel
+            {
+                Title = "سجل الدخول",
+                Subtitle = "أحدث محاولات الدخول الناجحة والفاشلة.",
+                Icon = "bi bi-box-arrow-in-right",
+                Entries = model.LoginEntries
+            });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ErrorAudit()
+        {
+            if (!await IsCurrentUserPasswordResetAllowedAsync())
+            {
+                return Forbid();
+            }
+
+            var model = await _auditTrailService.GetTrailAsync(50);
+            return View("AuditTrailCategory", new AuditTrailCategoryViewModel
+            {
+                Title = "سجل الأخطاء",
+                Subtitle = "الأخطاء غير المعالجة التي ظهرت أثناء تشغيل النظام.",
+                Icon = "bi bi-exclamation-octagon",
+                Entries = model.ErrorEntries
+            });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> ActivityAudit()
+        {
+            if (!await IsCurrentUserPasswordResetAllowedAsync())
+            {
+                return Forbid();
+            }
+
+            var model = await _auditTrailService.GetTrailAsync(50);
+            return View("AuditTrailCategory", new AuditTrailCategoryViewModel
+            {
+                Title = "سجل الحركات",
+                Subtitle = "عمليات النظام المهمة والتنقلات الإدارية والإجراءات المؤثرة.",
+                Icon = "bi bi-activity",
+                Entries = model.ActivityEntries
+            });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> BackupDatabase()
+        {
+            if (!await IsCurrentUserPasswordResetAllowedAsync())
+            {
+                return Forbid();
+            }
+
+            return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> RestoreDatabase()
+        {
+            if (!await IsCurrentUserPasswordResetAllowedAsync())
+            {
+                return Forbid();
+            }
+
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RestoreDatabase(IFormFile? backupFile)
+        {
+            string? uploadedBackupPath = null;
+
+            try
+            {
+                if (!await IsCurrentUserPasswordResetAllowedAsync())
+                {
+                    return Forbid();
+                }
+
+                if (backupFile == null || backupFile.Length == 0)
+                {
+                    TempData["ErrorMessage"] = "يرجى اختيار ملف نسخة احتياطية بصيغة .bak.";
+                    return RedirectToAction(nameof(RestoreDatabase));
+                }
+
+                var extension = Path.GetExtension(backupFile.FileName);
+                if (!string.Equals(extension, ".bak", StringComparison.OrdinalIgnoreCase))
+                {
+                    TempData["ErrorMessage"] = "نوع الملف غير مدعوم. يرجى رفع ملف نسخة احتياطية بصيغة .bak فقط.";
+                    return RedirectToAction(nameof(RestoreDatabase));
+                }
+
+                var connectionString = _context.Database.GetConnectionString();
+                if (string.IsNullOrWhiteSpace(connectionString))
+                {
+                    TempData["ErrorMessage"] = "تعذر العثور على إعدادات قاعدة البيانات.";
+                    return RedirectToAction(nameof(RestoreDatabase));
+                }
+
+                var connectionBuilder = new SqlConnectionStringBuilder(connectionString);
+                var databaseName = connectionBuilder.InitialCatalog;
+                if (string.IsNullOrWhiteSpace(databaseName))
+                {
+                    TempData["ErrorMessage"] = "اسم قاعدة البيانات غير متوفر في إعدادات الاتصال.";
+                    return RedirectToAction(nameof(RestoreDatabase));
+                }
+
+                var masterConnectionBuilder = new SqlConnectionStringBuilder(connectionString)
+                {
+                    InitialCatalog = "master"
+                };
+
+                await using var connection = new SqlConnection(masterConnectionBuilder.ConnectionString);
+                await connection.OpenAsync();
+
+                var backupDirectory = await GetSqlBackupDirectoryAsync(connection);
+                if (string.IsNullOrWhiteSpace(backupDirectory))
+                {
+                    throw new InvalidOperationException("تعذر العثور على مجلد النسخ الاحتياطية الخاص بـ SQL Server.");
+                }
+
+                Directory.CreateDirectory(backupDirectory);
+
+                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                var tempFileName = $"{databaseName}_restore_{timestamp}_{Guid.NewGuid():N}.bak";
+                uploadedBackupPath = Path.Combine(backupDirectory, tempFileName);
+
+                await using (var fileStream = new FileStream(uploadedBackupPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    await backupFile.CopyToAsync(fileStream);
+                }
+
+                await RestoreDatabaseFromBackupAsync(connection, databaseName, uploadedBackupPath);
+                await TryDeleteSqlBackupFileAsync(connection, uploadedBackupPath);
+                uploadedBackupPath = null;
+
+                SqlConnection.ClearAllPools();
+
+                _logger.LogInformation(
+                    "Database restore completed successfully by SuperAdmin. Database: {DatabaseName}, BackupFile: {BackupFile}",
+                    databaseName,
+                    backupFile.FileName);
+
+                TempData["SuccessMessage"] = "تمت استعادة قاعدة البيانات بنجاح من الملف المرفوع.";
+                return RedirectToAction(nameof(RestoreDatabase));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Database restore failed.");
+                TempData["ErrorMessage"] =
+                    $"فشلت استعادة قاعدة البيانات. {ex.Message} تأكد من أن ملف النسخة صالح وأن SQL Server يملك صلاحية القراءة على مجلد النسخ الاحتياطية.";
+                return RedirectToAction(nameof(RestoreDatabase));
+            }
+            finally
+            {
+                if (!string.IsNullOrWhiteSpace(uploadedBackupPath))
+                {
+                    TryDeleteLocalFile(uploadedBackupPath);
+                }
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> BackupDatabaseDownload()
+        {
+            try
+            {
+                if (!await IsCurrentUserPasswordResetAllowedAsync())
+                {
+                    return Forbid();
+                }
+
+                var connectionString = _context.Database.GetConnectionString();
+                if (string.IsNullOrWhiteSpace(connectionString))
+                {
+                    TempData["ErrorMessage"] = "تعذر العثور على إعدادات قاعدة البيانات.";
+                    return RedirectToAction(nameof(BackupDatabase));
+                }
+
+                var connectionBuilder = new SqlConnectionStringBuilder(connectionString);
+                var databaseName = connectionBuilder.InitialCatalog;
+                if (string.IsNullOrWhiteSpace(databaseName))
+                {
+                    TempData["ErrorMessage"] = "اسم قاعدة البيانات غير متوفر في إعدادات الاتصال.";
+                    return RedirectToAction(nameof(BackupDatabase));
+                }
+
+                var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                var backupFileName = $"{databaseName}_{timestamp}.bak";
+
+                var masterConnectionBuilder = new SqlConnectionStringBuilder(connectionString)
+                {
+                    InitialCatalog = "master"
+                };
+
+                await using (var connection = new SqlConnection(masterConnectionBuilder.ConnectionString))
+                {
+                    await connection.OpenAsync();
+
+                    var backupDirectory = await GetSqlBackupDirectoryAsync(connection);
+                    if (string.IsNullOrWhiteSpace(backupDirectory))
+                    {
+                        throw new InvalidOperationException("تعذر العثور على مجلد النسخ الاحتياطية الخاص بـ SQL Server.");
+                    }
+
+                    var backupPath = Path.Combine(backupDirectory, backupFileName);
+                    if (string.IsNullOrWhiteSpace(backupPath))
+                    {
+                        throw new InvalidOperationException("تعذر تكوين مسار ملف النسخة الاحتياطية.");
+                    }
+
+                    await using (var backupCommand = connection.CreateCommand())
+                    {
+                        backupCommand.CommandType = CommandType.Text;
+                        backupCommand.CommandTimeout = 0;
+                        backupCommand.CommandText = $@"
+BACKUP DATABASE [{databaseName}]
+TO DISK = @backupPath
+WITH INIT, COPY_ONLY, STATS = 10;";
+                        backupCommand.Parameters.AddWithValue("@backupPath", backupPath);
+                        await backupCommand.ExecuteNonQueryAsync();
+                    }
+
+                    byte[] fileBytes;
+                    await using (var readCommand = connection.CreateCommand())
+                    {
+                        readCommand.CommandType = CommandType.Text;
+                        readCommand.CommandTimeout = 0;
+                        readCommand.CommandText = @"
+DECLARE @sql nvarchar(max);
+SET @sql = N'SELECT BulkColumn FROM OPENROWSET(BULK ' +
+    QUOTENAME(@backupPath, '''') +
+    N', SINGLE_BLOB) AS BackupFile;';
+EXEC sp_executesql @sql;";
+                        readCommand.Parameters.AddWithValue("@backupPath", backupPath);
+
+                        var result = await readCommand.ExecuteScalarAsync();
+                        if (result is not byte[] bytes || bytes.Length == 0)
+                        {
+                            throw new InvalidOperationException("تم إنشاء النسخة الاحتياطية لكن تعذر تحميل ملف النسخة من SQL Server.");
+                        }
+
+                        fileBytes = bytes;
+                    }
+
+                    await TryDeleteSqlBackupFileAsync(connection, backupPath);
+
+                    _logger.LogInformation(
+                        "Database backup created successfully by SuperAdmin. Database: {DatabaseName}, Path: {BackupPath}",
+                        databaseName,
+                        backupPath);
+
+                    Response.Headers["Content-Disposition"] = $"attachment; filename=\"{backupFileName}\"";
+                    return File(fileBytes, "application/octet-stream", backupFileName);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Database backup failed.");
+                TempData["ErrorMessage"] =
+                    $"فشل إنشاء النسخة الاحتياطية. {ex.Message} إذا استمر الخطأ فامنح حساب خدمة SQL Server صلاحية الكتابة على مجلد النسخ الاحتياطية.";
+                return RedirectToAction(nameof(BackupDatabase));
+            }
+
+            TempData["ErrorMessage"] = "فشل إنشاء النسخة الاحتياطية بسبب خطأ غير متوقع.";
+            return RedirectToAction(nameof(BackupDatabase));
+        }
+
+        private static async Task<string> GetSqlBackupDirectoryAsync(SqlConnection connection)
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandType = CommandType.Text;
+            command.CommandText = "SELECT CONVERT(nvarchar(4000), SERVERPROPERTY('InstanceDefaultBackupPath'));";
+
+            var result = await command.ExecuteScalarAsync();
+            var backupDirectory = result?.ToString()?.Trim();
+
+            return string.IsNullOrWhiteSpace(backupDirectory)
+                ? SqlBackupDirectoryFallback
+                : backupDirectory;
+        }
+
+        private async Task TryDeleteSqlBackupFileAsync(SqlConnection connection, string backupPath)
+        {
+            try
+            {
+                await using var command = connection.CreateCommand();
+                command.CommandType = CommandType.Text;
+                command.CommandTimeout = 0;
+                command.CommandText = "EXEC master.dbo.xp_delete_file 0, @backupPath;";
+                command.Parameters.AddWithValue("@backupPath", backupPath);
+                await command.ExecuteNonQueryAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not delete SQL backup file at path {BackupPath}", backupPath);
+            }
+        }
+
+        private async Task RestoreDatabaseFromBackupAsync(SqlConnection connection, string databaseName, string backupPath)
+        {
+            var currentFiles = await GetCurrentDatabaseFilesAsync(connection, databaseName);
+            if (currentFiles.Count == 0)
+            {
+                throw new InvalidOperationException("تعذر قراءة ملفات قاعدة البيانات الحالية من SQL Server.");
+            }
+
+            var backupFiles = await GetBackupLogicalFilesAsync(connection, backupPath);
+            if (backupFiles.Count == 0)
+            {
+                throw new InvalidOperationException("تعذر قراءة الملفات المنطقية من ملف النسخة الاحتياطية.");
+            }
+
+            var moveClauses = BuildRestoreMoveClauses(databaseName, currentFiles, backupFiles);
+            var quotedDatabaseName = QuoteSqlIdentifier(databaseName);
+
+            await ExecuteNonQueryAsync(connection, $@"
+ALTER DATABASE {quotedDatabaseName}
+SET SINGLE_USER WITH ROLLBACK IMMEDIATE;");
+
+            try
+            {
+                var restoreSql = $@"
+RESTORE DATABASE {quotedDatabaseName}
+FROM DISK = @backupPath
+WITH REPLACE, RECOVERY, STATS = 10,
+{string.Join("," + Environment.NewLine, moveClauses)};";
+
+                await using var restoreCommand = connection.CreateCommand();
+                restoreCommand.CommandType = CommandType.Text;
+                restoreCommand.CommandTimeout = 0;
+                restoreCommand.CommandText = restoreSql;
+                restoreCommand.Parameters.AddWithValue("@backupPath", backupPath);
+                await restoreCommand.ExecuteNonQueryAsync();
+            }
+            finally
+            {
+                try
+                {
+                    await ExecuteNonQueryAsync(connection, $@"
+ALTER DATABASE {quotedDatabaseName}
+SET MULTI_USER;");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Could not return database {DatabaseName} to MULTI_USER immediately after restore attempt.", databaseName);
+                }
+            }
+        }
+
+        private static async Task ExecuteNonQueryAsync(SqlConnection connection, string sql)
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandType = CommandType.Text;
+            command.CommandTimeout = 0;
+            command.CommandText = sql;
+            await command.ExecuteNonQueryAsync();
+        }
+
+        private static async Task<List<SqlDatabaseFileInfo>> GetCurrentDatabaseFilesAsync(SqlConnection connection, string databaseName)
+        {
+            var files = new List<SqlDatabaseFileInfo>();
+
+            await using var command = connection.CreateCommand();
+            command.CommandType = CommandType.Text;
+            command.CommandTimeout = 0;
+            command.CommandText = @"
+SELECT name, physical_name, type_desc, file_id
+FROM sys.master_files
+WHERE database_id = DB_ID(@databaseName)
+ORDER BY file_id;";
+            command.Parameters.AddWithValue("@databaseName", databaseName);
+
+            await using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                files.Add(new SqlDatabaseFileInfo(
+                    reader.GetString(0),
+                    reader.GetString(1),
+                    reader.GetString(2),
+                    reader.GetInt32(3)));
+            }
+
+            return files;
+        }
+
+        private static async Task<List<SqlBackupFileInfo>> GetBackupLogicalFilesAsync(SqlConnection connection, string backupPath)
+        {
+            var files = new List<SqlBackupFileInfo>();
+
+            await using var command = connection.CreateCommand();
+            command.CommandType = CommandType.Text;
+            command.CommandTimeout = 0;
+            command.CommandText = "RESTORE FILELISTONLY FROM DISK = @backupPath;";
+            command.Parameters.AddWithValue("@backupPath", backupPath);
+
+            await using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                var logicalName = reader["LogicalName"]?.ToString() ?? string.Empty;
+                var physicalName = reader["PhysicalName"]?.ToString() ?? string.Empty;
+                var type = reader["Type"]?.ToString() ?? string.Empty;
+                var fileGroupName = reader["FileGroupName"]?.ToString();
+
+                if (!string.IsNullOrWhiteSpace(logicalName) && !string.IsNullOrWhiteSpace(type))
+                {
+                    files.Add(new SqlBackupFileInfo(logicalName, physicalName, type, fileGroupName));
+                }
+            }
+
+            return files;
+        }
+
+        private static List<string> BuildRestoreMoveClauses(
+            string databaseName,
+            IReadOnlyList<SqlDatabaseFileInfo> currentFiles,
+            IReadOnlyList<SqlBackupFileInfo> backupFiles)
+        {
+            var moveClauses = new List<string>();
+            var currentDataFiles = currentFiles
+                .Where(file => file.TypeDesc.Contains("ROWS", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(file => file.FileId)
+                .ToList();
+            var currentLogFiles = currentFiles
+                .Where(file => file.TypeDesc.Contains("LOG", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(file => file.FileId)
+                .ToList();
+
+            var backupDataFiles = backupFiles
+                .Where(file => string.Equals(file.Type, "D", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var backupLogFiles = backupFiles
+                .Where(file => string.Equals(file.Type, "L", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            moveClauses.AddRange(BuildMoveClausesForType(databaseName, currentDataFiles, backupDataFiles, isLog: false));
+            moveClauses.AddRange(BuildMoveClausesForType(databaseName, currentLogFiles, backupLogFiles, isLog: true));
+
+            if (moveClauses.Count == 0)
+            {
+                throw new InvalidOperationException("تعذر بناء مسارات الاستعادة لملفات قاعدة البيانات.");
+            }
+
+            return moveClauses;
+        }
+
+        private static IEnumerable<string> BuildMoveClausesForType(
+            string databaseName,
+            IReadOnlyList<SqlDatabaseFileInfo> currentFiles,
+            IReadOnlyList<SqlBackupFileInfo> backupFiles,
+            bool isLog)
+        {
+            var clauses = new List<string>();
+            var fallbackDirectory = Path.GetDirectoryName(currentFiles.FirstOrDefault()?.PhysicalName ?? string.Empty) ?? string.Empty;
+            var fallbackExtension = isLog ? ".ldf" : ".mdf";
+
+            for (var i = 0; i < backupFiles.Count; i++)
+            {
+                var backupFile = backupFiles[i];
+                var targetPhysicalPath = i < currentFiles.Count
+                    ? currentFiles[i].PhysicalName
+                    : BuildFallbackPhysicalPath(databaseName, fallbackDirectory, backupFile, i, fallbackExtension);
+
+                clauses.Add($"MOVE {QuoteSqlString(backupFile.LogicalName)} TO {QuoteSqlString(targetPhysicalPath)}");
+            }
+
+            return clauses;
+        }
+
+        private static string BuildFallbackPhysicalPath(
+            string databaseName,
+            string directory,
+            SqlBackupFileInfo backupFile,
+            int index,
+            string fallbackExtension)
+        {
+            var sourceExtension = Path.GetExtension(backupFile.PhysicalName);
+            var extension = string.IsNullOrWhiteSpace(sourceExtension) ? fallbackExtension : sourceExtension;
+            var suffix = index == 0 ? string.Empty : $"_{index}";
+            var fileName = $"{databaseName}{suffix}{extension}";
+            return Path.Combine(directory, fileName);
+        }
+
+        private static string QuoteSqlIdentifier(string identifier)
+        {
+            return $"[{identifier.Replace("]", "]]", StringComparison.Ordinal)}]";
+        }
+
+        private static string QuoteSqlString(string value)
+        {
+            return $"N'{value.Replace("'", "''", StringComparison.Ordinal)}'";
+        }
+
+        private void TryDeleteLocalFile(string path)
+        {
+            try
+            {
+                if (System.IO.File.Exists(path))
+                {
+                    System.IO.File.Delete(path);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not delete local temporary restore file at path {BackupPath}", path);
+            }
+        }
+
         // ========== عرض جميع المستخدمين مع المسؤوليات الإدارية ==========
         public async Task<IActionResult> Users(
             bool administrativeOnly = false,
@@ -302,12 +841,13 @@ namespace WebApplication2.Controllers
             string? status = null,
             string? managerLevel = null,
             string? education = null,
+            string? profileStage = null,
             int pageSize = 10)
         {
             pageSize = NormalizeUserManagementPageSize(pageSize);
             page = Math.Max(1, page);
 
-            return await UsersPagedFromDatabaseAsync(administrativeOnly, viewName, page, search, role, residenceGovernorate, workGovernorate, gender, status, managerLevel, education, pageSize);
+            return await UsersPagedFromDatabaseAsync(administrativeOnly, viewName, page, search, role, residenceGovernorate, workGovernorate, gender, status, managerLevel, education, profileStage, pageSize);
 
             var priorityRoles = new[]
             {
@@ -626,6 +1166,7 @@ namespace WebApplication2.Controllers
                     FullName = fullName,
                     CoverImage = userProfile?.CoverImage,
                     PromotionStatus = promotionStatus,
+                    IsBasicInfoApproved = userProfile?.IsBasicInfoApproved ?? false,
                     RequestedPromotion = userProfile?.RequestedPromotion ?? false,
                     RejectionReason = userProfile?.RejectionReason,
                     HasCompleteProfile = IsProfileComplete(userProfile, userAddress, null, null),
@@ -750,6 +1291,7 @@ namespace WebApplication2.Controllers
             ViewBag.StatusFilter = status;
             ViewBag.ManagerLevelFilter = managerLevel;
             ViewBag.EducationFilter = education;
+            ViewBag.ProfileStageFilter = profileStage;
             ViewBag.ActiveUsers = administrativeOnly
                 ? list.Count(u => u.IsActive)
                 : await _userManager.Users.CountAsync(u => u.EmailConfirmed);
@@ -800,6 +1342,7 @@ namespace WebApplication2.Controllers
             string? status,
             string? managerLevel,
             string? education,
+            string? profileStage,
             int pageSize)
         {
             var query = _context.Users.AsNoTracking().AsQueryable();
@@ -890,6 +1433,70 @@ namespace WebApplication2.Controllers
 
             if (!string.IsNullOrWhiteSpace(education))
                 query = query.Where(u => _context.Identifies.Any(i => i.UserId == u.Id && i.Education == education));
+
+            if (!string.IsNullOrWhiteSpace(profileStage))
+            {
+                var normalizedProfileStage = profileStage.Trim().ToLowerInvariant();
+                query = normalizedProfileStage switch
+                {
+                    "incomplete" => query.Where(u => !_context.Identifies.Any(i =>
+                        i.UserId == u.Id &&
+                        !string.IsNullOrWhiteSpace(i.FullName) &&
+                        !string.IsNullOrWhiteSpace(i.MotherName) &&
+                        i.Date != DateTime.MinValue &&
+                        !string.IsNullOrWhiteSpace(i.Gender) &&
+                        !string.IsNullOrWhiteSpace(i.PhoneNumber) &&
+                        !string.IsNullOrWhiteSpace(i.IdentityCardN) &&
+                        i.IdentityCardN.Length == 12 &&
+                        (
+                            !string.IsNullOrWhiteSpace(i.WorkGovernorate) ||
+                            _context.WorkLocations.Any(w =>
+                                w.IdentifyId == i.Id &&
+                                !string.IsNullOrWhiteSpace(w.Governorate) &&
+                                (w.Governorate != "بغداد" || !string.IsNullOrWhiteSpace(w.District)))
+                        ))),
+                    "basic-pending" => query.Where(u => _context.Identifies.Any(i =>
+                        i.UserId == u.Id &&
+                        !string.IsNullOrWhiteSpace(i.FullName) &&
+                        !string.IsNullOrWhiteSpace(i.MotherName) &&
+                        i.Date != DateTime.MinValue &&
+                        !string.IsNullOrWhiteSpace(i.Gender) &&
+                        !string.IsNullOrWhiteSpace(i.PhoneNumber) &&
+                        !string.IsNullOrWhiteSpace(i.IdentityCardN) &&
+                        i.IdentityCardN.Length == 12 &&
+                        (
+                            !string.IsNullOrWhiteSpace(i.WorkGovernorate) ||
+                            _context.WorkLocations.Any(w =>
+                                w.IdentifyId == i.Id &&
+                                !string.IsNullOrWhiteSpace(w.Governorate) &&
+                                (w.Governorate != "بغداد" || !string.IsNullOrWhiteSpace(w.District)))
+                        ) &&
+                        !i.IsBasicInfoApproved)),
+                    "needs-additional" => query.Where(u => _context.Identifies.Any(i =>
+                        i.UserId == u.Id &&
+                        i.IsBasicInfoApproved &&
+                        !i.RequestedPromotion &&
+                        !i.IsPromoted &&
+                        i.AccountType != "فرد") &&
+                        !_context.UserRoles
+                            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
+                            .Any(r => r.UserId == u.Id && r.RoleName == "فرد")),
+                    "promotion-pending" => query.Where(u => _context.Identifies.Any(i =>
+                        i.UserId == u.Id &&
+                        i.RequestedPromotion &&
+                        !i.IsPromoted &&
+                        i.AccountType != "فرد") &&
+                        !_context.UserRoles
+                            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
+                            .Any(r => r.UserId == u.Id && r.RoleName == "فرد")),
+                    "promoted" => query.Where(u =>
+                        _context.Identifies.Any(i => i.UserId == u.Id && (i.IsPromoted || i.AccountType == "فرد")) ||
+                        _context.UserRoles
+                            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
+                            .Any(r => r.UserId == u.Id && r.RoleName == "فرد")),
+                    _ => query
+                };
+            }
 
             var totalUsersCount = await query.CountAsync();
             var totalPages = Math.Max(1, (int)Math.Ceiling(totalUsersCount / (double)pageSize));
@@ -1030,6 +1637,7 @@ namespace WebApplication2.Controllers
             ViewBag.StatusFilter = status;
             ViewBag.ManagerLevelFilter = managerLevel;
             ViewBag.EducationFilter = education;
+            ViewBag.ProfileStageFilter = profileStage;
             ViewBag.ActiveUsers = await _context.Users.CountAsync(u => u.EmailConfirmed);
             ViewBag.Admins = await _context.UserRoles.Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name).CountAsync(roleName => roleName == clsRoles.Admin);
             ViewBag.SuperAdmins = await _context.UserRoles.Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name).CountAsync(roleName => roleName == clsRoles.SuperAdmin);
@@ -1049,9 +1657,31 @@ namespace WebApplication2.Controllers
             return allowedPageSizes.Contains(pageSize) ? pageSize : 10;
         }
 
-        public async Task<IActionResult> AdministrativeManagers()
+        public async Task<IActionResult> AdministrativeManagers(
+            int page = 1,
+            string? search = null,
+            string? role = null,
+            string? residenceGovernorate = null,
+            string? workGovernorate = null,
+            string? gender = null,
+            string? status = null,
+            string? managerLevel = null,
+            string? education = null,
+            int pageSize = 10)
         {
-            return await Users(administrativeOnly: true, viewName: "AdministrativeManagers");
+            return await Users(
+                administrativeOnly: true,
+                viewName: "AdministrativeManagers",
+                page: page,
+                search: search,
+                role: role,
+                residenceGovernorate: residenceGovernorate,
+                workGovernorate: workGovernorate,
+                gender: gender,
+                status: status,
+                managerLevel: managerLevel,
+                education: education,
+                pageSize: pageSize);
         }
 
         // ========== عرض طلبات الترقية ==========
@@ -1362,12 +1992,11 @@ namespace WebApplication2.Controllers
 
                 try
                 {
-                    await _notificationService.CreateNotification(
-                        "🎉 تهانينا! تمت الموافقة على طلب الترقية",
-                        "تمت ترقية حسابك إلى 'فرد' بنجاح. يمكنك الآن الاستفادة من جميع الخدمات.",
+                    await _notificationService.CreateNotificationFromTemplate(
+                        NotificationTemplateKeys.PromotionApproved,
                         identify.UserId,
-                        "bi-star-fill",
-                        "/Register/ProfileDetails"
+                        icon: "bi-star-fill",
+                        clickUrl: "/Register/ProfileDetails"
                     );
                 }
                 catch (Exception ex)
@@ -1407,10 +2036,10 @@ namespace WebApplication2.Controllers
 
                 try
                 {
-                    await _notificationService.CreateNotification(
-                        "❌ عذراً، لم يتم الموافقة على طلبك",
-                        $"سبب الرفض: {reason}",
+                    await _notificationService.CreateNotificationFromTemplate(
+                        NotificationTemplateKeys.PromotionRejected,
                         identify.UserId,
+                        new Dictionary<string, string?> { ["reason"] = reason },
                         "bi-x-circle-fill",
                         "/Register/ProfileDetails"
                     );
@@ -1448,12 +2077,11 @@ namespace WebApplication2.Controllers
 
                 try
                 {
-                    await _notificationService.CreateNotification(
-                        "✅ تمت الموافقة على بياناتك الأساسية",
-                        "يمكنك الآن إكمال البيانات الإضافية",
+                    await _notificationService.CreateNotificationFromTemplate(
+                        NotificationTemplateKeys.BasicInfoApproved,
                         identify.UserId,
-                        "bi-check-circle",
-                        "/Register/AdditionalInfo"
+                        icon: "bi-check-circle",
+                        clickUrl: "/Register/AdditionalInfo"
                     );
                 }
                 catch (Exception ex)
@@ -1493,10 +2121,10 @@ namespace WebApplication2.Controllers
 
                 try
                 {
-                    await _notificationService.CreateNotification(
-                        "❌ لم يتم الموافقة على بياناتك الأساسية",
-                        $"عذراً، لم تتم الموافقة على بياناتك الأساسية.\nسبب الرفض: {reason}",
+                    await _notificationService.CreateNotificationFromTemplate(
+                        NotificationTemplateKeys.BasicInfoRejected,
                         identify.UserId,
+                        new Dictionary<string, string?> { ["reason"] = reason },
                         "bi-x-circle-fill",
                         "/Register/BasicInfo"
                     );
@@ -1709,19 +2337,73 @@ namespace WebApplication2.Controllers
 
         // ========== إرسال الإشعارات ==========
         [HttpGet]
-        public async Task<IActionResult> SendNotification(string? userId = null)
+        public async Task<IActionResult> SendNotification(string? userId = null, string? audience = null)
         {
-            var users = await _userManager.Users.ToListAsync();
             ViewBag.Users = new List<object>();
+            var model = new SendNotificationViewModel();
 
-            foreach (var u in users)
+            var reportAudienceUserIds = string.Equals(audience, "reports", StringComparison.OrdinalIgnoreCase)
+                ? GetSavedReportNotificationRecipients()
+                : new List<string>();
+
+            if (reportAudienceUserIds.Any())
             {
-                var profile = await _context.Identifies
-                    .FirstOrDefaultAsync(i => i.UserId == u.Id);
-                var fullName = profile?.FullName ?? u.Email;
+                var selectedUsers = await _userManager.Users
+                    .Where(u => reportAudienceUserIds.Contains(u.Id))
+                    .OrderBy(u => u.Email)
+                    .ToListAsync();
 
-                ((List<object>)ViewBag.Users).Add(new { u.Id, u.Email, FullName = fullName });
+                var selectedProfiles = await _context.Identifies
+                    .Where(i => reportAudienceUserIds.Contains(i.UserId))
+                    .ToDictionaryAsync(i => i.UserId, i => i.FullName);
+
+                model.TargetUserIds = selectedUsers
+                    .Select(u => u.Id)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                ViewBag.IsReportAudience = true;
+                ViewBag.ReportAudienceCount = model.TargetUserIds.Count;
+                ViewBag.ReportAudiencePreview = selectedUsers
+                    .Take(10)
+                    .Select(u => selectedProfiles.TryGetValue(u.Id, out var fullName) && !string.IsNullOrWhiteSpace(fullName)
+                        ? fullName
+                        : (u.Email ?? u.UserName ?? u.Id))
+                    .ToList();
+
+                return View(model);
             }
+
+            var recipientDirectory = await BuildNotificationRecipientDirectoryAsync();
+            ViewBag.Users = recipientDirectory
+                .Select(user => new { user.Id, user.Email, user.FullName })
+                .Cast<object>()
+                .ToList();
+            ViewBag.NotificationUsersJson = JsonSerializer.Serialize(recipientDirectory);
+            ViewBag.NotificationGovernorates = recipientDirectory
+                .Select(user => user.Governorate)
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(value => value, StringComparer.Create(new System.Globalization.CultureInfo("ar-IQ"), false))
+                .ToList();
+            ViewBag.NotificationAudienceGroups = new List<object>
+            {
+                new { Value = "members", Label = "الأفراد" },
+                new { Value = "users", Label = "المستخدمون" },
+                new { Value = "admins", Label = "المسؤولون والإداريون" }
+            };
+            ViewBag.NotificationRoles = new List<object>
+            {
+                new { Value = clsRoles.SuperAdmin, Label = "سوبر أدمن" },
+                new { Value = clsRoles.Admin, Label = "أدمن" },
+                new { Value = clsRoles.DistrictAdmin, Label = "أدمن محافظة" },
+                new { Value = clsRoles.Manager, Label = "مسؤول" },
+                new { Value = clsRoles.AssistantManager, Label = "معاون مسؤول" },
+                new { Value = clsRoles.NewsEditor, Label = "محرر أخبار" },
+                new { Value = clsRoles.MapViewer, Label = "مشاهد خريطة" },
+                new { Value = clsRoles.Member, Label = "فرد" },
+                new { Value = clsRoles.User, Label = "مستخدم" }
+            };
 
             if (!string.IsNullOrEmpty(userId))
             {
@@ -1733,10 +2415,12 @@ namespace WebApplication2.Controllers
                     ViewBag.TargetUserId = userId;
                     ViewBag.TargetUserEmail = targetUser.Email;
                     ViewBag.TargetUserName = targetProfile?.FullName ?? targetUser.Email;
+                    model.TargetUserId = userId;
+                    model.SelectedUserIdsCsv = userId;
                 }
             }
 
-            return View();
+            return View(model);
         }
 
         [HttpPost]
@@ -1751,51 +2435,42 @@ namespace WebApplication2.Controllers
                     return RedirectToAction("SendNotification");
                 }
 
-                var notification = await _notificationService.CreateNotification(
-                    model.Title, model.Message, model.TargetUserId,
-                    model.Icon ?? "bi-bell", model.ClickUrl);
+                var resolution = await ResolveNotificationRecipientsAsync(model);
 
-                bool oneSignalResult = false;
-                string oneSignalMessage = "";
-
-                try
+                if (!resolution.IsBroadcast && !resolution.UserIds.Any())
                 {
-                    if (!string.IsNullOrEmpty(model.TargetUserId))
-                    {
-                        var playerIds = await _context.UserDevices
-                            .Where(d => d.UserId == model.TargetUserId && d.IsSubscribed)
-                            .Select(d => d.PlayerId)
-                            .ToListAsync();
-
-                        if (playerIds.Any())
-                        {
-                            oneSignalResult = await _notificationService.SendToOneSignal(notification, playerIds);
-                            oneSignalMessage = $"تم الإرسال إلى {playerIds.Count} جهاز";
-                        }
-                        else
-                        {
-                            oneSignalResult = await _notificationService.SendToOneSignal(notification, null, model.TargetUserId);
-                            oneSignalMessage = "تم الإرسال باستخدام معرف المستخدم";
-                        }
-                    }
-                    else
-                    {
-                        oneSignalResult = await _notificationService.SendToOneSignal(notification);
-                        oneSignalMessage = "تم الإرسال لجميع المستخدمين";
-                    }
-
-                    if (oneSignalResult)
-                        TempData["SuccessMessage"] = $"✅ تم إرسال الإشعار بنجاح. {oneSignalMessage}";
-                    else
-                        TempData["WarningMessage"] = "⚠️ تم حفظ الإشعار ولكن فشل الإرسال عبر OneSignal";
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "❌ خطأ في إرسال OneSignal");
-                    TempData["WarningMessage"] = $"⚠️ تم حفظ الإشعار ولكن حدث خطأ: {ex.Message}";
+                    TempData["WarningMessage"] = "⚠️ لم يتم العثور على مستلمين مطابقين للخيارات المحددة.";
+                    return RedirectToAction(nameof(SendNotification));
                 }
 
-                return RedirectToAction("Users");
+                if (!resolution.IsBroadcast)
+                {
+                    foreach (var targetUserId in resolution.UserIds)
+                    {
+                        await _notificationService.CreateNotification(
+                            model.Title,
+                            model.Message,
+                            targetUserId,
+                            model.Icon ?? "bi-bell",
+                            model.ClickUrl);
+                    }
+
+                    TempData["SuccessMessage"] = $"✅ تم إرسال الإشعار إلى {resolution.UserIds.Count} مستخدم.";
+                    ClearSavedReportNotificationRecipients();
+                    return resolution.Source == "reports"
+                        ? RedirectToAction(nameof(Reports))
+                        : RedirectToAction(nameof(SendNotification));
+                }
+
+                await _notificationService.CreateNotification(
+                    model.Title,
+                    model.Message,
+                    null,
+                    model.Icon ?? "bi-bell",
+                    model.ClickUrl);
+
+                TempData["SuccessMessage"] = "✅ تم إرسال الإشعار العام بنجاح.";
+                return RedirectToAction(nameof(SendNotification));
             }
             catch (Exception ex)
             {
@@ -1803,6 +2478,175 @@ namespace WebApplication2.Controllers
                 TempData["ErrorMessage"] = $"❌ حدث خطأ: {ex.Message}";
                 return RedirectToAction("SendNotification");
             }
+        }
+
+        private async Task<List<NotificationRecipientItem>> BuildNotificationRecipientDirectoryAsync()
+        {
+            var users = await _userManager.Users
+                .OrderBy(u => u.Email)
+                .ToListAsync();
+
+            var userIds = users
+                .Select(u => u.Id)
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .ToList();
+
+            var profiles = await _context.Identifies
+                .Where(i => userIds.Contains(i.UserId))
+                .ToDictionaryAsync(i => i.UserId, i => i);
+
+            var roleRows = await (from userRole in _context.UserRoles
+                                  join role in _context.Roles on userRole.RoleId equals role.Id
+                                  where userIds.Contains(userRole.UserId)
+                                  select new { userRole.UserId, role.Name })
+                .ToListAsync();
+
+            var rolesLookup = roleRows
+                .Where(row => !string.IsNullOrWhiteSpace(row.Name))
+                .GroupBy(row => row.UserId)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group
+                        .Select(row => row.Name!)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList());
+
+            return users.Select(user =>
+            {
+                profiles.TryGetValue(user.Id, out var profile);
+                rolesLookup.TryGetValue(user.Id, out var roles);
+
+                var fullName = !string.IsNullOrWhiteSpace(profile?.FullName)
+                    ? profile!.FullName
+                    : (user.Email ?? user.UserName ?? user.Id);
+
+                var phoneNumber = profile?.PhoneNumber ?? user.PhoneNumber ?? string.Empty;
+                var governorate = ResolveRecipientGovernorate(profile);
+                var userRoles = roles ?? new List<string>();
+
+                return new NotificationRecipientItem
+                {
+                    Id = user.Id,
+                    Email = user.Email ?? string.Empty,
+                    FullName = fullName,
+                    PhoneNumber = phoneNumber,
+                    Governorate = governorate,
+                    AccountType = DetermineAudienceGroup(profile, userRoles),
+                    Roles = userRoles
+                };
+            }).ToList();
+        }
+
+        private async Task<NotificationRecipientResolution> ResolveNotificationRecipientsAsync(SendNotificationViewModel model)
+        {
+            if (model.TargetUserIds.Any())
+            {
+                return new NotificationRecipientResolution
+                {
+                    Source = "reports",
+                    UserIds = model.TargetUserIds
+                        .Where(id => !string.IsNullOrWhiteSpace(id))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList()
+                };
+            }
+
+            if (model.SendToAll)
+            {
+                return new NotificationRecipientResolution
+                {
+                    Source = "all",
+                    IsBroadcast = true
+                };
+            }
+
+            var recipients = await BuildNotificationRecipientDirectoryAsync();
+            var selectedGovernorates = ParseCsvSet(model.SelectedGovernoratesCsv);
+            var selectedAudienceGroups = ParseCsvSet(model.SelectedAudienceGroupsCsv);
+            var selectedRoles = ParseCsvSet(model.SelectedRolesCsv);
+            var selectedUserIds = ParseCsvSet(model.SelectedUserIdsCsv);
+
+            if (!string.IsNullOrWhiteSpace(model.TargetUserId))
+                selectedUserIds.Add(model.TargetUserId.Trim());
+
+            var resolvedUserIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var recipient in recipients)
+            {
+                var matchesGovernorate = selectedGovernorates.Contains(recipient.Governorate);
+                var matchesAudience = selectedAudienceGroups.Any(group =>
+                    NotificationAudienceGroupMatches(recipient, group));
+                var matchesRole = recipient.Roles.Any(role => selectedRoles.Contains(role));
+                var matchesUser = selectedUserIds.Contains(recipient.Id);
+
+                if (matchesGovernorate || matchesAudience || matchesRole || matchesUser)
+                    resolvedUserIds.Add(recipient.Id);
+            }
+
+            return new NotificationRecipientResolution
+            {
+                Source = "filtered",
+                UserIds = resolvedUserIds.ToList()
+            };
+        }
+
+        private static HashSet<string> ParseCsvSet(string? csv)
+        {
+            return (csv ?? string.Empty)
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
+
+        private static string ResolveRecipientGovernorate(Identify? profile)
+        {
+            if (!string.IsNullOrWhiteSpace(profile?.WorkLocation?.Governorate))
+                return profile.WorkLocation.Governorate.Trim();
+
+            if (!string.IsNullOrWhiteSpace(profile?.WorkGovernorate))
+                return profile.WorkGovernorate.Trim();
+
+            if (!string.IsNullOrWhiteSpace(profile?.ManagedGovernorate))
+                return profile.ManagedGovernorate.Trim();
+
+            return string.Empty;
+        }
+
+        private static string DetermineAudienceGroup(Identify? profile, IReadOnlyCollection<string> roles)
+        {
+            if (roles.Any(IsAdminLikeRole))
+                return "admins";
+
+            if ((profile?.IsPromoted ?? false) ||
+                string.Equals(profile?.AccountType, clsRoles.Member, StringComparison.OrdinalIgnoreCase) ||
+                roles.Any(role => string.Equals(role, clsRoles.Member, StringComparison.OrdinalIgnoreCase)))
+            {
+                return "members";
+            }
+
+            return "users";
+        }
+
+        private static bool NotificationAudienceGroupMatches(NotificationRecipientItem user, string? group)
+        {
+            if (string.IsNullOrWhiteSpace(group))
+                return false;
+
+            return string.Equals(user.AccountType, group.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsAdminLikeRole(string? role)
+        {
+            if (string.IsNullOrWhiteSpace(role))
+                return false;
+
+            return string.Equals(role, clsRoles.SuperAdmin, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(role, clsRoles.Admin, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(role, clsRoles.DistrictAdmin, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(role, clsRoles.Manager, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(role, clsRoles.AssistantManager, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(role, clsRoles.NewsEditor, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(role, clsRoles.MapViewer, StringComparison.OrdinalIgnoreCase);
         }
 
         // ========== تحديث أدوار المستخدم ==========
@@ -2021,15 +2865,15 @@ namespace WebApplication2.Controllers
                     try
                     {
                         if (request.SelectedRoles.Contains("SuperAdmin"))
-                            await _notificationService.CreateNotification("👑 تمت ترقيتك إلى سوبر أدمن", "تمت ترقية حسابك إلى سوبر أدمن", request.UserId, "bi-crown-fill", "/SuperAdmin/Users");
+                            await _notificationService.CreateNotificationFromTemplate(NotificationTemplateKeys.SuperAdminAssigned, request.UserId, icon: "bi-crown-fill", clickUrl: "/SuperAdmin/Users");
                         else if (request.SelectedRoles.Contains("Admin"))
-                            await _notificationService.CreateNotification("🛡️ تمت ترقيتك إلى أدمن", "تمت ترقية حسابك إلى أدمن", request.UserId, "bi-shield-fill", "/Admin/Users");
+                            await _notificationService.CreateNotificationFromTemplate(NotificationTemplateKeys.AdminAssigned, request.UserId, icon: "bi-shield-fill", clickUrl: "/Admin/Users");
                         else if (request.SelectedRoles.Contains("NewsEditor"))
-                            await _notificationService.CreateNotification("📝 تم تعيينك كمحرر أخبار", "يمكنك الآن إدارة الأخبار", request.UserId, "bi-newspaper", "/News/Index");
+                            await _notificationService.CreateNotificationFromTemplate(NotificationTemplateKeys.NewsEditorAssigned, request.UserId, icon: "bi-newspaper", clickUrl: "/News/Index");
                         else if (request.SelectedRoles.Contains("MapViewer"))
-                            await _notificationService.CreateNotification("🗺️ تم تعيينك كمشاهد خريطة", "يمكنك الآن مشاهدة الخريطة", request.UserId, "bi-map", "/MapDashboard/Index");
+                            await _notificationService.CreateNotificationFromTemplate(NotificationTemplateKeys.MapViewerAssigned, request.UserId, icon: "bi-map", clickUrl: "/MapDashboard/Index");
                         else if (request.SelectedRoles.Contains("فرد"))
-                            await _notificationService.CreateNotification("⭐ تمت ترقيتك إلى فرد", "تمت ترقية حسابك إلى فرد", request.UserId, "bi-star-fill", "/Register/ProfileDetails");
+                            await _notificationService.CreateNotificationFromTemplate(NotificationTemplateKeys.MemberAssigned, request.UserId, icon: "bi-star-fill", clickUrl: "/Register/ProfileDetails");
                     }
                     catch (Exception ex) { _logger.LogError(ex, "خطأ في إرسال الإشعار"); }
                 }
@@ -2488,7 +3332,7 @@ namespace WebApplication2.Controllers
 
                 try
                 {
-                    await _notificationService.CreateNotification("📝 تم تعديل بياناتك الشخصية", "للاطلاع قم بزيارة ملفك الشخصي", model.UserId, "bi-pencil-square", "/Register/ProfileDetails");
+                    await _notificationService.CreateNotificationFromTemplate(NotificationTemplateKeys.ProfileUpdated, model.UserId, icon: "bi-pencil-square", clickUrl: "/Register/ProfileDetails");
                 }
                 catch (Exception ex) { _logger.LogError(ex, "خطأ في إرسال الإشعار"); }
 
@@ -3258,6 +4102,34 @@ namespace WebApplication2.Controllers
             return Json(new { success = true, count = userIds.Count });
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> PrepareSendNotificationFromReports(string selectedFilters)
+        {
+            try
+            {
+                var filters = JsonSerializer.Deserialize<List<ReportFilterSelection>>(
+                    string.IsNullOrWhiteSpace(selectedFilters) ? "[]" : selectedFilters,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<ReportFilterSelection>();
+
+                var userIds = await GetReportUserIdsAsync(filters);
+                if (!userIds.Any())
+                {
+                    TempData["WarningMessage"] = "⚠️ لا توجد بيانات مطابقة للفلاتر المحددة لإرسال الإشعار.";
+                    return RedirectToAction(nameof(Reports));
+                }
+
+                SaveReportNotificationRecipients(userIds);
+                return RedirectToAction(nameof(SendNotification), new { audience = "reports" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "خطأ في تجهيز مستلمي الإشعارات من التقارير");
+                TempData["ErrorMessage"] = $"❌ حدث خطأ أثناء تجهيز المستلمين: {ex.Message}";
+                return RedirectToAction(nameof(Reports));
+            }
+        }
+
         [HttpGet]
         public async Task<IActionResult> GetReportFilterOptions(string key)
         {
@@ -3717,6 +4589,33 @@ namespace WebApplication2.Controllers
                 .ToHashSet();
         }
 
+        private void SaveReportNotificationRecipients(IEnumerable<string> userIds)
+        {
+            var normalizedUserIds = userIds
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Select(id => id.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            HttpContext.Session.SetString(
+                ReportNotificationRecipientsSessionKey,
+                JsonSerializer.Serialize(normalizedUserIds));
+        }
+
+        private List<string> GetSavedReportNotificationRecipients()
+        {
+            var json = HttpContext.Session.GetString(ReportNotificationRecipientsSessionKey);
+            if (string.IsNullOrWhiteSpace(json))
+                return new List<string>();
+
+            return JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+        }
+
+        private void ClearSavedReportNotificationRecipients()
+        {
+            HttpContext.Session.Remove(ReportNotificationRecipientsSessionKey);
+        }
+
         private static bool IsDateReportKey(string key)
         {
             return key == "birthDate" || key == "affiliationDate";
@@ -3816,6 +4715,39 @@ namespace WebApplication2.Controllers
                 _logger.LogError(ex, "خطأ في تصدير Excel لجميع المستخدمين");
                 TempData["ErrorMessage"] = $"❌ حدث خطأ: {ex.Message}";
                 return RedirectToAction(nameof(Users));
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ExportSelectedUsersToExcel([FromBody] BulkDeleteRequest request)
+        {
+            try
+            {
+                if (request?.UserIds == null || !request.UserIds.Any())
+                    return BadRequest(new { success = false, message = "الرجاء تحديد مستخدم واحد على الأقل للتصدير" });
+
+                var userIds = request.UserIds
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Distinct()
+                    .ToList();
+
+                var users = await _userManager.Users
+                    .Where(u => userIds.Contains(u.Id))
+                    .OrderBy(u => u.Email)
+                    .ToListAsync();
+
+                if (!users.Any())
+                    return BadRequest(new { success = false, message = "لم يتم العثور على مستخدمين صالحين للتصدير" });
+
+                var data = await BuildFullUsersExcelData(users);
+                byte[] fileContent = GenerateExcelFile(data);
+                return File(fileContent, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Selected_Users_Export_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "خطأ في تصدير Excel للمستخدمين المحددين");
+                return StatusCode(500, new { success = false, message = $"❌ حدث خطأ: {ex.Message}" });
             }
         }
 
@@ -4402,6 +5334,38 @@ namespace WebApplication2.Controllers
             public string? ManagedGovernorate { get; set; }  // ✅ أضف هذا
             public string? ManagedDistrict { get; set; }     // ✅ أضف هذا
         }
-        public class SendNotificationViewModel { public string Title { get; set; } = string.Empty; public string Message { get; set; } = string.Empty; public string? TargetUserId { get; set; } public string? Icon { get; set; } public string? ClickUrl { get; set; } }
+        public class SendNotificationViewModel
+        {
+            public string Title { get; set; } = string.Empty;
+            public string Message { get; set; } = string.Empty;
+            public string? TargetUserId { get; set; }
+            public List<string> TargetUserIds { get; set; } = new();
+            public string? Icon { get; set; }
+            public string? ClickUrl { get; set; }
+            public bool SendToAll { get; set; }
+            public string? SelectedGovernoratesCsv { get; set; }
+            public string? SelectedAudienceGroupsCsv { get; set; }
+            public string? SelectedRolesCsv { get; set; }
+            public string? SearchTerm { get; set; }
+            public string? SelectedUserIdsCsv { get; set; }
+        }
+        private sealed class NotificationRecipientItem
+        {
+            public string Id { get; set; } = string.Empty;
+            public string Email { get; set; } = string.Empty;
+            public string FullName { get; set; } = string.Empty;
+            public string PhoneNumber { get; set; } = string.Empty;
+            public string Governorate { get; set; } = string.Empty;
+            public string AccountType { get; set; } = string.Empty;
+            public List<string> Roles { get; set; } = new();
+        }
+        private sealed class NotificationRecipientResolution
+        {
+            public string Source { get; set; } = string.Empty;
+            public bool IsBroadcast { get; set; }
+            public List<string> UserIds { get; set; } = new();
+        }
+        private sealed record SqlDatabaseFileInfo(string LogicalName, string PhysicalName, string TypeDesc, int FileId);
+        private sealed record SqlBackupFileInfo(string LogicalName, string PhysicalName, string Type, string? FileGroupName);
     }
 }

@@ -13,6 +13,8 @@ var builder = WebApplication.CreateBuilder(args);
 // ===== Add services =====
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddSingleton<IAuditTrailService, FileAuditTrailService>();
+builder.Services.AddScoped<AuditActivityFilter>();
 builder.Services.Configure<WhatsAppApiSettings>(builder.Configuration.GetSection("WhatsAppApi"));
 builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();
 builder.Services.AddHostedService<RequestCleanupService>();
@@ -69,9 +71,17 @@ builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.AccessDeniedPath = "/Identity/Account/AccessDenied";
+});
+
 builder.Services.AddSingleton<IEmailSender, clsEmailConfirm>();
 builder.Services.AddRazorPages();
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    options.Filters.AddService<AuditActivityFilter>();
+});
 
 var app = builder.Build();
 
@@ -79,6 +89,7 @@ try
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    await dbContext.Database.MigrateAsync();
     var normalizedCount = await BaghdadWorkLocationNormalizer.NormalizeAsync(dbContext);
     if (normalizedCount > 0)
     {
@@ -125,6 +136,7 @@ else
     app.UseHsts();
 }
 
+app.UseMiddleware<AuditErrorMiddleware>();
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 

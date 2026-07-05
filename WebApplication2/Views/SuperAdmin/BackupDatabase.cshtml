@@ -1,0 +1,115 @@
+@{
+    ViewData["Title"] = "نسخة احتياطية";
+    Layout = "_Layout";
+}
+
+<style>
+    .backup-page {
+        max-width: 760px;
+        margin: 40px auto;
+    }
+
+    .backup-card {
+        background: #fff;
+        border-radius: 24px;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+        overflow: hidden;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .backup-card-header {
+        background: linear-gradient(135deg, #0f766e, #155e75);
+        color: #fff;
+        padding: 28px;
+    }
+
+    .backup-card-header h2 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 800;
+    }
+
+    .backup-card-body {
+        padding: 28px;
+    }
+
+    .backup-note {
+        background: #f8fafc;
+        border-right: 5px solid #0f766e;
+        border-radius: 16px;
+        padding: 18px 20px;
+        color: #334155;
+        line-height: 1.9;
+        margin-bottom: 24px;
+    }
+
+    .backup-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .backup-btn {
+        border: none;
+        border-radius: 14px;
+        padding: 14px 24px;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg, #0f766e, #0e7490);
+        box-shadow: 0 12px 24px rgba(14, 116, 144, 0.22);
+    }
+
+    .backup-btn:hover {
+        color: #fff;
+        background: linear-gradient(135deg, #115e59, #155e75);
+    }
+
+    .backup-secondary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 14px;
+        padding: 14px 24px;
+        font-weight: 700;
+        text-decoration: none;
+        background: #e2e8f0;
+        color: #1e293b;
+    }
+</style>
+
+<div class="backup-page">
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+    }
+
+    <div class="backup-card">
+        <div class="backup-card-header">
+            <h2><i class="bi bi-database-down me-2"></i>نسخة احتياطية لقاعدة البيانات</h2>
+        </div>
+
+        <div class="backup-card-body">
+            <div class="backup-note">
+                عند الضغط على الزر أدناه، سيقوم النظام بإنشاء ملف نسخة احتياطية من قاعدة البيانات بصيغة <strong>.bak</strong>
+                ثم تنزيله مباشرة على جهازك أو هاتفك.
+            </div>
+
+            <div class="alert alert-info">
+                بعد تنزيل الملف، احتفظ به داخل مجلد بيانات على جهازك لاستخدامه لاحقًا في الاستعادة.
+            </div>
+
+            <form asp-action="BackupDatabaseDownload" method="post">
+                @Html.AntiForgeryToken()
+                <div class="backup-actions">
+                    <button type="submit" class="backup-btn">
+                        <i class="bi bi-download me-2"></i>إنشاء النسخة وتحميلها
+                    </button>
+                    <a asp-action="Index" class="backup-secondary">
+                        <i class="bi bi-arrow-right-circle me-2"></i>العودة إلى لوحة السوبر أدمن
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

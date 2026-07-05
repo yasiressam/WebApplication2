@@ -1,125 +1,1280 @@
-﻿@{
+@using System.Text.Json
+@model WebApplication2.Controllers.SuperAdminController.SendNotificationViewModel
+
+@{
     ViewData["Title"] = "إرسال إشعار";
     ViewData["Icon"] = "bi bi-send";
+
+    var isReportAudience = ViewBag.IsReportAudience == true;
+    var reportAudienceCount = ViewBag.ReportAudienceCount as int? ?? 0;
+    var reportAudiencePreview = ViewBag.ReportAudiencePreview as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var notificationUsersJson = ViewBag.NotificationUsersJson as string ?? "[]";
+    var governorates = ViewBag.NotificationGovernorates as IEnumerable<string> ?? Enumerable.Empty<string>();
+    var audienceGroups = ViewBag.NotificationAudienceGroups as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+    var roles = ViewBag.NotificationRoles as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
 }
 
-<div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="bi bi-bell"></i> إرسال إشعار جديد</h5>
+<style>
+    .notification-page {
+        max-width: 1240px;
+        margin: 0 auto;
+        direction: rtl;
+    }
+
+    .notification-hero {
+        position: relative;
+        overflow: hidden;
+        border-radius: 24px;
+        background:
+            radial-gradient(circle at top left, rgba(125, 211, 252, 0.28), transparent 28%),
+            radial-gradient(circle at bottom right, rgba(147, 197, 253, 0.24), transparent 30%),
+            linear-gradient(135deg, #0f172a, #1d4ed8 58%, #2563eb);
+        color: #fff;
+        padding: 32px;
+        box-shadow: 0 28px 48px rgba(15, 23, 42, 0.22);
+        margin-bottom: 22px;
+    }
+
+    .notification-hero::after {
+        content: "";
+        position: absolute;
+        inset: auto -60px -90px auto;
+        width: 260px;
+        height: 260px;
+        background: rgba(255, 255, 255, 0.07);
+        border-radius: 34px;
+        transform: rotate(22deg);
+    }
+
+    .notification-hero-content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .notification-hero h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 900;
+        letter-spacing: -0.02em;
+    }
+
+    .notification-hero p {
+        margin: 10px 0 0;
+        max-width: 760px;
+        color: rgba(255, 255, 255, 0.88);
+        font-size: 1rem;
+        line-height: 1.8;
+    }
+
+    .hero-stat-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .hero-stat {
+        min-width: 116px;
+        padding: 14px 16px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        backdrop-filter: blur(8px);
+    }
+
+    .hero-stat strong {
+        display: block;
+        font-size: 1.25rem;
+        font-weight: 900;
+    }
+
+    .hero-stat span {
+        display: block;
+        margin-top: 4px;
+        color: rgba(255, 255, 255, 0.82);
+        font-size: 0.82rem;
+    }
+
+    .notification-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
+        gap: 22px;
+        align-items: start;
+    }
+
+    .notification-stack {
+        display: grid;
+        gap: 18px;
+    }
+
+    .notification-card {
+        background: #fff;
+        border: 1px solid #e5eaf2;
+        border-radius: 22px;
+        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+        overflow: hidden;
+    }
+
+    .notification-card-head {
+        padding: 18px 22px 14px;
+        border-bottom: 1px solid #eef2f7;
+        background: linear-gradient(180deg, #ffffff, #fbfdff);
+    }
+
+    .notification-card-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: #0f172a;
+        font-size: 1rem;
+        font-weight: 900;
+        margin: 0;
+    }
+
+    .notification-card-title i {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #dbeafe, #eff6ff);
+        color: #2563eb;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .notification-card-subtitle {
+        margin: 8px 0 0;
+        color: #64748b;
+        font-size: 0.9rem;
+        line-height: 1.7;
+    }
+
+    .notification-card-body {
+        padding: 20px 22px 22px;
+    }
+
+    .report-audience-banner {
+        border-radius: 18px;
+        background: linear-gradient(135deg, #eff6ff, #f8fbff);
+        border: 1px solid #bfdbfe;
+        padding: 18px;
+    }
+
+    .report-audience-top {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        margin-bottom: 14px;
+    }
+
+    .report-audience-count {
+        width: 56px;
+        height: 56px;
+        border-radius: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        color: #fff;
+        font-size: 1.15rem;
+        font-weight: 900;
+        box-shadow: 0 12px 22px rgba(37, 99, 235, 0.24);
+    }
+
+    .report-audience-preview {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 8px;
+    }
+
+    .report-audience-preview li {
+        border-radius: 12px;
+        border: 1px solid #dbeafe;
+        background: #fff;
+        padding: 10px 12px;
+        color: #1e3a8a;
+        font-size: 0.9rem;
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .filter-trigger {
+        border: 1px solid #dbe2ea;
+        border-radius: 18px;
+        background: linear-gradient(180deg, #ffffff, #f8fbff);
+        padding: 16px;
+        text-align: right;
+        cursor: pointer;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    }
+
+    .filter-trigger:hover {
+        transform: translateY(-1px);
+        border-color: #93c5fd;
+        box-shadow: 0 12px 22px rgba(37, 99, 235, 0.08);
+    }
+
+    .filter-trigger strong {
+        display: block;
+        color: #0f172a;
+        font-size: 0.95rem;
+        font-weight: 800;
+        margin-bottom: 5px;
+    }
+
+    .filter-trigger span {
+        display: block;
+        color: #64748b;
+        font-size: 0.82rem;
+        line-height: 1.65;
+    }
+
+    .filter-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 30px;
+        height: 30px;
+        margin-top: 12px;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-size: 0.82rem;
+        font-weight: 900;
+    }
+
+    .filter-meta {
+        margin-top: 16px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .send-all-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 14px;
+        background: #f8fafc;
+        border: 1px solid #dbe2ea;
+        color: #334155;
+    }
+
+    .text-button {
+        border: none;
+        background: transparent;
+        color: #2563eb;
+        font-weight: 800;
+        padding: 0;
+    }
+
+    .selected-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 16px;
+    }
+
+    .selected-filter-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #eef4ff;
+        border: 1px solid #d6e4ff;
+        color: #1d4ed8;
+        font-size: 0.84rem;
+        font-weight: 700;
+    }
+
+    .selected-filter-chip button {
+        border: none;
+        background: transparent;
+        color: #1d4ed8;
+        padding: 0;
+    }
+
+    .summary-ribbon {
+        border-radius: 18px;
+        padding: 18px;
+        background:
+            radial-gradient(circle at top left, rgba(96, 165, 250, 0.18), transparent 28%),
+            linear-gradient(135deg, #eff6ff, #f8fbff);
+        border: 1px solid #cfe0ff;
+        color: #334155;
+    }
+
+    .summary-ribbon strong {
+        color: #0f172a;
+    }
+
+    .recipient-search-row {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr 1fr;
+        gap: 12px;
+        margin-top: 18px;
+    }
+
+    .recipient-board {
+        margin-top: 16px;
+        border-radius: 20px;
+        border: 1px solid #e5eaf2;
+        background: #f8fafc;
+        padding: 10px;
+        min-height: 240px;
+        max-height: 470px;
+        overflow-y: auto;
+    }
+
+    .recipient-table-head,
+    .recipient-table-row {
+        display: grid;
+        grid-template-columns: 58px 1.3fr 1fr 0.85fr;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .recipient-table-head {
+        padding: 10px 12px 12px;
+        color: #64748b;
+        font-size: 0.81rem;
+        font-weight: 900;
+        position: sticky;
+        top: -10px;
+        background: #f8fafc;
+        z-index: 1;
+    }
+
+    .recipient-table-row {
+        padding: 12px;
+        border-radius: 16px;
+        background: #fff;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+    }
+
+    .recipient-table-row + .recipient-table-row {
+        margin-top: 8px;
+    }
+
+    .recipient-order {
+        width: 40px;
+        height: 40px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #dbeafe;
+        color: #1d4ed8;
+        font-weight: 900;
+    }
+
+    .recipient-main strong,
+    .recipient-name strong {
+        display: block;
+        color: #0f172a;
+        margin-bottom: 4px;
+        font-size: 0.92rem;
+    }
+
+    .recipient-main small,
+    .recipient-name small {
+        display: block;
+        color: #64748b;
+        line-height: 1.6;
+        font-size: 0.8rem;
+    }
+
+    .recipient-role {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 8px 12px;
+        background: #eef4ff;
+        color: #1d4ed8;
+        font-size: 0.82rem;
+        font-weight: 800;
+    }
+
+    .compose-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .compose-field.full {
+        grid-column: 1 / -1;
+    }
+
+    .compose-field label {
+        display: block;
+        margin-bottom: 8px;
+        color: #0f172a;
+        font-weight: 800;
+    }
+
+    .compose-field .form-control,
+    .compose-field .form-select {
+        min-height: 50px;
+        border-radius: 14px;
+        border: 1px solid #dbe2ea;
+        box-shadow: none;
+    }
+
+    .compose-field textarea.form-control {
+        min-height: 180px;
+        resize: vertical;
+    }
+
+    .compose-field .form-control:focus,
+    .compose-field .form-select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.12);
+    }
+
+    .compose-help {
+        margin-top: 7px;
+        color: #64748b;
+        font-size: 0.83rem;
+    }
+
+    .notification-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 22px;
+    }
+
+    .notification-submit {
+        border: none;
+        border-radius: 16px;
+        padding: 14px 26px;
+        background: linear-gradient(135deg, #2563eb, #1e40af);
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 900;
+        box-shadow: 0 14px 30px rgba(37, 99, 235, 0.2);
+    }
+
+    .notification-secondary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+        padding: 14px 22px;
+        background: #e2e8f0;
+        color: #1e293b;
+        text-decoration: none;
+        font-weight: 800;
+    }
+
+    .modal-backdrop-custom {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.42);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1055;
+        padding: 20px;
+    }
+
+    .modal-backdrop-custom.open {
+        display: flex;
+    }
+
+    .filter-modal {
+        width: min(560px, 100%);
+        max-height: 80vh;
+        overflow: hidden;
+        border-radius: 22px;
+        background: #fff;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+    }
+
+    .filter-modal-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 18px 20px;
+        border-bottom: 1px solid #eef2f7;
+    }
+
+    .filter-modal-header h4 {
+        margin: 0;
+        color: #0f172a;
+        font-size: 1.05rem;
+        font-weight: 900;
+    }
+
+    .filter-modal-header p {
+        margin: 6px 0 0;
+        color: #64748b;
+        font-size: 0.9rem;
+        line-height: 1.7;
+    }
+
+    .filter-modal-close {
+        width: 40px;
+        height: 40px;
+        border: none;
+        border-radius: 14px;
+        background: #eff6ff;
+        color: #1d4ed8;
+    }
+
+    .filter-modal-body {
+        padding: 18px 20px;
+        max-height: calc(80vh - 144px);
+        overflow-y: auto;
+    }
+
+    .filter-option-list {
+        display: grid;
+        gap: 10px;
+    }
+
+    .filter-option {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 13px 14px;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+
+    .filter-modal-footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 16px 20px;
+        border-top: 1px solid #eef2f7;
+    }
+
+    .modal-btn {
+        border: none;
+        border-radius: 14px;
+        padding: 12px 16px;
+        font-weight: 800;
+    }
+
+    .modal-btn-primary {
+        background: linear-gradient(135deg, #2563eb, #1e40af);
+        color: #fff;
+    }
+
+    .modal-btn-light {
+        background: #e2e8f0;
+        color: #1e293b;
+    }
+
+    @@media (max-width: 992px) {
+        .notification-layout {
+            grid-template-columns: 1fr;
+        }
+
+        .notification-hero-content {
+            flex-direction: column;
+        }
+    }
+
+    @@media (max-width: 768px) {
+        .notification-hero,
+        .notification-card-head,
+        .notification-card-body {
+            padding-left: 18px;
+            padding-right: 18px;
+        }
+
+        .filter-grid,
+        .compose-grid,
+        .recipient-search-row {
+            grid-template-columns: 1fr;
+        }
+
+        .recipient-table-head {
+            display: none;
+        }
+
+        .recipient-table-row {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="notification-page">
+    <section class="notification-hero">
+        <div class="notification-hero-content">
+            <div>
+                <h1><i class="bi bi-bell-fill me-2"></i>إرسال إشعار جديد</h1>
+                <p>صفحة أكثر ترتيبًا لتحديد المستلمين ومراجعتهم وكتابة الإشعار بطريقة مريحة وواضحة قبل الإرسال.</p>
+            </div>
+
+            <div class="hero-stat-strip">
+                <div class="hero-stat">
+                    <strong id="governoratesCount">0</strong>
+                    <span>محافظات محددة</span>
                 </div>
-                <div class="card-body">
-                    <div id="resultMessage" class="alert" style="display: none;"></div>
+                <div class="hero-stat">
+                    <strong id="audiencesCount">0</strong>
+                    <span>فئات محددة</span>
+                </div>
+                <div class="hero-stat">
+                    <strong id="rolesCount">0</strong>
+                    <span>أدوار محددة</span>
+                </div>
+                <div class="hero-stat">
+                    <strong id="manualUsersCount">0</strong>
+                    <span>أشخاص يدويًا</span>
+                </div>
+            </div>
+        </div>
+    </section>
 
-                    <form id="notificationForm">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">العنوان</label>
-                            <input type="text" id="title" class="form-control" value="إشعار تجريبي" required />
+    <div class="notification-layout">
+        <div class="notification-stack">
+            @if (isReportAudience)
+            {
+                <section class="notification-card">
+                    <div class="notification-card-head">
+                        <h2 class="notification-card-title">
+                            <i class="bi bi-people-fill"></i>
+                            <span>المستلمون من صفحة التقارير</span>
+                        </h2>
+                        <p class="notification-card-subtitle">هذه المجموعة تم تحديدها مسبقًا من فلاتر صفحة التقارير، لذلك لا حاجة لضبط الفلاتر هنا.</p>
+                    </div>
+                    <div class="notification-card-body">
+                        <div class="report-audience-banner">
+                            <div class="report-audience-top">
+                                <div class="report-audience-count">@reportAudienceCount</div>
+                                <div>
+                                    <strong>عدد المستلمين المحددين</strong>
+                                    <div class="text-muted mt-1">سيتم إرسال الإشعار إلى هذه المجموعة مباشرة.</div>
+                                </div>
+                            </div>
+
+                            @if (reportAudiencePreview.Any())
+                            {
+                                <ul class="report-audience-preview">
+                                    @foreach (var name in reportAudiencePreview)
+                                    {
+                                        <li>@name</li>
+                                    }
+                                </ul>
+                            }
                         </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">الرسالة</label>
-                            <textarea id="message" class="form-control" rows="3" required>هذا إشعار تجريبي من لوحة التحكم</textarea>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">المستلم</label>
-                            <select id="targetUserId" class="form-select">
-                                <option value="">جميع المستخدمين</option>
-                                @foreach (var user in ViewBag.Users)
-                                {
-                                    <option value="@user.Id">@user.Email</option>
-                                }
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">الأيقونة</label>
-                            <select id="icon" class="form-select">
-                                <option value="bi-bell">🔔 جرس</option>
-                                <option value="bi-info-circle">ℹ️ معلومات</option>
-                                <option value="bi-check-circle">✅ نجاح</option>
-                                <option value="bi-exclamation-triangle">⚠️ تحذير</option>
-                                <option value="bi-star">⭐ نجمة</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">رابط النقر (اختياري)</label>
-                            <input type="text" id="clickUrl" class="form-control" placeholder="/Home/Index" />
-                        </div>
-
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary btn-lg" id="sendBtn">
-                                <i class="bi bi-send"></i> إرسال الإشعار
+                    </div>
+                </section>
+            }
+            else
+            {
+                <section class="notification-card">
+                    <div class="notification-card-head">
+                        <h2 class="notification-card-title">
+                            <i class="bi bi-sliders2-vertical"></i>
+                            <span>تحديد المستلمين</span>
+                        </h2>
+                        <p class="notification-card-subtitle">افتح أي فلتر من الأسفل، اختر ما تريد، ثم راجع النتائج فورًا في لوحة المستلمين.</p>
+                    </div>
+                    <div class="notification-card-body">
+                        <div class="filter-grid">
+                            <button type="button" class="filter-trigger" data-open-modal="governorates">
+                                <strong>المحافظات</strong>
+                                <span>تحديد محافظة واحدة أو أكثر حسب الحاجة.</span>
+                                <div class="filter-count" id="governoratesCardCount">0</div>
                             </button>
+
+                            <button type="button" class="filter-trigger" data-open-modal="audiences">
+                                <strong>الفئات</strong>
+                                <span>الأفراد أو المستخدمون أو الإداريون.</span>
+                                <div class="filter-count" id="audiencesCardCount">0</div>
+                            </button>
+
+                            <button type="button" class="filter-trigger" data-open-modal="roles">
+                                <strong>الأدوار</strong>
+                                <span>اختيار دور واحد أو أكثر من داخل النظام.</span>
+                                <div class="filter-count" id="rolesCardCount">0</div>
+                            </button>
+
+                            <button type="button" class="filter-trigger" data-open-modal="manualUsers">
+                                <strong>إضافة أشخاص</strong>
+                                <span>بحث مباشر بالاسم أو الهاتف وإضافة أشخاص محددين.</span>
+                                <div class="filter-count" id="manualUsersCardCount">0</div>
+                            </button>
+                        </div>
+
+                        <div class="filter-meta">
+                            <label class="send-all-toggle">
+                                <input asp-for="SendToAll" type="checkbox" id="SendToAll" />
+                                <span>إرسال الإشعار إلى جميع المستخدمين</span>
+                            </label>
+
+                            <button type="button" class="text-button" id="clearAllFiltersBtn">مسح جميع التحديدات</button>
+                        </div>
+
+                        <div class="selected-filters" id="selectedTags"></div>
+                    </div>
+                </section>
+            }
+        </div>
+
+        <div class="notification-stack">
+            <section class="notification-card">
+                <div class="notification-card-head">
+                    <h2 class="notification-card-title">
+                        <i class="bi bi-people"></i>
+                        <span>المستلمون الناتجون</span>
+                    </h2>
+                    <p class="notification-card-subtitle">شاهد القائمة النهائية بعد دمج الفلاتر، وابحث داخلها قبل إرسال الإشعار.</p>
+                </div>
+                <div class="notification-card-body">
+                    <div class="summary-ribbon" id="recipientSummaryBox">سيظهر هنا عدد المستلمين بعد تحديد الفلاتر أو الأشخاص.</div>
+
+                    @if (!isReportAudience)
+                    {
+                        <div class="recipient-search-row">
+                            <input type="text" class="form-control" id="selectedNameSearchInput" placeholder="ابحث بالاسم أو البريد" />
+                            <input type="text" class="form-control" id="selectedPhoneSearchInput" placeholder="ابحث برقم الهاتف" />
+                            <input type="text" class="form-control" id="selectedGovernorateSearchInput" placeholder="ابحث بالمحافظة" />
+                        </div>
+
+                        <div class="recipient-board" id="selectedRecipientsList"></div>
+                    }
+                </div>
+            </section>
+
+            <section class="notification-card">
+                <div class="notification-card-head">
+                    <h2 class="notification-card-title">
+                        <i class="bi bi-pencil-square"></i>
+                        <span>محتوى الإشعار</span>
+                    </h2>
+                    <p class="notification-card-subtitle">اكتب العنوان والرسالة، وحدد شكل الإشعار والرابط الذي يفتح عند النقر إن كنت تحتاج ذلك.</p>
+                </div>
+                <div class="notification-card-body">
+                    <form asp-action="SendNotification" method="post" id="notificationForm">
+                        @Html.AntiForgeryToken()
+                        <input asp-for="SelectedGovernoratesCsv" type="hidden" id="SelectedGovernoratesCsv" />
+                        <input asp-for="SelectedAudienceGroupsCsv" type="hidden" id="SelectedAudienceGroupsCsv" />
+                        <input asp-for="SelectedRolesCsv" type="hidden" id="SelectedRolesCsv" />
+                        <input asp-for="SelectedUserIdsCsv" type="hidden" id="SelectedUserIdsCsv" />
+                        <input asp-for="TargetUserId" type="hidden" id="TargetUserId" />
+
+                        @foreach (var targetUserId in Model.TargetUserIds)
+                        {
+                            <input type="hidden" name="TargetUserIds" value="@targetUserId" />
+                        }
+
+                        <div class="compose-grid">
+                            <div class="compose-field full">
+                                <label asp-for="Title">العنوان</label>
+                                <input asp-for="Title" class="form-control" placeholder="اكتب عنوان الإشعار" required />
+                                <div class="compose-help">عنوان قصير وواضح يظهر للمستخدم أولًا.</div>
+                            </div>
+
+                            <div class="compose-field full">
+                                <label asp-for="Message">الرسالة</label>
+                                <textarea asp-for="Message" class="form-control" rows="5" placeholder="اكتب نص الإشعار" required></textarea>
+                                <div class="compose-help">يفضل أن تكون الرسالة مباشرة، واضحة، وسهلة القراءة من الهاتف.</div>
+                            </div>
+
+                            <div class="compose-field">
+                                <label asp-for="Icon">الأيقونة</label>
+                                <select asp-for="Icon" class="form-select">
+                                    <option value="bi-bell">جرس</option>
+                                    <option value="bi-info-circle">معلومات</option>
+                                    <option value="bi-check-circle">نجاح</option>
+                                    <option value="bi-exclamation-triangle">تحذير</option>
+                                    <option value="bi-star">نجمة</option>
+                                </select>
+                            </div>
+
+                            <div class="compose-field">
+                                <label asp-for="ClickUrl">رابط النقر</label>
+                                <input asp-for="ClickUrl" class="form-control" placeholder="/Home/Index" />
+                            </div>
+                        </div>
+
+                        <div class="notification-actions">
+                            <button type="submit" class="notification-submit">
+                                <i class="bi bi-send-fill me-2"></i>
+                                @(isReportAudience ? "إرسال الإشعار إلى المحددين" : "إرسال الإشعار")
+                            </button>
+
+                            @if (isReportAudience)
+                            {
+                                <a asp-action="Reports" class="notification-secondary">
+                                    <i class="bi bi-arrow-right-circle me-2"></i>العودة إلى التقارير
+                                </a>
+                            }
+                            else
+                            {
+                                <a asp-action="Users" class="notification-secondary">
+                                    <i class="bi bi-people me-2"></i>العودة إلى المستخدمين
+                                </a>
+                            }
                         </div>
                     </form>
                 </div>
-            </div>
+            </section>
         </div>
     </div>
 </div>
 
-@section Scripts {
-    <!-- ✅ فقط jQuery للإرسال -->
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+@if (!isReportAudience)
+{
+    <div class="modal-backdrop-custom" id="filterModalBackdrop">
+        <div class="filter-modal" role="dialog" aria-modal="true">
+            <div class="filter-modal-header">
+                <div>
+                    <h4 id="filterModalTitle">تحديد</h4>
+                    <p id="filterModalDescription">اختر العناصر التي تريدها.</p>
+                </div>
+                <button type="button" class="filter-modal-close" id="filterModalClose">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="filter-modal-body">
+                <div class="filter-option-list" id="filterModalOptions"></div>
+            </div>
+            <div class="filter-modal-footer">
+                <button type="button" class="modal-btn modal-btn-light" id="filterModalReset">مسح</button>
+                <button type="button" class="modal-btn modal-btn-primary" id="filterModalApply">تم</button>
+            </div>
+        </div>
+    </div>
 
     <script>
-        $(document).ready(function() {
-            console.log("✅ صفحة الإرسال - جاهزة");
+        (function () {
+            const users = @Html.Raw(notificationUsersJson);
+            const sendToAllInput = document.getElementById("SendToAll");
+            const governorateHidden = document.getElementById("SelectedGovernoratesCsv");
+            const audienceHidden = document.getElementById("SelectedAudienceGroupsCsv");
+            const rolesHidden = document.getElementById("SelectedRolesCsv");
+            const usersHidden = document.getElementById("SelectedUserIdsCsv");
+            const summaryBox = document.getElementById("recipientSummaryBox");
+            const selectedRecipientsList = document.getElementById("selectedRecipientsList");
+            const selectedNameSearchInput = document.getElementById("selectedNameSearchInput");
+            const selectedPhoneSearchInput = document.getElementById("selectedPhoneSearchInput");
+            const selectedGovernorateSearchInput = document.getElementById("selectedGovernorateSearchInput");
+            const selectedTags = document.getElementById("selectedTags");
 
-            $('#notificationForm').submit(function(e) {
-                e.preventDefault();
+            const modalBackdrop = document.getElementById("filterModalBackdrop");
+            const modalTitle = document.getElementById("filterModalTitle");
+            const modalDescription = document.getElementById("filterModalDescription");
+            const modalOptions = document.getElementById("filterModalOptions");
+            const modalClose = document.getElementById("filterModalClose");
+            const modalApply = document.getElementById("filterModalApply");
+            const modalReset = document.getElementById("filterModalReset");
+            const clearAllFiltersBtn = document.getElementById("clearAllFiltersBtn");
 
-                var sendBtn = $('#sendBtn');
-                var originalText = sendBtn.html();
-                sendBtn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> جاري الإرسال...');
+            const selectedState = {
+                governorates: new Set(),
+                audiences: new Set(),
+                roles: new Set(),
+                manualUsers: new Set()
+            };
 
-                var data = {
-                    title: $('#title').val(),
-                    message: $('#message').val(),
-                    targetUserId: $('#targetUserId').val() || null,
-                    icon: $('#icon').val(),
-                    clickUrl: $('#clickUrl').val() || null
+            const modalConfigs = {
+                governorates: {
+                    title: "تحديد المحافظات",
+                    description: "اختر محافظة واحدة أو أكثر.",
+                    options: [@Html.Raw(string.Join(",", governorates.Select(g => JsonSerializer.Serialize(new { value = g, label = g }))))],
+                    stateKey: "governorates"
+                },
+                audiences: {
+                    title: "تحديد الفئات",
+                    description: "يمكنك الجمع بين الأفراد والمستخدمين والإداريين.",
+                    options: [@Html.Raw(string.Join(",", audienceGroups.Select(g => JsonSerializer.Serialize(new { value = (string)g.Value, label = (string)g.Label }))))],
+                    stateKey: "audiences"
+                },
+                roles: {
+                    title: "تحديد الأدوار",
+                    description: "اختر الدور أو مجموعة الأدوار المناسبة.",
+                    options: [@Html.Raw(string.Join(",", roles.Select(r => JsonSerializer.Serialize(new { value = (string)r.Value, label = (string)r.Label }))))],
+                    stateKey: "roles"
+                }
+            };
+
+            const roleLabelMap = {
+                "SuperAdmin": "سوبر أدمن",
+                "Admin": "أدمن",
+                "DistrictAdmin": "أدمن محافظة",
+                "Manager": "مسؤول",
+                "AssistantManager": "معاون مسؤول",
+                "NewsEditor": "محرر أخبار",
+                "MapViewer": "مشاهد خريطة",
+                "فرد": "فرد",
+                "User": "مستخدم",
+                "members": "الأفراد",
+                "users": "المستخدمون",
+                "admins": "المسؤولون والإداريون"
+            };
+
+            let currentModalKey = null;
+
+            function normalize(value) {
+                return (value || "").toString().trim().toLowerCase();
+            }
+
+            function getArabicRoleLabel(user) {
+                const userRoles = user.roles || user.Roles || [];
+                const priorityRoles = ["SuperAdmin", "Admin", "DistrictAdmin", "Manager", "AssistantManager", "NewsEditor", "MapViewer", "فرد", "User"];
+
+                for (const role of priorityRoles) {
+                    if (userRoles.includes(role)) {
+                        return roleLabelMap[role] || role;
+                    }
+                }
+
+                const accountType = user.accountType || user.AccountType || "";
+                return roleLabelMap[accountType] || accountType || "بدون دور";
+            }
+
+            function setHiddenValues() {
+                governorateHidden.value = Array.from(selectedState.governorates).join(",");
+                audienceHidden.value = Array.from(selectedState.audiences).join(",");
+                rolesHidden.value = Array.from(selectedState.roles).join(",");
+                usersHidden.value = Array.from(selectedState.manualUsers).join(",");
+            }
+
+            function updateCountBadges() {
+                const counts = {
+                    governorates: selectedState.governorates.size,
+                    audiences: selectedState.audiences.size,
+                    roles: selectedState.roles.size,
+                    manualUsers: selectedState.manualUsers.size
                 };
 
-                $.ajax({
-                    url: '/api/notifications/send-test',
-                    method: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify(data),
-                    headers: {
-                        'RequestVerificationToken': getCsrfToken()
-                    },
-                    success: function(response) {
-                        showMessage('success', '✅ ' + response.message);
-                        $('#notificationForm')[0].reset();
-                    },
-                    error: function(xhr) {
-                        var errorMsg = xhr.responseJSON?.message || 'حدث خطأ أثناء الإرسال';
-                        showMessage('danger', '❌ ' + errorMsg);
-                    },
-                    complete: function() {
-                        sendBtn.prop('disabled', false).html(originalText);
+                document.getElementById("governoratesCount").textContent = counts.governorates;
+                document.getElementById("audiencesCount").textContent = counts.audiences;
+                document.getElementById("rolesCount").textContent = counts.roles;
+                document.getElementById("manualUsersCount").textContent = counts.manualUsers;
+                document.getElementById("governoratesCardCount").textContent = counts.governorates;
+                document.getElementById("audiencesCardCount").textContent = counts.audiences;
+                document.getElementById("rolesCardCount").textContent = counts.roles;
+                document.getElementById("manualUsersCardCount").textContent = counts.manualUsers;
+            }
+
+            function openModal(key) {
+                currentModalKey = key;
+
+                if (key === "manualUsers") {
+                    renderManualUsersModal();
+                    return;
+                }
+
+                const config = modalConfigs[key];
+                modalTitle.textContent = config.title;
+                modalDescription.textContent = config.description;
+                modalOptions.innerHTML = config.options.map(option => {
+                    const checked = selectedState[config.stateKey].has(option.value) ? "checked" : "";
+                    return `
+                        <label class="filter-option">
+                            <input type="checkbox" class="modal-option-checkbox" value="${option.value}" ${checked}>
+                            <span>${option.label}</span>
+                        </label>`;
+                }).join("");
+
+                modalBackdrop.classList.add("open");
+            }
+
+            function renderManualUsersModal() {
+                currentModalKey = "manualUsers";
+                modalTitle.textContent = "إضافة أشخاص يدويًا";
+                modalDescription.textContent = "ابحث بالاسم أو الهاتف ثم حدد الشخص الذي تريده.";
+
+                modalOptions.innerHTML = `
+                    <div class="compose-field">
+                        <input type="text" class="form-control mb-2" id="manualModalNameSearch" placeholder="ابحث بالاسم أو البريد">
+                        <input type="text" class="form-control" id="manualModalPhoneSearch" placeholder="ابحث برقم الهاتف">
+                    </div>
+                    <div class="filter-option-list mt-3" id="manualModalResults"></div>`;
+
+                modalBackdrop.classList.add("open");
+
+                const nameInput = document.getElementById("manualModalNameSearch");
+                const phoneInput = document.getElementById("manualModalPhoneSearch");
+                const results = document.getElementById("manualModalResults");
+
+                function renderResults() {
+                    const nameTerm = normalize(nameInput.value);
+                    const phoneTerm = normalize(phoneInput.value);
+
+                    const filtered = users.filter(user => {
+                        const fullName = normalize(user.fullName || user.FullName);
+                        const email = normalize(user.email || user.Email);
+                        const phone = normalize(user.phoneNumber || user.PhoneNumber);
+
+                        return (!nameTerm || fullName.includes(nameTerm) || email.includes(nameTerm))
+                            && (!phoneTerm || phone.includes(phoneTerm));
+                    });
+
+                    if (!filtered.length) {
+                        results.innerHTML = '<div class="text-muted">لا توجد نتائج مطابقة.</div>';
+                        return;
                     }
+
+                    results.innerHTML = filtered.map(user => {
+                        const id = user.id || user.Id;
+                        const fullName = user.fullName || user.FullName || "بدون اسم";
+                        const phone = user.phoneNumber || user.PhoneNumber || "-";
+                        const governorate = user.governorate || user.Governorate || "-";
+                        const checked = selectedState.manualUsers.has(id) ? "checked" : "";
+
+                        return `
+                            <label class="filter-option">
+                                <input type="checkbox" class="manual-user-checkbox" value="${id}" ${checked}>
+                                <div>
+                                    <strong>${fullName}</strong>
+                                    <small>${phone} - ${governorate}</small>
+                                </div>
+                            </label>`;
+                    }).join("");
+
+                    document.querySelectorAll(".manual-user-checkbox").forEach(input => {
+                        input.addEventListener("change", function () {
+                            if (this.checked) {
+                                selectedState.manualUsers.add(this.value);
+                            } else {
+                                selectedState.manualUsers.delete(this.value);
+                            }
+                        });
+                    });
+                }
+
+                nameInput.addEventListener("input", renderResults);
+                phoneInput.addEventListener("input", renderResults);
+                renderResults();
+            }
+
+            function closeModal() {
+                modalBackdrop.classList.remove("open");
+                currentModalKey = null;
+            }
+
+            function applyModalSelection() {
+                if (currentModalKey && currentModalKey !== "manualUsers") {
+                    const config = modalConfigs[currentModalKey];
+                    selectedState[config.stateKey] = new Set(
+                        Array.from(document.querySelectorAll(".modal-option-checkbox:checked")).map(item => item.value)
+                    );
+                }
+
+                setHiddenValues();
+                updateCountBadges();
+                renderSelectedTags();
+                renderMatchedRecipients();
+                closeModal();
+            }
+
+            function resetCurrentModal() {
+                if (!currentModalKey) return;
+
+                if (currentModalKey === "manualUsers") {
+                    selectedState.manualUsers.clear();
+                    renderManualUsersModal();
+                    return;
+                }
+
+                const config = modalConfigs[currentModalKey];
+                selectedState[config.stateKey].clear();
+                openModal(currentModalKey);
+            }
+
+            function getMatchedRecipients() {
+                if (sendToAllInput.checked) {
+                    return users;
+                }
+
+                return users.filter(user => {
+                    const id = user.id || user.Id;
+                    const governorate = user.governorate || user.Governorate || "";
+                    const accountType = user.accountType || user.AccountType || "";
+                    const userRoles = user.roles || user.Roles || [];
+
+                    const byGovernorate = selectedState.governorates.has(governorate);
+                    const byAudience = selectedState.audiences.has(accountType);
+                    const byRole = userRoles.some(role => selectedState.roles.has(role));
+                    const byManual = selectedState.manualUsers.has(id);
+
+                    return byGovernorate || byAudience || byRole || byManual;
+                });
+            }
+
+            function renderSelectedTags() {
+                const tags = [];
+
+                selectedState.governorates.forEach(value => tags.push({ type: "governorates", value, label: `محافظة: ${value}` }));
+                selectedState.audiences.forEach(value => {
+                    const option = modalConfigs.audiences.options.find(item => item.value === value);
+                    tags.push({ type: "audiences", value, label: `فئة: ${option ? option.label : value}` });
+                });
+                selectedState.roles.forEach(value => {
+                    const option = modalConfigs.roles.options.find(item => item.value === value);
+                    tags.push({ type: "roles", value, label: `دور: ${option ? option.label : value}` });
+                });
+                selectedState.manualUsers.forEach(value => {
+                    const user = users.find(item => (item.id || item.Id) === value);
+                    tags.push({ type: "manualUsers", value, label: `شخص: ${user ? (user.fullName || user.FullName || value) : value}` });
+                });
+
+                if (!tags.length) {
+                    selectedTags.innerHTML = '<div class="text-muted">لا توجد فلاتر محددة حاليًا.</div>';
+                    return;
+                }
+
+                selectedTags.innerHTML = tags.map(tag => `
+                    <span class="selected-filter-chip">
+                        ${tag.label}
+                        <button type="button" data-remove-tag="${tag.type}" data-remove-value="${tag.value}">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </span>`).join("");
+
+                document.querySelectorAll("[data-remove-tag]").forEach(button => {
+                    button.addEventListener("click", function () {
+                        const type = this.getAttribute("data-remove-tag");
+                        const value = this.getAttribute("data-remove-value");
+                        selectedState[type].delete(value);
+                        setHiddenValues();
+                        updateCountBadges();
+                        renderSelectedTags();
+                        renderMatchedRecipients();
+                    });
+                });
+            }
+
+            function renderMatchedRecipients() {
+                setHiddenValues();
+                const matchedRecipients = getMatchedRecipients();
+
+                if (sendToAllInput.checked) {
+                    summaryBox.innerHTML = `<strong>سيتم الإرسال إلى جميع المستخدمين</strong><br>عدد المستلمين الحالي ${users.length} مستخدم.`;
+                } else if (!matchedRecipients.length) {
+                    summaryBox.innerHTML = `<strong>لا يوجد مستلمون حتى الآن</strong><br>ابدأ بتحديد المحافظات أو الفئات أو الأدوار أو إضافة أشخاص يدويًا.`;
+                } else {
+                    summaryBox.innerHTML = `<strong>القائمة النهائية جاهزة</strong><br>عدد المستلمين الحالي ${matchedRecipients.length} بعد دمج الفلاتر وإزالة التكرار.`;
+                }
+
+                const nameTerm = normalize(selectedNameSearchInput ? selectedNameSearchInput.value : "");
+                const phoneTerm = normalize(selectedPhoneSearchInput ? selectedPhoneSearchInput.value : "");
+                const governorateTerm = normalize(selectedGovernorateSearchInput ? selectedGovernorateSearchInput.value : "");
+
+                const visibleRecipients = matchedRecipients.filter(user => {
+                    const fullName = normalize(user.fullName || user.FullName);
+                    const email = normalize(user.email || user.Email);
+                    const phone = normalize(user.phoneNumber || user.PhoneNumber);
+                    const governorate = normalize(user.governorate || user.Governorate);
+
+                    return (!nameTerm || fullName.includes(nameTerm) || email.includes(nameTerm))
+                        && (!phoneTerm || phone.includes(phoneTerm))
+                        && (!governorateTerm || governorate.includes(governorateTerm));
+                });
+
+                if (!visibleRecipients.length) {
+                    selectedRecipientsList.innerHTML = '<div class="text-muted p-3">لا توجد أسماء مطابقة داخل القائمة الحالية.</div>';
+                    return;
+                }
+
+                selectedRecipientsList.innerHTML = `
+                    <div class="recipient-table-head">
+                        <div>#</div>
+                        <div>البريد</div>
+                        <div>الاسم</div>
+                        <div>الدور</div>
+                    </div>
+                    ${visibleRecipients.map((user, index) => {
+                        const fullName = user.fullName || user.FullName || "بدون اسم";
+                        const email = user.email || user.Email || "-";
+                        const phone = user.phoneNumber || user.PhoneNumber || "-";
+                        const governorate = user.governorate || user.Governorate || "-";
+                        const roleLabel = getArabicRoleLabel(user);
+
+                        return `
+                            <div class="recipient-table-row">
+                                <div class="recipient-order">${index + 1}</div>
+                                <div class="recipient-main">
+                                    <strong>${email}</strong>
+                                    <small>${phone}</small>
+                                </div>
+                                <div class="recipient-name">
+                                    <strong>${fullName}</strong>
+                                    <small>${governorate}</small>
+                                </div>
+                                <div><span class="recipient-role">${roleLabel}</span></div>
+                            </div>`;
+                    }).join("")}`;
+            }
+
+            function clearAllSelections() {
+                selectedState.governorates.clear();
+                selectedState.audiences.clear();
+                selectedState.roles.clear();
+                selectedState.manualUsers.clear();
+                sendToAllInput.checked = false;
+                setHiddenValues();
+                updateCountBadges();
+                renderSelectedTags();
+                renderMatchedRecipients();
+            }
+
+            document.querySelectorAll("[data-open-modal]").forEach(button => {
+                button.addEventListener("click", function () {
+                    if (sendToAllInput.checked) {
+                        return;
+                    }
+
+                    openModal(this.getAttribute("data-open-modal"));
                 });
             });
 
-            function showMessage(type, text) {
-                var msg = $('#resultMessage');
-                msg.removeClass('alert-success alert-danger')
-                   .addClass('alert-' + type)
-                   .html(text)
-                   .show();
-                setTimeout(() => msg.fadeOut(), 5000);
-            }
-        });
+            modalClose.addEventListener("click", closeModal);
+            modalApply.addEventListener("click", applyModalSelection);
+            modalReset.addEventListener("click", resetCurrentModal);
+            clearAllFiltersBtn.addEventListener("click", clearAllSelections);
 
-        function getCsrfToken() {
-            return document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
-        }
+            modalBackdrop.addEventListener("click", function (event) {
+                if (event.target === modalBackdrop) {
+                    closeModal();
+                }
+            });
+
+            if (sendToAllInput) {
+                sendToAllInput.addEventListener("change", renderMatchedRecipients);
+            }
+
+            [selectedNameSearchInput, selectedPhoneSearchInput, selectedGovernorateSearchInput].forEach(input => {
+                if (input) {
+                    input.addEventListener("input", renderMatchedRecipients);
+                }
+            });
+
+            "@(Model.SelectedGovernoratesCsv ?? string.Empty)".split(",").map(v => v.trim()).filter(Boolean).forEach(v => selectedState.governorates.add(v));
+            "@(Model.SelectedAudienceGroupsCsv ?? string.Empty)".split(",").map(v => v.trim()).filter(Boolean).forEach(v => selectedState.audiences.add(v));
+            "@(Model.SelectedRolesCsv ?? string.Empty)".split(",").map(v => v.trim()).filter(Boolean).forEach(v => selectedState.roles.add(v));
+            "@(Model.SelectedUserIdsCsv ?? string.Empty)".split(",").map(v => v.trim()).filter(Boolean).forEach(v => selectedState.manualUsers.add(v));
+
+            updateCountBadges();
+            renderSelectedTags();
+            renderMatchedRecipients();
+        })();
     </script>
 }

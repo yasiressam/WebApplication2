@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using System.Text;
+using System.Text.RegularExpressions;
 using WebApplication2.Data;
 using WebApplication2.Models;
 
@@ -56,6 +57,17 @@ namespace WebApplication2.Services
             await TrySendOneSignalNotification(notification);
 
             return notification;
+        }
+
+        public async Task<Notification> CreateNotificationFromTemplate(string templateKey, string? targetUserId = null, Dictionary<string, string?>? tokens = null, string? icon = null, string? clickUrl = null)
+        {
+            var settings = await _context.SiteSettings.AsNoTracking().FirstOrDefaultAsync() ?? new SiteSettings();
+            var (title, message) = GetTemplate(settings, templateKey);
+
+            title = ReplaceTokens(title, tokens);
+            message = ReplaceTokens(message, tokens);
+
+            return await CreateNotification(title, message, targetUserId, icon, clickUrl);
         }
 
         private async Task TrySendOneSignalNotification(Notification notification)
@@ -272,6 +284,57 @@ namespace WebApplication2.Services
             }
 
             return dict1;
+        }
+
+        private static (string Title, string Message) GetTemplate(SiteSettings settings, string templateKey)
+        {
+            var defaults = new SiteSettings();
+            return templateKey switch
+            {
+                NotificationTemplateKeys.PromotionApproved => (ValueOrDefault(settings.PromotionApprovedTitle, defaults.PromotionApprovedTitle), ValueOrDefault(settings.PromotionApprovedMessage, defaults.PromotionApprovedMessage)),
+                NotificationTemplateKeys.PromotionRejected => (ValueOrDefault(settings.PromotionRejectedTitle, defaults.PromotionRejectedTitle), ValueOrDefault(settings.PromotionRejectedMessage, defaults.PromotionRejectedMessage)),
+                NotificationTemplateKeys.BasicInfoApproved => (ValueOrDefault(settings.BasicInfoApprovedTitle, defaults.BasicInfoApprovedTitle), ValueOrDefault(settings.BasicInfoApprovedMessage, defaults.BasicInfoApprovedMessage)),
+                NotificationTemplateKeys.BasicInfoRejected => (ValueOrDefault(settings.BasicInfoRejectedTitle, defaults.BasicInfoRejectedTitle), ValueOrDefault(settings.BasicInfoRejectedMessage, defaults.BasicInfoRejectedMessage)),
+                NotificationTemplateKeys.DirectAssignment => (ValueOrDefault(settings.DirectAssignmentTitle, defaults.DirectAssignmentTitle), ValueOrDefault(settings.DirectAssignmentMessage, defaults.DirectAssignmentMessage)),
+                NotificationTemplateKeys.AssignmentForm => (ValueOrDefault(settings.AssignmentFormTitle, defaults.AssignmentFormTitle), ValueOrDefault(settings.AssignmentFormMessage, defaults.AssignmentFormMessage)),
+                NotificationTemplateKeys.AssignmentSubmitted => (ValueOrDefault(settings.AssignmentSubmittedTitle, defaults.AssignmentSubmittedTitle), ValueOrDefault(settings.AssignmentSubmittedMessage, defaults.AssignmentSubmittedMessage)),
+                NotificationTemplateKeys.AssignmentApproved => (ValueOrDefault(settings.AssignmentApprovedTitle, defaults.AssignmentApprovedTitle), ValueOrDefault(settings.AssignmentApprovedMessage, defaults.AssignmentApprovedMessage)),
+                NotificationTemplateKeys.AssignmentRejected => (ValueOrDefault(settings.AssignmentRejectedTitle, defaults.AssignmentRejectedTitle), ValueOrDefault(settings.AssignmentRejectedMessage, defaults.AssignmentRejectedMessage)),
+                NotificationTemplateKeys.AssignmentRemoved => (ValueOrDefault(settings.AssignmentRemovedTitle, defaults.AssignmentRemovedTitle), ValueOrDefault(settings.AssignmentRemovedMessage, defaults.AssignmentRemovedMessage)),
+                NotificationTemplateKeys.SuperAdminAssigned => (ValueOrDefault(settings.SuperAdminAssignedTitle, defaults.SuperAdminAssignedTitle), ValueOrDefault(settings.SuperAdminAssignedMessage, defaults.SuperAdminAssignedMessage)),
+                NotificationTemplateKeys.AdminAssigned => (ValueOrDefault(settings.AdminAssignedTitle, defaults.AdminAssignedTitle), ValueOrDefault(settings.AdminAssignedMessage, defaults.AdminAssignedMessage)),
+                NotificationTemplateKeys.NewsEditorAssigned => (ValueOrDefault(settings.NewsEditorAssignedTitle, defaults.NewsEditorAssignedTitle), ValueOrDefault(settings.NewsEditorAssignedMessage, defaults.NewsEditorAssignedMessage)),
+                NotificationTemplateKeys.MapViewerAssigned => (ValueOrDefault(settings.MapViewerAssignedTitle, defaults.MapViewerAssignedTitle), ValueOrDefault(settings.MapViewerAssignedMessage, defaults.MapViewerAssignedMessage)),
+                NotificationTemplateKeys.MemberAssigned => (ValueOrDefault(settings.MemberAssignedTitle, defaults.MemberAssignedTitle), ValueOrDefault(settings.MemberAssignedMessage, defaults.MemberAssignedMessage)),
+                NotificationTemplateKeys.ProfileUpdated => (ValueOrDefault(settings.ProfileUpdatedTitle, defaults.ProfileUpdatedTitle), ValueOrDefault(settings.ProfileUpdatedMessage, defaults.ProfileUpdatedMessage)),
+                _ => ("إشعار جديد", "لديك إشعار جديد")
+            };
+        }
+
+        private static string ValueOrDefault(string? value, string defaultValue)
+        {
+            return string.IsNullOrWhiteSpace(value) ? defaultValue : value;
+        }
+
+        private static string ReplaceTokens(string? template, Dictionary<string, string?>? tokens)
+        {
+            if (string.IsNullOrWhiteSpace(template))
+                return string.Empty;
+
+            var result = template;
+            if (tokens != null)
+            {
+                foreach (var token in tokens)
+                {
+                    result = result.Replace("{" + token.Key + "}", token.Value ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+                }
+            }
+
+            result = Regex.Replace(result, @"\{[a-zA-Z0-9_]+\}", string.Empty);
+            result = Regex.Replace(result, @"[ \t]{2,}", " ");
+            result = Regex.Replace(result, @"(\r?\n){3,}", Environment.NewLine + Environment.NewLine);
+
+            return result.Trim();
         }
     }
 }

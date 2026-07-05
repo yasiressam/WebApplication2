@@ -369,6 +369,135 @@ namespace WebApplication2.Controllers
             return result;
         }
 
+        private IQueryable<Identify> BuildManagerScopedIdentifyQuery(
+            IQueryable<Identify> source,
+            IReadOnlyCollection<ManagementAssignment> assignments,
+            bool allowGovernorateOnlyWhenNoAffiliation = false)
+        {
+            if (assignments == null || assignments.Count == 0)
+            {
+                return source.Where(i => false);
+            }
+
+            var scopedQuery = source.Where(i => false);
+
+            foreach (var assignment in assignments)
+            {
+                var assignmentQuery = ApplyAssignmentLocationScope(source, assignment);
+
+                if (allowGovernorateOnlyWhenNoAffiliation)
+                {
+                    scopedQuery = scopedQuery.Union(
+                        assignmentQuery.Where(i => !_context.AffiliationInfos.Any(a => a.UserId == i.UserId)));
+                }
+
+                scopedQuery = scopedQuery.Union(ApplyAssignmentAffiliationScope(assignmentQuery, assignment));
+            }
+
+            return scopedQuery;
+        }
+
+        private IQueryable<Identify> ApplyAssignmentLocationScope(IQueryable<Identify> query, ManagementAssignment assignment)
+        {
+            if (IsCentralAssignment(assignment))
+            {
+                return query;
+            }
+
+            var managedGovernorate = assignment.Governorate?.Trim() ?? string.Empty;
+            var baghdadScope = NormalizeBaghdadScope(assignment.BaghdadScope);
+
+            query = query.Where(i =>
+                (
+                    !string.IsNullOrEmpty(i.WorkLocation != null ? i.WorkLocation.Governorate : null)
+                        ? i.WorkLocation!.Governorate!
+                        : (i.WorkGovernorate ?? string.Empty)
+                ) == managedGovernorate ||
+                (
+                    managedGovernorate == "بغداد مركزي" &&
+                    (
+                        (
+                            !string.IsNullOrEmpty(i.WorkLocation != null ? i.WorkLocation.Governorate : null)
+                                ? i.WorkLocation!.Governorate!
+                                : (i.WorkGovernorate ?? string.Empty)
+                        ) == "بغداد" ||
+                        (
+                            !string.IsNullOrEmpty(i.WorkLocation != null ? i.WorkLocation.Governorate : null)
+                                ? i.WorkLocation!.Governorate!
+                                : (i.WorkGovernorate ?? string.Empty)
+                        ).StartsWith("بغداد -")
+                    )
+                ));
+
+            if (assignment.Governorate == "بغداد" && baghdadScope != "مركزي")
+            {
+                query = query.Where(i =>
+                    (
+                        !string.IsNullOrEmpty(i.WorkLocation != null ? i.WorkLocation.Governorate : null)
+                            ? i.WorkLocation!.Governorate!
+                            : (i.WorkGovernorate ?? string.Empty)
+                    ) == "بغداد" &&
+                    (
+                        !string.IsNullOrEmpty(i.WorkLocation != null ? i.WorkLocation.Governorate : null) &&
+                        i.WorkLocation!.Governorate == "بغداد"
+                            ? (i.WorkLocation.District ?? string.Empty)
+                            : (
+                                i.WorkGovernorate == "بغداد"
+                                    ? (i.WorkDistrict ?? string.Empty)
+                                    : string.Empty
+                              )
+                    ) == baghdadScope);
+            }
+
+            return query;
+        }
+
+        private IQueryable<Identify> ApplyAssignmentAffiliationScope(IQueryable<Identify> query, ManagementAssignment assignment)
+        {
+            if (!assignment.AffiliationEntityId.HasValue)
+            {
+                return query.Where(i => false);
+            }
+
+            var entityId = assignment.AffiliationEntityId.Value;
+            var divisionId = assignment.DivisionId;
+            var sectionId = assignment.SectionId;
+            var groupId = assignment.GroupId;
+
+            return assignment.ManagementLevel switch
+            {
+                "Entity" => query.Where(i => _context.AffiliationInfos.Any(a =>
+                    a.UserId == i.UserId &&
+                    a.AffiliationEntityId == entityId)),
+
+                "Division" => !divisionId.HasValue
+                    ? query.Where(i => false)
+                    : query.Where(i => _context.AffiliationInfos.Any(a =>
+                        a.UserId == i.UserId &&
+                        a.AffiliationEntityId == entityId &&
+                        a.DivisionId == divisionId.Value)),
+
+                "Section" => !divisionId.HasValue || !sectionId.HasValue
+                    ? query.Where(i => false)
+                    : query.Where(i => _context.AffiliationInfos.Any(a =>
+                        a.UserId == i.UserId &&
+                        a.AffiliationEntityId == entityId &&
+                        a.DivisionId == divisionId.Value &&
+                        a.SectionId == sectionId.Value)),
+
+                "Group" => !divisionId.HasValue || !sectionId.HasValue || !groupId.HasValue
+                    ? query.Where(i => false)
+                    : query.Where(i => _context.AffiliationInfos.Any(a =>
+                        a.UserId == i.UserId &&
+                        a.AffiliationEntityId == entityId &&
+                        a.DivisionId == divisionId.Value &&
+                        a.SectionId == sectionId.Value &&
+                        a.GroupId == groupId.Value)),
+
+                _ => query.Where(i => false)
+            };
+        }
+
         private async Task<List<Identify>> GetScopedManagerIdentifiesAsync()
         {
             var assignments = await GetCurrentManagerAssignmentsAsync();
@@ -985,8 +1114,6 @@ namespace WebApplication2.Controllers
         [Authorize(Roles = clsRoles.Manager)]
         public async Task<IActionResult> PendingBasicInfo(int page = 1)
         {
-            return RedirectToAction(nameof(PromotionRequests));
-
             try
             {
                 const int pageSize = 10;
@@ -997,26 +1124,27 @@ namespace WebApplication2.Controllers
                     return View("~/Views/Admin/PendingBasicInfo.cshtml", new List<PromotionRequestViewModel>());
                 }
 
-                var allIdentifies = await _context.Identifies
+                var scopedRequestsQuery = BuildManagerScopedIdentifyQuery(
+                    _context.Identifies
+                    .AsNoTracking()
                     .Where(i =>
                         i.IsBasicInfoApproved == false &&
                         string.IsNullOrEmpty(i.BasicInfoRejectionReason) &&
                         !string.IsNullOrEmpty(i.FullName) &&
                         !string.IsNullOrEmpty(i.IdentityCardN) &&
-                        i.IdentityCardN.Length >= 12)
-                    .OrderByDescending(i => i.CreatedAt)
-                    .ToListAsync();
+                        i.IdentityCardN.Length >= 12),
+                    assignments,
+                    allowGovernorateOnlyWhenNoAffiliation: true);
 
-                var pendingRequests = await FilterUsersByManagerScopeAsync(allIdentifies, allowGovernorateOnlyWhenNoAffiliation: true);
-
-                var totalRequests = pendingRequests.Count;
+                var totalRequests = await scopedRequestsQuery.CountAsync();
                 var totalPages = Math.Max(1, (int)Math.Ceiling(totalRequests / (double)pageSize));
                 page = Math.Max(1, Math.Min(page, totalPages));
 
-                var pagedRequests = pendingRequests
+                var pagedRequests = await scopedRequestsQuery
+                    .OrderByDescending(i => i.CreatedAt)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
-                    .ToList();
+                    .ToListAsync();
 
                 var viewModel = new List<PromotionRequestViewModel>();
                 foreach (var request in pagedRequests)
@@ -1078,22 +1206,23 @@ namespace WebApplication2.Controllers
                     return RedirectToAction(nameof(Users));
                 }
 
-                var allIdentifies = await _context.Identifies
+                var scopedRequestsQuery = BuildManagerScopedIdentifyQuery(
+                    _context.Identifies
+                    .AsNoTracking()
                     .Where(i =>
                         i.RequestedPromotion == true &&
                         i.IsPromoted == false &&
-                        string.IsNullOrEmpty(i.RejectionReason))
-                    .OrderByDescending(i => i.RequestedPromotionDate)
-                    .ToListAsync();
+                        string.IsNullOrEmpty(i.RejectionReason)),
+                    assignments);
 
-                var promotionRequests = await FilterUsersByManagerScopeAsync(allIdentifies);
-                var totalRequests = promotionRequests.Count;
+                var totalRequests = await scopedRequestsQuery.CountAsync();
                 var totalPages = Math.Max(1, (int)Math.Ceiling(totalRequests / (double)pageSize));
                 page = Math.Max(1, Math.Min(page, totalPages));
-                var pagedRequests = promotionRequests
+                var pagedRequests = await scopedRequestsQuery
+                    .OrderByDescending(i => i.RequestedPromotionDate)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
-                    .ToList();
+                    .ToListAsync();
 
                 var viewModel = new List<PromotionRequestViewModel>();
                 foreach (var request in pagedRequests)
@@ -1514,12 +1643,11 @@ namespace WebApplication2.Controllers
                 _context.Identifies.Update(identify);
                 await _context.SaveChangesAsync();
 
-                await _notificationService.CreateNotification(
-                    "âœ… ØªÙ…Øª Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø¹Ù„Ù‰ Ø¨ÙŠØ§Ù†Ø§ØªÙƒ Ø§Ù„Ø£Ø³Ø§Ø³ÙŠØ©",
-                    "ÙŠÙ…ÙƒÙ†Ùƒ Ø§Ù„Ø¢Ù† Ø¥ÙƒÙ…Ø§Ù„ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¥Ø¶Ø§ÙÙŠØ©",
+                await _notificationService.CreateNotificationFromTemplate(
+                    NotificationTemplateKeys.BasicInfoApproved,
                     identify.UserId,
-                    "bi-check-circle",
-                    "/Register/AdditionalInfo");
+                    icon: "bi-check-circle",
+                    clickUrl: "/Register/AdditionalInfo");
 
                 return Json(new { success = true, message = "âœ… ØªÙ…Øª Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø¹Ù„Ù‰ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø£Ø³Ø§Ø³ÙŠØ©" });
             }
@@ -1555,10 +1683,10 @@ namespace WebApplication2.Controllers
                 _context.Identifies.Update(identify);
                 await _context.SaveChangesAsync();
 
-                await _notificationService.CreateNotification(
-                    "âŒ Ù„Ù… ÙŠØªÙ… Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø¹Ù„Ù‰ Ø¨ÙŠØ§Ù†Ø§ØªÙƒ Ø§Ù„Ø£Ø³Ø§Ø³ÙŠØ©",
-                    $"Ø³Ø¨Ø¨ Ø§Ù„Ø±ÙØ¶: {reason}",
+                await _notificationService.CreateNotificationFromTemplate(
+                    NotificationTemplateKeys.BasicInfoRejected,
                     identify.UserId,
+                    new Dictionary<string, string?> { ["reason"] = reason },
                     "bi-x-circle-fill",
                     "/Register/BasicInfo");
 
@@ -1604,12 +1732,11 @@ namespace WebApplication2.Controllers
                         await _userManager.AddToRoleAsync(user, clsRoles.Member);
                 }
 
-                await _notificationService.CreateNotification(
-                    "ðŸŽ‰ ØªÙ‡Ø§Ù†ÙŠÙ†Ø§! ØªÙ…Øª Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø¹Ù„Ù‰ Ø·Ù„Ø¨ Ø§Ù„ØªØ±Ù‚ÙŠØ©",
-                    "ØªÙ…Øª ØªØ±Ù‚ÙŠØ© Ø­Ø³Ø§Ø¨Ùƒ Ø¥Ù„Ù‰ 'ÙØ±Ø¯' Ø¨Ù†Ø¬Ø§Ø­.",
+                await _notificationService.CreateNotificationFromTemplate(
+                    NotificationTemplateKeys.PromotionApproved,
                     identify.UserId,
-                    "bi-star-fill",
-                    "/Register/ProfileDetails");
+                    icon: "bi-star-fill",
+                    clickUrl: "/Register/ProfileDetails");
 
                 return Json(new { success = true, message = "âœ… ØªÙ…Øª Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø¹Ù„Ù‰ Ø§Ù„ØªØ±Ù‚ÙŠØ© Ø¨Ù†Ø¬Ø§Ø­" });
             }
@@ -1645,10 +1772,10 @@ namespace WebApplication2.Controllers
                 _context.Identifies.Update(identify);
                 await _context.SaveChangesAsync();
 
-                await _notificationService.CreateNotification(
-                    "âŒ Ø¹Ø°Ø±Ø§Ù‹ØŒ Ù„Ù… ÙŠØªÙ… Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø¹Ù„Ù‰ Ø·Ù„Ø¨Ùƒ",
-                    $"Ø³Ø¨Ø¨ Ø§Ù„Ø±ÙØ¶: {reason}",
+                await _notificationService.CreateNotificationFromTemplate(
+                    NotificationTemplateKeys.PromotionRejected,
                     identify.UserId,
+                    new Dictionary<string, string?> { ["reason"] = reason },
                     "bi-x-circle-fill",
                     "/Register/ProfileDetails");
 

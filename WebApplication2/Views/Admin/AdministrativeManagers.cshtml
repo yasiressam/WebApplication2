@@ -3,6 +3,15 @@
 @{
     Layout = "_Layout";
     ViewData["Title"] = "المسؤولين والمعاونين";
+
+    var totalUsers = ViewBag.TotalUsers is int totalUsersValue ? totalUsersValue : Model.Count();
+    var filteredUsers = ViewBag.FilteredUsers is int filteredUsersValue ? filteredUsersValue : totalUsers;
+    var currentPage = ViewBag.CurrentPage is int currentPageValue ? currentPageValue : 1;
+    var pageSize = ViewBag.PageSize is int pageSizeValue ? pageSizeValue : 10;
+    var totalPages = ViewBag.TotalPages is int totalPagesValue ? totalPagesValue : 1;
+    var currentSearch = ViewBag.Search as string ?? "";
+    var rangeStart = filteredUsers > 0 ? ((currentPage - 1) * pageSize) + 1 : 0;
+    var rangeEnd = Math.Min(currentPage * pageSize, filteredUsers);
     var totalManagers = Model.Count(u => string.Equals(u.AssignmentRole, "Manager", StringComparison.OrdinalIgnoreCase));
     var totalAssistants = Model.Count(u => string.Equals(u.AssignmentRole, "Assistant", StringComparison.OrdinalIgnoreCase));
 }
@@ -84,18 +93,58 @@
         background: #fef3c7;
         color: #92400e;
     }
+
+    .table-filters {
+        padding: 14px 18px;
+        border-bottom: 1px solid #e5e7eb;
+        background: #fafafa;
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .filter-actions .btn {
+        height: 38px;
+        font-size: 0.85rem;
+        padding: 0.375rem 0.85rem;
+        white-space: nowrap;
+    }
+
+    .table-footer {
+        padding: 14px 18px;
+        border-top: 1px solid #e5e7eb;
+        background: #fafafa;
+    }
 </style>
 
 <div class="admin-table-page mt-3" dir="rtl">
     <div class="admin-table-header">
         <h3><i class="bi bi-person-badge me-2"></i> المسؤولين والمعاونين</h3>
         <div class="summary-pills">
-            <span class="summary-pill">الإجمالي: @Model.Count()</span>
+            <span class="summary-pill">الإجمالي: @totalUsers</span>
+            <span class="summary-pill">بعد التصفية: @filteredUsers</span>
             <span class="summary-pill">المسؤولين: @totalManagers</span>
             <span class="summary-pill">المعاونين: @totalAssistants</span>
             <span class="summary-pill">المحافظة: @ViewBag.ManagedGovernorate</span>
         </div>
     </div>
+
+    <form method="get" asp-action="AdministrativeManagers" class="table-filters">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-10">
+                <label class="form-label fw-bold">البحث بالاسم أو البريد أو الهاتف</label>
+                <input type="text" class="form-control" name="search" value="@currentSearch" placeholder="اكتب الاسم أو البريد أو الهاتف...">
+            </div>
+            <div class="col-md-2">
+                <div class="filter-actions">
+                    <button type="submit" class="btn btn-primary flex-fill">بحث</button>
+                    <a asp-action="AdministrativeManagers" class="btn btn-outline-secondary flex-fill">مسح</a>
+                </div>
+            </div>
+        </div>
+    </form>
 
     <div class="table-responsive">
         <table class="table table-hover align-middle">
@@ -114,44 +163,45 @@
                 </tr>
             </thead>
             <tbody>
-                @{
-                    var index = 1;
-                }
-                @foreach (var user in Model)
+                @if (Model.Any())
                 {
-                    var isAssistant = string.Equals(user.AssignmentRole, "Assistant", StringComparison.OrdinalIgnoreCase);
-                    <tr>
-                        <td>@index</td>
-                        <td>@user.FullName</td>
-                        <td>@user.Email</td>
-                        <td>@user.PhoneNumber</td>
-                        <td>
-                            <span class="role-badge @(isAssistant ? "role-assistant" : "role-manager")">
-                                @(isAssistant ? "معاون" : "مسؤول")
-                            </span>
-                        </td>
-                        <td>@user.ManagementLevelArabic</td>
-                        <td>@user.ManagedEntityName</td>
-                        <td>@user.WorkGovernorate</td>
-                        <td>
-                            @if (user.IsActive)
-                            {
-                                <span class="badge bg-success">مفعل</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-danger">معطل</span>
-                            }
-                        </td>
-                        <td>
-                            <a class="btn btn-sm btn-outline-primary" asp-controller="Admin" asp-action="Details" asp-route-id="@user.UserId">
-                                عرض
-                            </a>
-                        </td>
-                    </tr>
-                    index++;
+                    var index = rangeStart;
+                    foreach (var user in Model)
+                    {
+                        var isAssistant = string.Equals(user.AssignmentRole, "Assistant", StringComparison.OrdinalIgnoreCase);
+                        <tr>
+                            <td>@index</td>
+                            <td>@user.FullName</td>
+                            <td>@user.Email</td>
+                            <td>@user.PhoneNumber</td>
+                            <td>
+                                <span class="role-badge @(isAssistant ? "role-assistant" : "role-manager")">
+                                    @(isAssistant ? "معاون" : "مسؤول")
+                                </span>
+                            </td>
+                            <td>@user.ManagementLevelArabic</td>
+                            <td>@user.ManagedEntityName</td>
+                            <td>@user.WorkGovernorate</td>
+                            <td>
+                                @if (user.IsActive)
+                                {
+                                    <span class="badge bg-success">مفعل</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">معطل</span>
+                                }
+                            </td>
+                            <td>
+                                <a class="btn btn-sm btn-outline-primary" asp-controller="Admin" asp-action="Details" asp-route-id="@user.UserId">
+                                    عرض
+                                </a>
+                            </td>
+                        </tr>
+                        index++;
+                    }
                 }
-                @if (!Model.Any())
+                else
                 {
                     <tr>
                         <td colspan="10" class="text-center text-muted py-4">لا توجد بيانات للعرض</td>
@@ -159,5 +209,35 @@
                 }
             </tbody>
         </table>
+    </div>
+
+    <div class="table-footer">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="text-muted small">
+                عرض @rangeStart - @rangeEnd من أصل @filteredUsers
+            </div>
+
+            @if (totalPages > 1)
+            {
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                            <a class="page-link" asp-action="AdministrativeManagers" asp-route-page="@(currentPage - 1)" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch">السابق</a>
+                        </li>
+
+                        @for (var p = 1; p <= totalPages; p++)
+                        {
+                            <li class="page-item @(p == currentPage ? "active" : "")">
+                                <a class="page-link" asp-action="AdministrativeManagers" asp-route-page="@p" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch">@p</a>
+                            </li>
+                        }
+
+                        <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                            <a class="page-link" asp-action="AdministrativeManagers" asp-route-page="@(currentPage + 1)" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch">التالي</a>
+                        </li>
+                    </ul>
+                </nav>
+            }
+        </div>
     </div>
 </div>

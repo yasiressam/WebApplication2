@@ -3,8 +3,22 @@
 @{
     Layout = "_Layout";
     ViewData["Title"] = "المسؤولين والمعاونين";
-    var totalManagers = Model.Count(u => string.Equals(u.AssignmentRole, "Manager", StringComparison.OrdinalIgnoreCase));
-    var totalAssistants = Model.Count(u => string.Equals(u.AssignmentRole, "Assistant", StringComparison.OrdinalIgnoreCase));
+
+    var totalUsers = ViewBag.TotalUsers is int totalUsersValue ? totalUsersValue : Model.Count();
+    var filteredUsers = ViewBag.FilteredUsers is int filteredUsersValue ? filteredUsersValue : totalUsers;
+    var currentPage = ViewBag.CurrentPage is int currentPageValue ? currentPageValue : 1;
+    var pageSize = ViewBag.PageSize is int pageSizeValue ? pageSizeValue : 10;
+    var totalPages = ViewBag.TotalPages is int totalPagesValue ? totalPagesValue : 1;
+    var currentSearch = ViewBag.Search as string ?? "";
+    var currentWorkGovernorateFilter = ViewBag.WorkGovernorateFilter as string ?? "";
+    var totalManagers = ViewBag.AdministrativeManagers is int totalManagersValue
+        ? totalManagersValue
+        : Model.Count(u => string.Equals(u.AssignmentRole, "Manager", StringComparison.OrdinalIgnoreCase));
+    var totalAssistants = ViewBag.AdministrativeAssistants is int totalAssistantsValue
+        ? totalAssistantsValue
+        : Model.Count(u => string.Equals(u.AssignmentRole, "Assistant", StringComparison.OrdinalIgnoreCase));
+    var rangeStart = filteredUsers > 0 ? ((currentPage - 1) * pageSize) + 1 : 0;
+    var rangeEnd = Math.Min(currentPage * pageSize, filteredUsers);
 }
 
 <style>
@@ -90,39 +104,61 @@
         border-bottom: 1px solid #e5e7eb;
         background: #fafafa;
     }
+
+    .filter-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .filter-actions .btn {
+        height: 38px;
+        font-size: 0.85rem;
+        padding: 0.375rem 0.85rem;
+        white-space: nowrap;
+    }
+
+    .table-footer {
+        padding: 14px 18px;
+        border-top: 1px solid #e5e7eb;
+        background: #fafafa;
+    }
 </style>
 
 <div class="admin-table-page mt-3" dir="rtl">
     <div class="admin-table-header">
         <h3><i class="bi bi-person-badge me-2"></i> المسؤولين والمعاونين</h3>
         <div class="summary-pills">
-            <span class="summary-pill">الإجمالي: @Model.Count()</span>
+            <span class="summary-pill">الإجمالي: @totalUsers</span>
+            <span class="summary-pill">بعد التصفية: @filteredUsers</span>
             <span class="summary-pill">المسؤولين: @totalManagers</span>
             <span class="summary-pill">المعاونين: @totalAssistants</span>
         </div>
     </div>
 
-    <div class="table-filters">
+    <form method="get" asp-action="AdministrativeManagers" class="table-filters">
         <div class="row g-2 align-items-end">
             <div class="col-md-6">
                 <label class="form-label fw-bold">البحث بالاسم أو البريد</label>
-                <input type="text" class="form-control" id="managerSearchInput" placeholder="اكتب الاسم أو البريد...">
+                <input type="text" class="form-control" name="search" value="@currentSearch" placeholder="اكتب الاسم أو البريد...">
             </div>
             <div class="col-md-4">
                 <label class="form-label fw-bold">المحافظة</label>
-                <select class="form-select" id="governorateFilter">
+                <select class="form-select" name="workGovernorate">
                     <option value="">كل المحافظات</option>
                     @foreach (var governorate in Model.Select(u => u.WorkGovernorate).Where(g => !string.IsNullOrWhiteSpace(g)).Distinct().OrderBy(g => g))
                     {
-                        <option value="@governorate">@governorate</option>
+                        <option value="@governorate" selected="@(currentWorkGovernorateFilter == governorate ? "selected" : null)">@governorate</option>
                     }
                 </select>
             </div>
             <div class="col-md-2">
-                <button type="button" class="btn btn-outline-secondary w-100" id="clearManagerFilters">مسح</button>
+                <div class="filter-actions">
+                    <button type="submit" class="btn btn-primary flex-fill">بحث</button>
+                    <a asp-action="AdministrativeManagers" class="btn btn-outline-secondary flex-fill">مسح</a>
+                </div>
             </div>
         </div>
-    </div>
+    </form>
 
     <div class="table-responsive">
         <table class="table table-hover align-middle">
@@ -141,98 +177,81 @@
                 </tr>
             </thead>
             <tbody>
-                @{
-                    var index = 1;
-                }
-                @foreach (var user in Model)
+                @if (Model.Any())
                 {
-                    var isAssistant = string.Equals(user.AssignmentRole, "Assistant", StringComparison.OrdinalIgnoreCase);
-                    <tr class="manager-row"
-                        data-name="@user.FullName.ToLower()"
-                        data-email="@user.Email.ToLower()"
-                        data-governorate="@user.WorkGovernorate">
-                        <td>@index</td>
-                        <td>@user.FullName</td>
-                        <td>@user.Email</td>
-                        <td>@(string.IsNullOrWhiteSpace(user.Roles) ? "---" : user.Roles)</td>
-                        <td>
-                            <span class="role-badge @(isAssistant ? "role-assistant" : "role-manager")">
-                                @(isAssistant ? "معاون" : "مسؤول")
-                            </span>
-                        </td>
-                        <td>@user.ManagementLevelArabic</td>
-                        <td>@user.ManagedEntityName</td>
-                        <td>@user.WorkGovernorate</td>
-                        <td>
-                            @if (user.IsActive)
-                            {
-                                <span class="badge bg-success">مفعل</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-danger">معطل</span>
-                            }
-                        </td>
-                        <td>
-                            <a class="btn btn-sm btn-outline-primary" asp-controller="SuperAdmin" asp-action="UserDetails" asp-route-id="@user.Id">
-                                عرض
-                            </a>
-                        </td>
-                    </tr>
-                    index++;
+                    var index = rangeStart;
+                    foreach (var user in Model)
+                    {
+                        var isAssistant = string.Equals(user.AssignmentRole, "Assistant", StringComparison.OrdinalIgnoreCase);
+                        <tr>
+                            <td>@index</td>
+                            <td>@user.FullName</td>
+                            <td>@user.Email</td>
+                            <td>@(string.IsNullOrWhiteSpace(user.Roles) ? "---" : user.Roles)</td>
+                            <td>
+                                <span class="role-badge @(isAssistant ? "role-assistant" : "role-manager")">
+                                    @(isAssistant ? "معاون" : "مسؤول")
+                                </span>
+                            </td>
+                            <td>@user.ManagementLevelArabic</td>
+                            <td>@user.ManagedEntityName</td>
+                            <td>@user.WorkGovernorate</td>
+                            <td>
+                                @if (user.IsActive)
+                                {
+                                    <span class="badge bg-success">مفعل</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">معطل</span>
+                                }
+                            </td>
+                            <td>
+                                <a class="btn btn-sm btn-outline-primary" asp-controller="SuperAdmin" asp-action="UserDetails" asp-route-id="@user.Id">
+                                    عرض
+                                </a>
+                            </td>
+                        </tr>
+                        index++;
+                    }
                 }
-                @if (!Model.Any())
+                else
                 {
                     <tr>
                         <td colspan="10" class="text-center text-muted py-4">لا توجد بيانات للعرض</td>
                     </tr>
                 }
-                <tr id="noFilterResultsRow" style="display: none;">
-                    <td colspan="10" class="text-center text-muted py-4">لا توجد نتائج مطابقة للبحث</td>
-                </tr>
             </tbody>
         </table>
     </div>
-</div>
 
-@section Scripts {
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const searchInput = document.getElementById('managerSearchInput');
-            const governorateFilter = document.getElementById('governorateFilter');
-            const clearButton = document.getElementById('clearManagerFilters');
-            const rows = Array.from(document.querySelectorAll('.manager-row'));
-            const emptyRow = document.getElementById('noFilterResultsRow');
+    <div class="table-footer">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="text-muted small">
+                عرض @rangeStart - @rangeEnd من أصل @filteredUsers
+            </div>
 
-            function applyManagerFilters() {
-                const searchText = (searchInput?.value || '').trim().toLowerCase();
-                const governorate = governorateFilter?.value || '';
-                let visibleCount = 0;
+            @if (totalPages > 1)
+            {
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item @(currentPage <= 1 ? "disabled" : "")">
+                            <a class="page-link" asp-action="AdministrativeManagers" asp-route-page="@(currentPage - 1)" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-workGovernorate="@currentWorkGovernorateFilter">السابق</a>
+                        </li>
 
-                rows.forEach(function (row) {
-                    const name = row.dataset.name || '';
-                    const email = row.dataset.email || '';
-                    const rowGovernorate = row.dataset.governorate || '';
-                    const matchesSearch = !searchText || name.includes(searchText) || email.includes(searchText);
-                    const matchesGovernorate = !governorate || rowGovernorate === governorate;
-                    const isVisible = matchesSearch && matchesGovernorate;
+                        @for (var p = 1; p <= totalPages; p++)
+                        {
+                            <li class="page-item @(p == currentPage ? "active" : "")">
+                                <a class="page-link" asp-action="AdministrativeManagers" asp-route-page="@p" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-workGovernorate="@currentWorkGovernorateFilter">@p</a>
+                            </li>
+                        }
 
-                    row.style.display = isVisible ? '' : 'none';
-                    if (isVisible) visibleCount++;
-                });
-
-                if (emptyRow) {
-                    emptyRow.style.display = visibleCount === 0 && rows.length > 0 ? '' : 'none';
-                }
+                        <li class="page-item @(currentPage >= totalPages ? "disabled" : "")">
+                            <a class="page-link" asp-action="AdministrativeManagers" asp-route-page="@(currentPage + 1)" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-workGovernorate="@currentWorkGovernorateFilter">التالي</a>
+                        </li>
+                    </ul>
+                </nav>
             }
-
-            searchInput?.addEventListener('input', applyManagerFilters);
-            governorateFilter?.addEventListener('change', applyManagerFilters);
-            clearButton?.addEventListener('click', function () {
-                if (searchInput) searchInput.value = '';
-                if (governorateFilter) governorateFilter.value = '';
-                applyManagerFilters();
-            });
-        });
-    </script>
-}
+        </div>
+    </div>
+</div>

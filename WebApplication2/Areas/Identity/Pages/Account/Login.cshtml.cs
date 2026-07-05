@@ -16,6 +16,8 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using WebApplication2.Data;
+using WebApplication2.Models.Audit;
+using WebApplication2.Services;
 
 namespace WebApplication2.Areas.Identity.Pages.Account
 {
@@ -25,17 +27,20 @@ namespace WebApplication2.Areas.Identity.Pages.Account
         private readonly UserManager<IdentityUser> _userManager;
         private readonly ApplicationDbContext _context;
         private readonly ILogger<LoginModel> _logger;
+        private readonly IAuditTrailService _auditTrailService;
 
         public LoginModel(
             SignInManager<IdentityUser> signInManager,
             UserManager<IdentityUser> userManager,
             ApplicationDbContext context,
-            ILogger<LoginModel> logger)
+            ILogger<LoginModel> logger,
+            IAuditTrailService auditTrailService)
         {
             _signInManager = signInManager;
             _userManager = userManager;
             _context = context;
             _logger = logger;
+            _auditTrailService = auditTrailService;
         }
 
         /// <summary>
@@ -142,6 +147,7 @@ namespace WebApplication2.Areas.Identity.Pages.Account
 
                 if (user == null)
                 {
+                    await LogLoginAttemptAsync(loginIdentifier, false, "محاولة دخول بحساب غير موجود");
                     ModelState.AddModelError(string.Empty, "بيانات الدخول أو كلمة المرور غير صحيحة.");
                     return Page();
                 }
@@ -152,19 +158,23 @@ namespace WebApplication2.Areas.Identity.Pages.Account
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("User logged in.");
+                    await LogLoginAttemptAsync(user.Email ?? loginIdentifier, true, "تم تسجيل الدخول بنجاح", user);
                     return LocalRedirect(returnUrl);
                 }
                 if (result.RequiresTwoFactor)
                 {
+                    await LogLoginAttemptAsync(user.Email ?? loginIdentifier, true, "تمت إحالة المستخدم إلى التحقق الثنائي", user);
                     return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
                 }
                 if (result.IsLockedOut)
                 {
                     _logger.LogWarning("User account locked out.");
+                    await LogLoginAttemptAsync(user.Email ?? loginIdentifier, false, "الحساب مقفل مؤقتاً", user);
                     return RedirectToPage("./Lockout");
                 }
                 else
                 {
+                    await LogLoginAttemptAsync(user.Email ?? loginIdentifier, false, "فشل تسجيل الدخول بسبب كلمة مرور غير صحيحة", user);
                     ModelState.AddModelError(string.Empty, "بيانات الدخول أو كلمة المرور غير صحيحة.");
                     return Page();
                 }
@@ -172,6 +182,24 @@ namespace WebApplication2.Areas.Identity.Pages.Account
 
             // If we got this far, something failed, redisplay form
             return Page();
+        }
+
+        private async Task LogLoginAttemptAsync(string identifier, bool success, string message, IdentityUser? user = null)
+        {
+            await _auditTrailService.LogLoginAsync(new AuditLogEntry
+            {
+                TimestampUtc = DateTime.UtcNow,
+                Severity = success ? "Information" : "Warning",
+                EventType = success ? "LoginSuccess" : "LoginFailed",
+                Message = message,
+                UserId = user?.Id,
+                UserEmail = user?.Email ?? identifier,
+                UserName = user?.UserName,
+                IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                Path = HttpContext.Request.Path,
+                HttpMethod = HttpContext.Request.Method,
+                Details = $"RememberMe={Input.RememberMe}"
+            });
         }
 
         private static string NormalizeIraqPhoneNumber(string phoneNumber)

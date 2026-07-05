@@ -104,10 +104,6 @@
         background: #fbfcfe;
     }
 
-    .option-group:first-child {
-        margin-top: 0;
-    }
-
     .option-group-header {
         background: #fff;
         border: 1px solid #edf0f4;
@@ -241,6 +237,15 @@
                     <span class="badge bg-light text-success ms-1" id="exportCount">0</span>
                 </button>
             </form>
+            <form asp-action="PrepareSendNotificationFromReports" method="post" id="reportsNotificationForm" class="m-0">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="selectedFilters" id="selectedFiltersForNotificationInput" />
+                <button type="submit" class="btn btn-primary export-button" id="notifyReportsBtn" disabled>
+                    <i class="bi bi-bell"></i>
+                    إشعار المحددين
+                    <span class="badge bg-light text-primary ms-1" id="notifyCount">0</span>
+                </button>
+            </form>
         </div>
     </div>
 
@@ -284,7 +289,10 @@
             const optionsModal = modalElement ? new bootstrap.Modal(modalElement) : null;
             const exportButton = document.getElementById('exportReportsBtn');
             const exportCount = document.getElementById('exportCount');
+            const notifyButton = document.getElementById('notifyReportsBtn');
+            const notifyCount = document.getElementById('notifyCount');
             const selectedInput = document.getElementById('selectedFiltersInput');
+            const notifySelectedInput = document.getElementById('selectedFiltersForNotificationInput');
             const token = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
             const filters = new Map();
             let pendingRequest = null;
@@ -297,16 +305,20 @@
             }
 
             function syncHiddenInput() {
-                selectedInput.value = JSON.stringify(serializeFilters());
+                const payload = JSON.stringify(serializeFilters());
+                selectedInput.value = payload;
+                notifySelectedInput.value = payload;
             }
 
             async function updateExportState() {
                 const payload = serializeFilters();
                 syncHiddenInput();
                 exportButton.disabled = payload.length === 0;
+                notifyButton.disabled = payload.length === 0;
 
                 if (payload.length === 0) {
                     exportCount.textContent = '0';
+                    notifyCount.textContent = '0';
                     return;
                 }
 
@@ -316,6 +328,7 @@
 
                 pendingRequest = new AbortController();
                 exportCount.textContent = '...';
+                notifyCount.textContent = '...';
 
                 try {
                     const response = await fetch('@Url.Action("GetReportsExportCount", "SuperAdmin")', {
@@ -331,11 +344,15 @@
                     const data = await response.json();
                     const count = data && data.success ? data.count : 0;
                     exportCount.textContent = count;
+                    notifyCount.textContent = count;
                     exportButton.disabled = count === 0;
+                    notifyButton.disabled = count === 0;
                 } catch (error) {
                     if (error.name !== 'AbortError') {
                         exportCount.textContent = '0';
+                        notifyCount.textContent = '0';
                         exportButton.disabled = true;
+                        notifyButton.disabled = true;
                     }
                 }
             }
@@ -349,7 +366,7 @@
 
             function renderOptions(key, title, options) {
                 if (!options.length) {
-                    panel.innerHTML = `<div class="text-muted">لا توجد خيارات متوفرة لـ ${title}.</div>`;
+                    panel.innerHTML = `<div class="text-muted">لا توجد خيارات متوفرة لـ ${escapeHtml(title)}.</div>`;
                     return;
                 }
 

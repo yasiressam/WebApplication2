@@ -1,0 +1,142 @@
+@{
+    ViewData["Title"] = "استعادة البيانات";
+    Layout = "_Layout";
+}
+
+<style>
+    .restore-page {
+        max-width: 760px;
+        margin: 40px auto;
+    }
+
+    .restore-card {
+        background: #fff;
+        border-radius: 24px;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+        overflow: hidden;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .restore-card-header {
+        background: linear-gradient(135deg, #7c2d12, #9a3412);
+        color: #fff;
+        padding: 28px;
+    }
+
+    .restore-card-header h2 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 800;
+    }
+
+    .restore-card-body {
+        padding: 28px;
+    }
+
+    .restore-note {
+        background: #fff7ed;
+        border-right: 5px solid #c2410c;
+        border-radius: 16px;
+        padding: 18px 20px;
+        color: #7c2d12;
+        line-height: 1.9;
+        margin-bottom: 20px;
+    }
+
+    .restore-upload {
+        border: 2px dashed rgba(154, 52, 18, 0.25);
+        border-radius: 18px;
+        padding: 22px;
+        background: #fffaf5;
+        margin-bottom: 20px;
+    }
+
+    .restore-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .restore-btn {
+        border: none;
+        border-radius: 14px;
+        padding: 14px 24px;
+        font-size: 1rem;
+        font-weight: 700;
+        color: #fff;
+        background: linear-gradient(135deg, #9a3412, #c2410c);
+        box-shadow: 0 12px 24px rgba(194, 65, 12, 0.22);
+    }
+
+    .restore-btn:hover {
+        color: #fff;
+        background: linear-gradient(135deg, #7c2d12, #9a3412);
+    }
+
+    .restore-secondary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 14px;
+        padding: 14px 24px;
+        font-weight: 700;
+        text-decoration: none;
+        background: #e2e8f0;
+        color: #1e293b;
+    }
+</style>
+
+<div class="restore-page">
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+    }
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+    }
+
+    <div class="restore-card">
+        <div class="restore-card-header">
+            <h2><i class="bi bi-database-fill-gear me-2"></i>استعادة البيانات</h2>
+        </div>
+
+        <div class="restore-card-body">
+            <div class="restore-note">
+                هذه الصفحة مخصصة فقط للسوبر أدمن المصرح له. عند رفع ملف نسخة احتياطية بصيغة <code>.bak</code> سيقوم النظام
+                باستبدال قاعدة البيانات الحالية بمحتوى هذا الملف.
+            </div>
+
+            <div class="alert alert-warning mb-3">
+                الاستعادة عملية حساسة جدًا. استخدم فقط ملف نسخة صحيح يخص نفس النظام، لأن العملية ستستبدل البيانات الحالية بالكامل.
+            </div>
+
+            <div class="alert alert-info">
+                يفضّل أخذ نسخة احتياطية جديدة قبل تنفيذ الاستعادة، والتأكد من عدم وجود مستخدمين يعملون على النظام أثناء التنفيذ.
+            </div>
+
+            <form asp-action="RestoreDatabase" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+
+                <div class="restore-upload">
+                    <label for="backupFile" class="form-label fw-bold mb-2">ملف النسخة الاحتياطية</label>
+                    <input id="backupFile" name="backupFile" type="file" class="form-control" accept=".bak" required />
+                    <small class="text-muted d-block mt-2">ارفع ملفًا واحدًا فقط بصيغة <code>.bak</code>.</small>
+                </div>
+
+                <div class="restore-actions">
+                    <button type="submit" class="restore-btn" onclick="return confirm('سيتم استبدال قاعدة البيانات الحالية بالكامل. هل أنت متأكد من المتابعة؟');">
+                        <i class="bi bi-upload me-2"></i>رفع الملف وبدء الاستعادة
+                    </button>
+                    <a asp-action="BackupDatabase" class="restore-secondary">
+                        <i class="bi bi-database-down me-2"></i>الانتقال إلى النسخ الاحتياطي
+                    </a>
+                    <a asp-action="Index" class="restore-secondary">
+                        <i class="bi bi-arrow-right-circle me-2"></i>العودة إلى لوحة السوبر أدمن
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

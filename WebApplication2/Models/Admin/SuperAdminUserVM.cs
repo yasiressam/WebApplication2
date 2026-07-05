@@ -24,6 +24,7 @@
 
         // ✅ خصائص الترقية
         public string? PromotionStatus { get; set; }
+        public bool IsBasicInfoApproved { get; set; }
         public bool RequestedPromotion { get; set; }
         public string? RejectionReason { get; set; }
         public bool HasCompleteProfile { get; set; }

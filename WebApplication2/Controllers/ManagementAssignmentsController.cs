@@ -392,10 +392,14 @@ namespace WebApplication2.Controllers
                     "Group" => "وحدة",
                     _ => "جهة"
                 };
-                await _notificationService.CreateNotification(
-                    "📋 استمارة تكليف إداري",
-                    $"تم إرسال استمارة إليك لإكمال طلب التكليف كـ {roleArabic} {levelArabic}. يرجى تعبئة البيانات المطلوبة ثم الإرسال.",
+                await _notificationService.CreateNotificationFromTemplate(
+                    NotificationTemplateKeys.AssignmentForm,
                     userId,
+                    new Dictionary<string, string?>
+                    {
+                        ["roleName"] = roleArabic,
+                        ["levelType"] = levelArabic
+                    },
                     "bi-file-earmark-text-fill",
                     $"/ManagementAssignments/RespondToRequest/{request.Id}");
             }
@@ -752,10 +756,15 @@ namespace WebApplication2.Controllers
                     ? $"تم تعيينك مباشرة كـ {displayRoleName} في محافظة {effectiveGovernorateAssign}"
                     : $"تم تعيينك مباشرة كـ {displayRoleName}: {managedName} في محافظة {effectiveGovernorateAssign}";
 
-                await _notificationService.CreateNotification(
-                    "✅ تم التعيين الإداري",
-                    message,
+                await _notificationService.CreateNotificationFromTemplate(
+                    NotificationTemplateKeys.DirectAssignment,
                     model.UserId,
+                    new Dictionary<string, string?>
+                    {
+                        ["levelName"] = displayRoleName,
+                        ["managedNamePart"] = string.IsNullOrWhiteSpace(managedName) ? string.Empty : $": {managedName}",
+                        ["governoratePart"] = string.IsNullOrWhiteSpace(effectiveGovernorateAssign) ? string.Empty : $" في محافظة {effectiveGovernorateAssign}"
+                    },
                     "bi-patch-check-fill",
                     "/Register/ProfileDetails"
                 );
@@ -951,10 +960,15 @@ namespace WebApplication2.Controllers
                     ? $"قام المستخدم {identify?.FullName ?? "مستخدم"} بإرسال استمارة التكليف بانتظار موافقتك"
                     : $"قام المستخدم {identify?.FullName ?? "مستخدم"} بإرسال استمارة {levelArabic}: {managedName} بانتظار موافقتك";
 
-                await _notificationService.CreateNotification(
-                    "📨 استمارة تكليف بانتظار المراجعة",
-                    message,
+                await _notificationService.CreateNotificationFromTemplate(
+                    NotificationTemplateKeys.AssignmentSubmitted,
                     request.RequestedByUserId,
+                    new Dictionary<string, string?>
+                    {
+                        ["fullName"] = identify?.FullName ?? "مستخدم",
+                        ["levelName"] = levelArabic,
+                        ["managedNamePart"] = string.IsNullOrWhiteSpace(managedName) ? string.Empty : $": {managedName}"
+                    },
                     "bi-person-check-fill",
                     $"/ManagementAssignments/ReviewRequest/{request.Id}");
             }
@@ -1082,10 +1096,14 @@ namespace WebApplication2.Controllers
                     ? $"تمت الموافقة على طلب تكليفك كـ {levelArabic}"
                     : $"تمت الموافقة على طلب تكليفك كـ {levelArabic}: {managedName}";
 
-                await _notificationService.CreateNotification(
-                    "✅ تمت الموافقة على التكليف الإداري",
-                    message,
+                await _notificationService.CreateNotificationFromTemplate(
+                    NotificationTemplateKeys.AssignmentApproved,
                     request.UserId,
+                    new Dictionary<string, string?>
+                    {
+                        ["levelName"] = levelArabic,
+                        ["managedNamePart"] = string.IsNullOrWhiteSpace(managedName) ? string.Empty : $": {managedName}"
+                    },
                     "bi-patch-check-fill",
                     "/Register/ProfileDetails");
             }
@@ -1123,12 +1141,13 @@ namespace WebApplication2.Controllers
 
             try
             {
-                await _notificationService.CreateNotification(
-                    "❌ تم رفض طلب التكليف الإداري",
-                    string.IsNullOrWhiteSpace(superAdminNotes)
-                        ? "تم رفض طلب التكليف الإداري الخاص بك."
-                        : $"تم رفض طلب التكليف الإداري الخاص بك. السبب: {superAdminNotes}",
+                await _notificationService.CreateNotificationFromTemplate(
+                    NotificationTemplateKeys.AssignmentRejected,
                     request.UserId,
+                    new Dictionary<string, string?>
+                    {
+                        ["reasonPart"] = string.IsNullOrWhiteSpace(superAdminNotes) ? string.Empty : $" السبب: {superAdminNotes}"
+                    },
                     "bi-x-circle-fill",
                     "/Register/ProfileDetails");
             }
@@ -1224,10 +1243,15 @@ namespace WebApplication2.Controllers
                         ? $"تم إلغاء تكليفك كـ {levelArabic} في محافظة {removedGovernorate}"
                         : $"تم إلغاء تكليفك كـ {levelArabic}: {managedName} في محافظة {removedGovernorate}";
 
-                    await _notificationService.CreateNotification(
-                        "تم إلغاء التكليف الإداري",
-                        message,
+                    await _notificationService.CreateNotificationFromTemplate(
+                        NotificationTemplateKeys.AssignmentRemoved,
                         userId,
+                        new Dictionary<string, string?>
+                        {
+                            ["levelName"] = levelArabic,
+                            ["managedNamePart"] = string.IsNullOrWhiteSpace(managedName) ? string.Empty : $": {managedName}",
+                            ["governoratePart"] = string.IsNullOrWhiteSpace(removedGovernorate) ? string.Empty : $" في محافظة {removedGovernorate}"
+                        },
                         "bi-trash-fill",
                         "/Register/ProfileDetails");
                 }

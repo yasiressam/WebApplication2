@@ -1,8 +1,88 @@
 ﻿<!DOCTYPE html>
+@using Microsoft.EntityFrameworkCore
+@using WebApplication2.Data
+@inject ApplicationDbContext DbContext
 @{
     var siteImageUrl = $"{Context.Request.Scheme}://{Context.Request.Host}/images/background1.jpg";
     var siteUrl = $"{Context.Request.Scheme}://{Context.Request.Host}";
     var pageTitle = $"{ViewData["Title"]} - التنظيم السياسي";
+    string? onboardingPromptTitle = null;
+    string? onboardingPromptMessage = null;
+    string? onboardingPromptUrl = null;
+    var shouldShowProfileGuidance = false;
+
+    if (User.Identity?.IsAuthenticated == true &&
+        !User.IsInRole("SuperAdmin") &&
+        !User.IsInRole("Admin") &&
+        !User.IsInRole("DistrictAdmin") &&
+        !User.IsInRole("Manager") &&
+        !User.IsInRole("AssistantManager"))
+    {
+        var currentPath = Context.Request.Path.Value ?? string.Empty;
+        var suppressedPaths = new[]
+        {
+            "/Register/BasicInfo",
+            "/Register/AdditionalInfo",
+            "/Register/ProfileDetails"
+        };
+
+        if (!suppressedPaths.Any(path => currentPath.StartsWith(path, StringComparison.OrdinalIgnoreCase)))
+        {
+            var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrWhiteSpace(currentUserId))
+            {
+                var profile = await DbContext.Identifies
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(i => i.UserId == currentUserId);
+
+                bool hasRequiredWorkLocation = false;
+                bool isBasicInfoComplete = false;
+
+                if (profile != null)
+                {
+                    if (!string.IsNullOrWhiteSpace(profile.WorkGovernorate))
+                    {
+                        hasRequiredWorkLocation = true;
+                    }
+                    else
+                    {
+                        var workLocation = await DbContext.WorkLocations
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync(w => w.IdentifyId == profile.Id);
+
+                        hasRequiredWorkLocation = workLocation != null &&
+                            !string.IsNullOrWhiteSpace(workLocation.Governorate) &&
+                            (workLocation.Governorate != "بغداد" || !string.IsNullOrWhiteSpace(workLocation.District));
+                    }
+
+                    isBasicInfoComplete =
+                        !string.IsNullOrWhiteSpace(profile.FullName) &&
+                        !string.IsNullOrWhiteSpace(profile.MotherName) &&
+                        profile.Date != DateTime.MinValue &&
+                        !string.IsNullOrWhiteSpace(profile.Gender) &&
+                        !string.IsNullOrWhiteSpace(profile.PhoneNumber) &&
+                        !string.IsNullOrWhiteSpace(profile.IdentityCardN) &&
+                        profile.IdentityCardN.Length == 12 &&
+                        hasRequiredWorkLocation;
+                }
+
+                if (profile == null || !isBasicInfoComplete)
+                {
+                    onboardingPromptTitle = "أكمل بياناتك الأساسية";
+                    onboardingPromptMessage = "اضغط على قائمة الحساب ثم اختر الملف الشخصي لإكمال الاستمارة الأساسية.";
+                    onboardingPromptUrl = Url.Action("BasicInfo", "Register");
+                    shouldShowProfileGuidance = true;
+                }
+                else if (!profile.IsPromoted && profile.IsBasicInfoApproved && profile.RequestedPromotion != true)
+                {
+                    onboardingPromptTitle = "أكمل استمارة الترقية";
+                    onboardingPromptMessage = "من قائمة الحساب ادخل إلى الملف الشخصي ثم أكمل الاستمارة الثانية للترقية إلى فرد.";
+                    onboardingPromptUrl = Url.Action("AdditionalInfo", "Register");
+                    shouldShowProfileGuidance = true;
+                }
+            }
+        }
+    }
 }
 <html lang="ar" dir="rtl">
 <head>
@@ -475,6 +555,14 @@
         </div>
     </main>
 
+    @if (shouldShowProfileGuidance && !string.IsNullOrWhiteSpace(onboardingPromptTitle))
+    {
+        <div id="profileGuidanceHint" class="profile-guidance-hint" role="status" aria-live="polite">
+            <div class="profile-guidance-title">@onboardingPromptTitle</div>
+            <div class="profile-guidance-text">@onboardingPromptMessage</div>
+        </div>
+    }
+
     <partial name="_Footer" />
 
     <!-- JavaScript Files - الترتيب مهم جداً -->
@@ -526,6 +614,40 @@
                     label.innerHTML += ' <span class="text-danger">*</span>';
                 }
             });
+
+            const profileGuidanceHint = document.getElementById('profileGuidanceHint');
+            const userDropdownToggle = document.getElementById('userDropdown');
+            const profileMenuLink = document.getElementById('profileMenuLink');
+
+            if (profileGuidanceHint && userDropdownToggle && profileMenuLink) {
+                const dropdown = bootstrap.Dropdown.getOrCreateInstance(userDropdownToggle);
+
+                const positionProfileGuidance = () => {
+                    const rect = profileMenuLink.getBoundingClientRect();
+                    const hintHeight = profileGuidanceHint.offsetHeight;
+                    const hintWidth = profileGuidanceHint.offsetWidth;
+                    const viewportTop = window.scrollY + 16;
+                    const preferredTop = window.scrollY + rect.top - hintHeight - 14;
+                    const fallbackTop = window.scrollY + rect.bottom + 18;
+                    const top = preferredTop <= viewportTop ? fallbackTop : preferredTop;
+                    const left = Math.max(16, window.scrollX + rect.left - hintWidth + rect.width + 12);
+
+                    profileGuidanceHint.style.top = `${top}px`;
+                    profileGuidanceHint.style.left = `${left}px`;
+                    profileGuidanceHint.classList.toggle('hint-below-target', top === fallbackTop);
+                };
+
+                dropdown.show();
+                profileMenuLink.classList.add('profile-guidance-target');
+
+                setTimeout(() => {
+                    positionProfileGuidance();
+                    profileGuidanceHint.classList.add('show');
+                }, 250);
+
+                window.addEventListener('resize', positionProfileGuidance);
+                profileMenuLink.addEventListener('click', () => profileGuidanceHint.remove());
+            }
         });
 
         window.addEventListener('beforeunload', function() {
@@ -545,6 +667,77 @@
             return document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
         };
     </script>
+    <style>
+        .profile-guidance-hint {
+            position: absolute;
+            z-index: 2000;
+            max-width: 380px;
+            padding: 18px 20px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #fff7db, #fff1b8);
+            color: #5c4200;
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            box-shadow: 0 14px 30px rgba(0, 0, 0, 0.18);
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            pointer-events: none;
+        }
+
+        .profile-guidance-hint.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .profile-guidance-hint::after {
+            content: "";
+            position: absolute;
+            bottom: -10px;
+            left: 24px;
+            width: 18px;
+            height: 18px;
+            background: #fff3c4;
+            border-right: 1px solid rgba(245, 158, 11, 0.35);
+            border-bottom: 1px solid rgba(245, 158, 11, 0.35);
+            transform: rotate(45deg);
+        }
+
+        .profile-guidance-hint.hint-below-target::after {
+            top: -10px;
+            bottom: auto;
+            border-right: none;
+            border-bottom: none;
+            border-left: 1px solid rgba(245, 158, 11, 0.35);
+            border-top: 1px solid rgba(245, 158, 11, 0.35);
+        }
+
+        .profile-guidance-title {
+            font-weight: 800;
+            font-size: 1.15rem;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .profile-guidance-text {
+            font-size: 1rem;
+            line-height: 1.8;
+        }
+
+        @@media (max-width: 768px) {
+            .profile-guidance-hint {
+                max-width: min(92vw, 360px);
+                padding: 16px 18px;
+            }
+
+            .profile-guidance-title {
+                font-size: 1.05rem;
+            }
+
+            .profile-guidance-text {
+                font-size: 0.96rem;
+            }
+        }
+    </style>
 
     <!-- OneSignal SDK - مفعل بالكود الصحيح -->
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>

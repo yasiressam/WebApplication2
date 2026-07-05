@@ -1,0 +1,130 @@
+@model WebApplication2.Models.Audit.AuditTrailViewModel
+@{
+    ViewData["Title"] = "السجل";
+    ViewData["Icon"] = "bi bi-journal-text";
+    Layout = "_Layout";
+}
+
+<style>
+    .audit-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 22px;
+    }
+
+    .audit-card {
+        display: block;
+        text-decoration: none;
+        color: inherit;
+        background: #fff;
+        border-radius: 24px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+        overflow: hidden;
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .audit-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+        color: inherit;
+    }
+
+    .audit-card-header {
+        padding: 24px;
+        color: #fff;
+    }
+
+    .audit-card-header.login {
+        background: linear-gradient(135deg, #0f766e, #0e7490);
+    }
+
+    .audit-card-header.error {
+        background: linear-gradient(135deg, #b91c1c, #dc2626);
+    }
+
+    .audit-card-header.activity {
+        background: linear-gradient(135deg, #1d4ed8, #1e3a8a);
+    }
+
+    .audit-card-header h3 {
+        margin: 12px 0 8px;
+        font-size: 1.5rem;
+        font-weight: 800;
+    }
+
+    .audit-card-header p {
+        margin: 0;
+        opacity: 0.92;
+        line-height: 1.8;
+    }
+
+    .audit-card-body {
+        padding: 22px 24px 24px;
+    }
+
+    .audit-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 14px;
+        background: #f8fafc;
+        color: #334155;
+        font-weight: 800;
+        margin-bottom: 14px;
+    }
+
+    .audit-hint {
+        color: #475569;
+        line-height: 1.9;
+        margin: 0;
+    }
+</style>
+
+<div class="audit-grid">
+    <a asp-action="LoginAudit" class="audit-card">
+        <div class="audit-card-header login">
+            <i class="bi bi-box-arrow-in-right fs-2"></i>
+            <h3>سجل الدخول</h3>
+            <p>عرض محاولات الدخول الناجحة والفاشلة للمستخدمين.</p>
+        </div>
+        <div class="audit-card-body">
+            <div class="audit-count">
+                <i class="bi bi-list-check"></i>
+                <span>@Model.LoginCount سجل حديث</span>
+            </div>
+            <p class="audit-hint">اضغط لفتح صفحة تفاصيل سجل الدخول.</p>
+        </div>
+    </a>
+
+    <a asp-action="ErrorAudit" class="audit-card">
+        <div class="audit-card-header error">
+            <i class="bi bi-exclamation-octagon fs-2"></i>
+            <h3>سجل الأخطاء</h3>
+            <p>عرض الأخطاء غير المعالجة والمشكلات التي ظهرت في النظام.</p>
+        </div>
+        <div class="audit-card-body">
+            <div class="audit-count">
+                <i class="bi bi-bug"></i>
+                <span>@Model.ErrorCount خطأ حديث</span>
+            </div>
+            <p class="audit-hint">اضغط لفتح صفحة تفاصيل سجل الأخطاء.</p>
+        </div>
+    </a>
+
+    <a asp-action="ActivityAudit" class="audit-card">
+        <div class="audit-card-header activity">
+            <i class="bi bi-activity fs-2"></i>
+            <h3>سجل الحركات</h3>
+            <p>عرض الحركات الإدارية والطلبات والإجراءات المهمة داخل البرنامج.</p>
+        </div>
+        <div class="audit-card-body">
+            <div class="audit-count">
+                <i class="bi bi-journal-richtext"></i>
+                <span>@Model.ActivityCount حركة حديثة</span>
+            </div>
+            <p class="audit-hint">اضغط لفتح صفحة تفاصيل سجل الحركات.</p>
+        </div>
+    </a>
+</div>

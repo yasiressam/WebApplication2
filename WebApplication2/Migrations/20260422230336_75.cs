@@ -10,39 +10,6 @@ namespace WebApplication2.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "WorkDistrict",
-                table: "Identifies",
-                type: "nvarchar(max)",
-                nullable: true);
-
-            migrationBuilder.AddColumn<string>(
-                name: "WorkGovernorate",
-                table: "Identifies",
-                type: "nvarchar(max)",
-                nullable: true);
-
-            migrationBuilder.CreateTable(
-                name: "WorkLocations",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    IdentifyId = table.Column<int>(type: "int", nullable: false),
-                    Governorate = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    District = table.Column<string>(type: "nvarchar(max)", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_WorkLocations", x => x.Id);
-                    table.ForeignKey(
-                        name: "FK_WorkLocations_Identifies_IdentifyId",
-                        column: x => x.IdentifyId,
-                        principalTable: "Identifies",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
             migrationBuilder.UpdateData(
                 table: "AspNetRoles",
                 keyColumn: "Id",
@@ -106,27 +73,11 @@ namespace WebApplication2.Migrations
                 column: "ConcurrencyStamp",
                 value: "376a96a0-3052-4db4-863c-8413e52e166e");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_WorkLocations_IdentifyId",
-                table: "WorkLocations",
-                column: "IdentifyId",
-                unique: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "WorkLocations");
-
-            migrationBuilder.DropColumn(
-                name: "WorkDistrict",
-                table: "Identifies");
-
-            migrationBuilder.DropColumn(
-                name: "WorkGovernorate",
-                table: "Identifies");
-
             migrationBuilder.UpdateData(
                 table: "AspNetRoles",
                 keyColumn: "Id",

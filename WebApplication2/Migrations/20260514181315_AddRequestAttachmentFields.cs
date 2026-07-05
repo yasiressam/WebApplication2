@@ -10,51 +10,53 @@ namespace WebApplication2.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "AttachmentContentType",
-                table: "Requests",
-                type: "nvarchar(120)",
-                maxLength: 120,
-                nullable: true);
+            migrationBuilder.Sql(@"
+                IF COL_LENGTH('dbo.Requests', 'AttachmentContentType') IS NULL
+                BEGIN
+                    ALTER TABLE dbo.Requests ADD AttachmentContentType nvarchar(120) NULL
+                END
 
-            migrationBuilder.AddColumn<string>(
-                name: "AttachmentFileName",
-                table: "Requests",
-                type: "nvarchar(260)",
-                maxLength: 260,
-                nullable: true);
+                IF COL_LENGTH('dbo.Requests', 'AttachmentFileName') IS NULL
+                BEGIN
+                    ALTER TABLE dbo.Requests ADD AttachmentFileName nvarchar(260) NULL
+                END
 
-            migrationBuilder.AddColumn<string>(
-                name: "AttachmentPath",
-                table: "Requests",
-                type: "nvarchar(max)",
-                nullable: true);
+                IF COL_LENGTH('dbo.Requests', 'AttachmentPath') IS NULL
+                BEGIN
+                    ALTER TABLE dbo.Requests ADD AttachmentPath nvarchar(max) NULL
+                END
 
-            migrationBuilder.AddColumn<long>(
-                name: "AttachmentSize",
-                table: "Requests",
-                type: "bigint",
-                nullable: true);
+                IF COL_LENGTH('dbo.Requests', 'AttachmentSize') IS NULL
+                BEGIN
+                    ALTER TABLE dbo.Requests ADD AttachmentSize bigint NULL
+                END
+            ");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "AttachmentContentType",
-                table: "Requests");
+            migrationBuilder.Sql(@"
+                IF COL_LENGTH('dbo.Requests', 'AttachmentContentType') IS NOT NULL
+                BEGIN
+                    ALTER TABLE dbo.Requests DROP COLUMN AttachmentContentType
+                END
 
-            migrationBuilder.DropColumn(
-                name: "AttachmentFileName",
-                table: "Requests");
+                IF COL_LENGTH('dbo.Requests', 'AttachmentFileName') IS NOT NULL
+                BEGIN
+                    ALTER TABLE dbo.Requests DROP COLUMN AttachmentFileName
+                END
 
-            migrationBuilder.DropColumn(
-                name: "AttachmentPath",
-                table: "Requests");
+                IF COL_LENGTH('dbo.Requests', 'AttachmentPath') IS NOT NULL
+                BEGIN
+                    ALTER TABLE dbo.Requests DROP COLUMN AttachmentPath
+                END
 
-            migrationBuilder.DropColumn(
-                name: "AttachmentSize",
-                table: "Requests");
+                IF COL_LENGTH('dbo.Requests', 'AttachmentSize') IS NOT NULL
+                BEGIN
+                    ALTER TABLE dbo.Requests DROP COLUMN AttachmentSize
+                END
+            ");
         }
     }
 }

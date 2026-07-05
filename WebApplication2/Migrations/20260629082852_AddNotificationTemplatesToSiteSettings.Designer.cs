@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebApplication2.Data;
 
@@ -11,9 +12,11 @@ using WebApplication2.Data;
 namespace WebApplication2.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260629082852_AddNotificationTemplatesToSiteSettings")]
+    partial class AddNotificationTemplatesToSiteSettings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -52,70 +55,70 @@ namespace WebApplication2.Migrations
                         new
                         {
                             Id = "1",
-                            ConcurrencyStamp = "493d00dc-ed04-4d86-8e0d-d745aada37bf",
+                            ConcurrencyStamp = "153d0576-6b7d-48d8-aac9-aad9f6c08295",
                             Name = "SuperAdmin",
                             NormalizedName = "SUPERADMIN"
                         },
                         new
                         {
                             Id = "2",
-                            ConcurrencyStamp = "996eca4d-66c4-445c-bcd0-0fa4d7272570",
+                            ConcurrencyStamp = "6037cb84-e087-4738-8850-86476a7e0d57",
                             Name = "Admin",
                             NormalizedName = "ADMIN"
                         },
                         new
                         {
                             Id = "3",
-                            ConcurrencyStamp = "a5e70917-720c-4dfb-b148-98bc581d681f",
+                            ConcurrencyStamp = "29c134ed-eafc-4e1c-b57e-5a536e07e1fe",
                             Name = "User",
                             NormalizedName = "USER"
                         },
                         new
                         {
                             Id = "4",
-                            ConcurrencyStamp = "d7275494-7a46-4b2f-ba26-6ad0fc888f6e",
+                            ConcurrencyStamp = "e9535608-7112-45f3-ba1c-4170da894612",
                             Name = "فرد",
                             NormalizedName = "فرد"
                         },
                         new
                         {
                             Id = "5",
-                            ConcurrencyStamp = "ab158367-5148-45f7-b170-0465dd7fb676",
+                            ConcurrencyStamp = "b984bb95-f145-43ba-bcec-bdbfa767650d",
                             Name = "NewsEditor",
                             NormalizedName = "NEWSEDITOR"
                         },
                         new
                         {
                             Id = "6",
-                            ConcurrencyStamp = "90d21a86-8719-49fe-bb10-1fa964866f2b",
+                            ConcurrencyStamp = "4daf98b9-65f5-4e73-9245-ee2afce14800",
                             Name = "MapViewer",
                             NormalizedName = "MAPVIEWER"
                         },
                         new
                         {
                             Id = "7",
-                            ConcurrencyStamp = "de3fc0d7-319d-4689-b9c4-4202c41b8a5e",
+                            ConcurrencyStamp = "0c6d749d-7093-4866-8771-c9ec172639d4",
                             Name = "DistrictAdmin",
                             NormalizedName = "DISTRICTADMIN"
                         },
                         new
                         {
                             Id = "8",
-                            ConcurrencyStamp = "668ca379-b2c5-428f-82fd-378a14b6b820",
+                            ConcurrencyStamp = "4fead231-b90c-4152-ae2b-80f086ea758f",
                             Name = "Manager",
                             NormalizedName = "MANAGER"
                         },
                         new
                         {
                             Id = "9",
-                            ConcurrencyStamp = "c929bb63-406e-451b-b8be-1252dbce54e9",
+                            ConcurrencyStamp = "6d1821f1-16ed-433d-96c1-f3aa4ddbb6e1",
                             Name = "AssistantManager",
                             NormalizedName = "ASSISTANTMANAGER"
                         },
                         new
                         {
                             Id = "10",
-                            ConcurrencyStamp = "841a8cda-ef6c-447e-869c-c57f7a2b30df",
+                            ConcurrencyStamp = "f10eac8d-3a9f-462a-85d4-29f154486e9b",
                             Name = "ManagerViewer",
                             NormalizedName = "MANAGERVIEWER"
                         });
@@ -1534,14 +1537,6 @@ namespace WebApplication2.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AdminAssignedMessage")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AdminAssignedTitle")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("AssignmentApprovedMessage")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1623,38 +1618,6 @@ namespace WebApplication2.Migrations
                     b.Property<DateTime>("LastUpdated")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("MapViewerAssignedMessage")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("MapViewerAssignedTitle")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("MemberAssignedMessage")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("MemberAssignedTitle")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("NewsEditorAssignedMessage")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("NewsEditorAssignedTitle")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ProfileUpdatedMessage")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ProfileUpdatedTitle")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("PromotionApprovedMessage")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -1675,14 +1638,6 @@ namespace WebApplication2.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SiteDescription")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("SuperAdminAssignedMessage")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("SuperAdminAssignedTitle")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 

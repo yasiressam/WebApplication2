@@ -1,10 +1,14 @@
 ﻿@using Microsoft.AspNetCore.Identity
 @inject UserManager<IdentityUser> UserManager
 @inject RoleManager<IdentityRole> RoleManager
+@inject IConfiguration Configuration
 
 @{
     ViewData["Title"] = "لوحة المعلومات";
     Layout = "_Layout";
+    var currentEmail = User?.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
+    var allowedEmails = Configuration.GetSection("SuperAdminPasswordReset:AllowedEmails").Get<string[]>() ?? Array.Empty<string>();
+    var canOpenAuditTrail = allowedEmails.Contains(currentEmail, StringComparer.OrdinalIgnoreCase);
 
     // جلب جميع المستخدمين
     var users = UserManager.Users.ToList();
@@ -204,6 +208,56 @@
             gap: 25px;
         }
 
+        .admin-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 35px;
+        }
+
+        .admin-action-card {
+            background: var(--white);
+            border-radius: 22px;
+            padding: 24px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--gray-200);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            color: inherit;
+        }
+
+            .admin-action-card:hover {
+                transform: translateY(-4px);
+                box-shadow: var(--shadow-xl);
+                color: inherit;
+            }
+
+            .admin-action-card i {
+                width: 60px;
+                height: 60px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 18px;
+                color: white;
+                background: linear-gradient(135deg, #0f766e, #155e75);
+                font-size: 1.8rem;
+                margin-bottom: 16px;
+            }
+
+            .admin-action-card h4 {
+                font-size: 1.25rem;
+                font-weight: 800;
+                color: var(--gray-900);
+                margin-bottom: 8px;
+            }
+
+            .admin-action-card p {
+                margin: 0;
+                color: var(--gray-600);
+                line-height: 1.8;
+            }
+
         .chart-card {
             background: var(--white);
             border-radius: 24px;
@@ -364,6 +418,22 @@
 </head>
 <body>
     <div class="dashboard-container">
+        <div class="admin-actions">
+            <a asp-action="BackupDatabase" class="admin-action-card">
+                <i class="bi bi-database-down"></i>
+                <h4>نسخة احتياطية</h4>
+                <p>إنشاء نسخة احتياطية من قاعدة البيانات وتنزيلها مباشرة على الجهاز.</p>
+            </a>
+            @if (canOpenAuditTrail)
+            {
+                <a asp-action="AuditTrail" class="admin-action-card">
+                    <i class="bi bi-journal-text"></i>
+                    <h4>السجل</h4>
+                    <p>متابعة سجل الدخول وسجل الأخطاء وحركات البرنامج الكاملة.</p>
+                </a>
+            }
+        </div>
+
         <!-- العنوان الرئيسي -->
         <div class="page-header">
             <h2>

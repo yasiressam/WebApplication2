@@ -1,6 +1,4 @@
 using Microsoft.Extensions.Options;
-using System.Net.Http.Headers;
-using System.Text.Json;
 using WebApplication2.Models;
 
 namespace WebApplication2.Services
@@ -30,7 +28,7 @@ namespace WebApplication2.Services
                 string.IsNullOrWhiteSpace(_settings.AuthKey) ||
                 string.IsNullOrWhiteSpace(_settings.AppKey))
             {
-                _logger.LogError("WhatsApp API settings are missing.");
+                _logger.LogError("WaSender settings are missing.");
                 return false;
             }
 
@@ -44,7 +42,7 @@ namespace WebApplication2.Services
             try
             {
                 var client = _httpClientFactory.CreateClient();
-                using var content = new MultipartFormDataContent
+                using var formData = new MultipartFormDataContent
                 {
                     { new StringContent(_settings.AppKey), "appkey" },
                     { new StringContent(_settings.AuthKey), "authkey" },
@@ -52,31 +50,24 @@ namespace WebApplication2.Services
                     { new StringContent(message), "message" }
                 };
 
-                using var request = new HttpRequestMessage(HttpMethod.Post, _settings.ApiUrl)
-                {
-                    Content = content
-                };
-
-                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-                using var response = await client.SendAsync(request, cancellationToken);
+                using var response = await client.PostAsync(_settings.ApiUrl, formData, cancellationToken);
                 var responseText = await response.Content.ReadAsStringAsync(cancellationToken);
 
                 if (response.IsSuccessStatusCode && LooksSuccessful(responseText))
                 {
-                    _logger.LogInformation("WhatsApp message sent to {PhoneNumber}.", normalizedPhone);
+                    _logger.LogInformation("WaSender message sent to {PhoneNumber}.", normalizedPhone);
                     return true;
                 }
 
                 _logger.LogError(
-                    "WhatsApp API failed with status {StatusCode}: {Response}",
+                    "WaSender failed with status {StatusCode}: {Response}",
                     response.StatusCode,
                     responseText);
                 return false;
             }
             catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
             {
-                _logger.LogError(ex, "Error while sending WhatsApp message.");
+                _logger.LogError(ex, "Error while sending WhatsApp message through WaSender.");
                 return false;
             }
         }
@@ -87,16 +78,16 @@ namespace WebApplication2.Services
             if (string.IsNullOrWhiteSpace(digits))
                 return string.Empty;
 
-            if (digits.StartsWith("00"))
+            if (digits.StartsWith("00", StringComparison.Ordinal))
                 digits = digits[2..];
 
-            if (digits.StartsWith("964"))
+            if (digits.StartsWith("964", StringComparison.Ordinal))
                 return digits;
 
-            if (digits.StartsWith("0"))
+            if (digits.StartsWith("0", StringComparison.Ordinal))
                 return "964" + digits[1..];
 
-            if (digits.StartsWith("7"))
+            if (digits.StartsWith("7", StringComparison.Ordinal))
                 return "964" + digits;
 
             return digits;
@@ -109,91 +100,13 @@ namespace WebApplication2.Services
 
             var body = responseBody.Trim();
 
-            if (TryReadSuccessFlag(body, out var success))
-                return success;
-
             return !body.Contains("\"status\":false", StringComparison.OrdinalIgnoreCase)
                 && !body.Contains("\"success\":false", StringComparison.OrdinalIgnoreCase)
                 && !body.Contains("\"error\":true", StringComparison.OrdinalIgnoreCase)
-                && !body.Contains("\"error\":\"", StringComparison.OrdinalIgnoreCase)
+                && !body.Contains("\"errors\":", StringComparison.OrdinalIgnoreCase)
+                && !body.Contains("unauthorized", StringComparison.OrdinalIgnoreCase)
+                && !body.Contains("invalid", StringComparison.OrdinalIgnoreCase)
                 && !body.Contains("failed", StringComparison.OrdinalIgnoreCase);
-        }
-
-        private static bool TryReadSuccessFlag(string responseBody, out bool success)
-        {
-            success = false;
-
-            try
-            {
-                using var document = JsonDocument.Parse(responseBody);
-                var root = document.RootElement;
-
-                if (TryGetBoolean(root, "success", out success))
-                    return true;
-
-                if (TryGetBoolean(root, "status", out success))
-                    return true;
-
-                if (TryGetString(root, "status", out var statusText))
-                {
-                    success = statusText.Equals("success", StringComparison.OrdinalIgnoreCase)
-                        || statusText.Equals("sent", StringComparison.OrdinalIgnoreCase)
-                        || statusText.Equals("queued", StringComparison.OrdinalIgnoreCase);
-                    return success
-                        || statusText.Equals("failed", StringComparison.OrdinalIgnoreCase)
-                        || statusText.Equals("error", StringComparison.OrdinalIgnoreCase);
-                }
-
-                if (TryGetString(root, "message_status", out var messageStatus))
-                {
-                    success = messageStatus.Equals("success", StringComparison.OrdinalIgnoreCase)
-                        || messageStatus.Equals("sent", StringComparison.OrdinalIgnoreCase)
-                        || messageStatus.Equals("queued", StringComparison.OrdinalIgnoreCase);
-                    return true;
-                }
-            }
-            catch (JsonException)
-            {
-                return false;
-            }
-
-            return false;
-        }
-
-        private static bool TryGetBoolean(JsonElement root, string propertyName, out bool value)
-        {
-            value = false;
-
-            if (!root.TryGetProperty(propertyName, out var property))
-                return false;
-
-            if (property.ValueKind == JsonValueKind.True || property.ValueKind == JsonValueKind.False)
-            {
-                value = property.GetBoolean();
-                return true;
-            }
-
-            if (property.ValueKind == JsonValueKind.String &&
-                bool.TryParse(property.GetString(), out value))
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-        private static bool TryGetString(JsonElement root, string propertyName, out string value)
-        {
-            value = string.Empty;
-
-            if (!root.TryGetProperty(propertyName, out var property) ||
-                property.ValueKind != JsonValueKind.String)
-            {
-                return false;
-            }
-
-            value = property.GetString() ?? string.Empty;
-            return !string.IsNullOrWhiteSpace(value);
         }
     }
 }

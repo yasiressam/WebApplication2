@@ -1,0 +1,577 @@
+@model WebApplication2.Models.SiteSettings
+
+@{
+    ViewData["Title"] = "قوالب الإشعارات";
+    Layout = "_Layout";
+
+    var defaults = new WebApplication2.Models.SiteSettings();
+
+    string DisplayValue(string propertyName)
+    {
+        var property = Model.GetType().GetProperty(propertyName);
+        var currentValue = property?.GetValue(Model)?.ToString();
+        var defaultValue = defaults.GetType().GetProperty(propertyName)?.GetValue(defaults)?.ToString();
+
+        return string.IsNullOrWhiteSpace(currentValue) ? (defaultValue ?? string.Empty) : currentValue;
+    }
+
+    var groups = new[]
+    {
+        new
+        {
+            Id = "promotion",
+            Title = "إشعارات الترقية والبيانات الأساسية",
+            Icon = "bi-person-check-fill",
+            Accent = "primary",
+            Description = "رسائل قبول ورفض الترقية ومراجعة البيانات الأساسية للمستخدم.",
+            Items = new[]
+            {
+                ("PromotionApprovedTitle", "PromotionApprovedMessage", "قبول الترقية"),
+                ("PromotionRejectedTitle", "PromotionRejectedMessage", "رفض الترقية"),
+                ("BasicInfoApprovedTitle", "BasicInfoApprovedMessage", "قبول البيانات الأساسية"),
+                ("BasicInfoRejectedTitle", "BasicInfoRejectedMessage", "رفض البيانات الأساسية")
+            }
+        },
+        new
+        {
+            Id = "assignment",
+            Title = "إشعارات التكليف الإداري",
+            Icon = "bi-diagram-3-fill",
+            Accent = "success",
+            Description = "القوالب التي تخص التعيين الإداري وإلغاء التكليف.",
+            Items = new[]
+            {
+                ("DirectAssignmentTitle", "DirectAssignmentMessage", "التعيين الإداري المباشر"),
+                ("AssignmentRemovedTitle", "AssignmentRemovedMessage", "إلغاء التكليف الإداري")
+            }
+        },
+        new
+        {
+            Id = "roles",
+            Title = "إشعارات الأدوار والصلاحيات",
+            Icon = "bi-shield-check",
+            Accent = "warning",
+            Description = "رسائل منح الصلاحيات الإدارية والتحريرية وصلاحيات الخريطة.",
+            Items = new[]
+            {
+                ("SuperAdminAssignedTitle", "SuperAdminAssignedMessage", "ترقية إلى سوبر أدمن"),
+                ("AdminAssignedTitle", "AdminAssignedMessage", "ترقية إلى أدمن"),
+                ("NewsEditorAssignedTitle", "NewsEditorAssignedMessage", "تعيين محرر أخبار"),
+                ("MapViewerAssignedTitle", "MapViewerAssignedMessage", "تعيين مشاهد خريطة"),
+                ("MemberAssignedTitle", "MemberAssignedMessage", "ترقية إلى فرد من الأدوار")
+            }
+        },
+        new
+        {
+            Id = "profile",
+            Title = "إشعارات الملف الشخصي",
+            Icon = "bi-person-vcard-fill",
+            Accent = "info",
+            Description = "القوالب الخاصة بإشعارات تحديث الملف الشخصي وبيانات المستخدم.",
+            Items = new[]
+            {
+                ("ProfileUpdatedTitle", "ProfileUpdatedMessage", "تعديل البيانات الشخصية")
+            }
+        }
+    };
+
+    var totalTemplates = groups.Sum(g => g.Items.Length);
+}
+
+<style>
+    :root {
+        --primary: #1e3c72;
+        --primary-light: #2a5a9c;
+        --primary-soft: #e8f0fe;
+        --success: #28a745;
+        --success-soft: rgba(40, 167, 69, 0.12);
+        --warning: #f59e0b;
+        --warning-soft: rgba(245, 158, 11, 0.12);
+        --info: #17a2b8;
+        --info-soft: rgba(23, 162, 184, 0.12);
+        --dark: #1f2937;
+        --muted: #6b7280;
+        --border-soft: #e8edf5;
+        --surface: #ffffff;
+        --page-bg: #f5f7fb;
+    }
+
+    .templates-page {
+        min-height: calc(100vh - 120px);
+        background:
+            radial-gradient(circle at top right, rgba(42, 90, 156, 0.10), transparent 25%),
+            radial-gradient(circle at top left, rgba(30, 60, 114, 0.08), transparent 22%),
+            linear-gradient(180deg, #f7f9fc 0%, #f3f6fb 100%);
+        padding-bottom: 2.5rem;
+    }
+
+    .templates-hero {
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        border-radius: 24px;
+        padding: 2rem;
+        color: #fff;
+        box-shadow: 0 16px 36px rgba(30, 60, 114, 0.20);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .templates-hero::before,
+    .templates-hero::after {
+        content: "";
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.10);
+    }
+
+    .templates-hero::before {
+        width: 220px;
+        height: 220px;
+        top: -90px;
+        left: -70px;
+    }
+
+    .templates-hero::after {
+        width: 180px;
+        height: 180px;
+        bottom: -70px;
+        right: -40px;
+    }
+
+    .hero-icon {
+        width: 68px;
+        height: 68px;
+        border-radius: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,255,255,0.14);
+        border: 1px solid rgba(255,255,255,0.18);
+        backdrop-filter: blur(8px);
+        font-size: 1.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .hero-subtitle {
+        color: rgba(255,255,255,0.88);
+        font-size: 1rem;
+        line-height: 1.9;
+        margin-bottom: 0;
+        max-width: 720px;
+    }
+
+    .hero-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 1rem;
+    }
+
+    .hero-badge {
+        background: rgba(255,255,255,0.14);
+        border: 1px solid rgba(255,255,255,0.16);
+        border-radius: 999px;
+        padding: 0.45rem 0.9rem;
+        font-size: 0.9rem;
+        font-weight: 700;
+    }
+
+    .templates-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        justify-content: flex-lg-end;
+    }
+
+    .templates-btn {
+        border-radius: 999px !important;
+        padding: 0.75rem 1.15rem !important;
+        font-weight: 700 !important;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+    }
+
+    .stats-row .stat-card {
+        border-radius: 18px !important;
+        border: none !important;
+        overflow: hidden;
+        transition: all 0.25s ease;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+    }
+
+    .stats-row .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.10);
+    }
+
+    .stats-row .stat-card .card-body {
+        padding: 1.1rem 1.2rem;
+    }
+
+    .stats-row .stat-card h6 {
+        font-size: 0.9rem;
+        margin-bottom: 0.4rem;
+        opacity: 0.95;
+    }
+
+    .stats-row .stat-card h3 {
+        font-size: 1.7rem;
+        font-weight: 800;
+        margin: 0;
+    }
+
+    .sidebar-card,
+    .group-card {
+        background: var(--surface);
+        border: 1px solid var(--border-soft);
+        border-radius: 20px;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+    }
+
+    .sidebar-card {
+        position: sticky;
+        top: 18px;
+        padding: 1rem;
+    }
+
+    .sidebar-title {
+        color: var(--primary);
+        font-size: 0.98rem;
+        font-weight: 800;
+        margin-bottom: 0.9rem;
+    }
+
+    .section-link {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        text-decoration: none;
+        color: var(--dark);
+        border: 1px solid #e7edf5;
+        border-radius: 15px;
+        padding: 0.85rem 0.95rem;
+        transition: all 0.2s ease;
+        background: #fff;
+    }
+
+    .section-link:hover {
+        color: var(--primary);
+        border-color: #bfd3ef;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 18px rgba(30, 60, 114, 0.08);
+    }
+
+    .section-link-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--primary-soft);
+        color: var(--primary);
+        flex-shrink: 0;
+    }
+
+    .group-card {
+        overflow: hidden;
+    }
+
+    .group-header {
+        padding: 1.25rem 1.35rem 1rem;
+        border-bottom: 1px solid #edf2f7;
+        background: linear-gradient(180deg, rgba(248,250,252,0.95), rgba(255,255,255,0.98));
+    }
+
+    .group-title {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        color: var(--dark);
+        font-weight: 800;
+        font-size: 1.12rem;
+    }
+
+    .group-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 1.05rem;
+        flex-shrink: 0;
+    }
+
+    .accent-primary { background: linear-gradient(135deg, var(--primary), var(--primary-light)); }
+    .accent-success { background: linear-gradient(135deg, #198754, #157347); }
+    .accent-warning { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .accent-info { background: linear-gradient(135deg, #0ea5e9, #0284c7); }
+
+    .group-description {
+        color: var(--muted);
+        margin: 0.75rem 0 0;
+        line-height: 1.8;
+    }
+
+    .group-body {
+        padding: 1.3rem;
+    }
+
+    .template-card {
+        border: 1px solid #e8edf5;
+        border-radius: 18px;
+        padding: 1.15rem;
+        background: linear-gradient(180deg, #ffffff, #fbfcfe);
+        height: 100%;
+        transition: all 0.22s ease;
+    }
+
+    .template-card:hover {
+        transform: translateY(-3px);
+        border-color: #cad9ee;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    .template-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .template-card-title {
+        margin: 0;
+        color: var(--dark);
+        font-weight: 800;
+        font-size: 1rem;
+    }
+
+    .template-tag {
+        background: #f8fafc;
+        color: var(--primary);
+        border: 1px solid #dbe6f5;
+        border-radius: 999px;
+        padding: 0.35rem 0.7rem;
+        font-size: 0.78rem;
+        font-weight: 700;
+    }
+
+    .template-label {
+        font-size: 0.9rem;
+        color: #374151;
+        font-weight: 800;
+        margin-bottom: 0.45rem;
+    }
+
+    .template-input,
+    .template-textarea {
+        border-radius: 14px !important;
+        border: 1px solid #d8e2ef !important;
+        background: #fff !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease;
+    }
+
+    .template-input {
+        min-height: 50px;
+        font-weight: 700;
+    }
+
+    .template-textarea {
+        min-height: 145px;
+        resize: vertical;
+        line-height: 1.8;
+    }
+
+    .template-input:focus,
+    .template-textarea:focus {
+        border-color: #8bb2e8 !important;
+        box-shadow: 0 0 0 4px rgba(42, 90, 156, 0.10) !important;
+    }
+
+    .template-help {
+        margin-top: 0.55rem;
+        color: var(--muted);
+        font-size: 0.83rem;
+        line-height: 1.7;
+    }
+
+    .save-bar {
+        position: sticky;
+        bottom: 18px;
+        z-index: 20;
+        background: rgba(255,255,255,0.94);
+        backdrop-filter: blur(10px);
+        border: 1px solid #e4ebf5;
+        border-radius: 18px;
+        box-shadow: 0 14px 28px rgba(15, 23, 42, 0.10);
+        padding: 1rem 1.15rem;
+    }
+
+    .save-bar-title {
+        color: var(--dark);
+        font-weight: 800;
+        margin-bottom: 0.2rem;
+    }
+
+    .save-bar-subtitle {
+        color: var(--muted);
+        margin: 0;
+        line-height: 1.8;
+        font-size: 0.92rem;
+    }
+
+    @@media (max-width: 991.98px) {
+        .sidebar-card {
+            position: static;
+        }
+
+        .templates-actions {
+            justify-content: flex-start;
+        }
+    }
+</style>
+
+<div class="templates-page">
+    <div class="container py-4 py-lg-5">
+        <div class="templates-hero mb-4">
+            <div class="row align-items-center g-4 position-relative">
+                <div class="col-lg-8">
+                    <div class="hero-icon">
+                        <i class="bi bi-bell-fill"></i>
+                    </div>
+                    <h1 class="h2 fw-bold mb-2">قوالب الإشعارات</h1>
+                    
+
+                   
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="templates-actions">
+                        <a asp-action="Reset" class="btn btn-light templates-btn">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>
+                            استعادة الافتراضي
+                        </a>
+                        <a asp-controller="SuperAdmin" asp-action="Users" class="btn btn-outline-light templates-btn">
+                            <i class="bi bi-arrow-right me-1"></i>
+                            رجوع
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+      
+
+        <div class="row g-4">
+            <div class="col-lg-4 col-xl-3">
+                <div class="sidebar-card">
+                    <div class="sidebar-title">الوصول السريع للأقسام</div>
+
+                    <div class="d-flex flex-column gap-2">
+                        @foreach (var group in groups)
+                        {
+                            <a href="#@group.Id" class="section-link">
+                                <span class="section-link-icon">
+                                    <i class="bi @group.Icon"></i>
+                                </span>
+                                <div>
+                                    <div class="fw-bold">@group.Title</div>
+                                    <small class="text-muted">@group.Items.Length قالب</small>
+                                </div>
+                            </a>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8 col-xl-9">
+                <form asp-action="Index" method="post">
+                    @Html.AntiForgeryToken()
+
+                    <div class="d-flex flex-column gap-4">
+                        @foreach (var group in groups)
+                        {
+                            <section id="@group.Id" class="group-card">
+                                <div class="group-header">
+                                    <h2 class="group-title">
+                                        <span class="group-icon accent-@group.Accent">
+                                            <i class="bi @group.Icon"></i>
+                                        </span>
+                                        <span>@group.Title</span>
+                                    </h2>
+
+                                    <p class="group-description">@group.Description</p>
+                                </div>
+
+                                <div class="group-body">
+                                    <div class="row g-4">
+                                        @foreach (var item in group.Items)
+                                        {
+                                            <div class="col-12">
+                                                <div class="template-card">
+                                                    <div class="template-card-header">
+                                                        <h3 class="template-card-title">@item.Item3</h3>
+                                                        <span class="template-tag">@group.Title</span>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="template-label">عنوان الإشعار</label>
+                                                        <input class="form-control template-input"
+                                                               name="@item.Item1"
+                                                               value="@DisplayValue(item.Item1)"
+                                                               placeholder="اكتب عنوان الإشعار هنا" />
+                                                    </div>
+
+                                                    <div>
+                                                        <label class="template-label">نص الإشعار</label>
+                                                        <textarea class="form-control template-textarea"
+                                                                  rows="5"
+                                                                  name="@item.Item2"
+                                                                  placeholder="اكتب نص الإشعار هنا">@DisplayValue(item.Item2)</textarea>
+
+                                                        <div class="template-help">
+                                                            يمكنك استخدام متغيرات مثل <code>{reason}</code> أو <code>{fullName}</code> أو غيرها حسب نوع الإشعار.
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </section>
+                        }
+                    </div>
+
+                    <div class="save-bar mt-4">
+                        <div class="row align-items-center g-3">
+                            <div class="col-lg-7">
+                                <div class="save-bar-title">جاهز لحفظ التعديلات؟</div>
+                                <p class="save-bar-subtitle">
+                                    عند الحفظ سيتم اعتماد النصوص الجديدة مباشرة في الإشعارات الآلية، بينما زر الاستعادة يعيد القيم الافتراضية الأصلية فقط.
+                                </p>
+                            </div>
+
+                            <div class="col-lg-5">
+                                <div class="d-flex gap-2 justify-content-lg-end flex-wrap">
+                                    <button type="submit" class="btn btn-success templates-btn">
+                                        <i class="bi bi-save me-1"></i>
+                                        حفظ التعديلات
+                                    </button>
+
+                                    <a asp-action="Reset" class="btn btn-outline-warning templates-btn">
+                                        <i class="bi bi-arrow-counterclockwise me-1"></i>
+                                        استعادة الافتراضي
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

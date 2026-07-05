@@ -1,0 +1,219 @@
+@model WebApplication2.Models.Audit.AuditTrailCategoryViewModel
+@{
+    ViewData["Title"] = Model.Title;
+    ViewData["Icon"] = Model.Icon;
+    Layout = "_Layout";
+
+    static string TranslateAuditEventType(string? eventType)
+    {
+        return eventType switch
+        {
+            "Action" => "إجراء",
+            "LoginSuccess" => "دخول ناجح",
+            "LoginFailed" => "فشل تسجيل الدخول",
+            null or "" => "",
+            _ => eventType
+        };
+    }
+
+    static string TranslateAuditMessage(string? message)
+    {
+        return message switch
+        {
+            "SuperAdmin/AuditTrail" => "عرض سجل النظام",
+            "SuperAdmin/LoginAudit" => "عرض سجل الدخول",
+            "SuperAdmin/ErrorAudit" => "عرض سجل الأخطاء",
+            "SuperAdmin/ActivityAudit" => "عرض سجل الحركات",
+            "SuperAdmin/DeleteUser" => "حذف مستخدم",
+            "SuperAdmin/BulkDeleteUsers" => "حذف مجموعة مستخدمين",
+            "SuperAdmin/Users" => "عرض المستخدمين",
+            "SuperAdmin/UserDetails" => "عرض تفاصيل المستخدم",
+            "SuperAdmin/EditUser" => "تعديل بيانات المستخدم",
+            "SuperAdmin/Reports" => "عرض التقارير",
+            "SuperAdmin/SendNotification" => "فتح صفحة إرسال الإشعارات",
+            "SuperAdmin/BackupDatabase" => "إنشاء نسخة احتياطية",
+            "SuperAdmin/RestoreDatabase" => "استعادة نسخة احتياطية",
+            "Admin/DeleteUser" => "حذف مستخدم",
+            "Admin/BulkDeleteUsers" => "حذف مجموعة مستخدمين",
+            "Admin/Users" => "عرض المستخدمين",
+            "Admin/EditUser" => "تعديل بيانات المستخدم",
+            "Admin/SendNotification" => "فتح صفحة إرسال الإشعارات",
+            "Account/CreateUserByAdmin" => "إنشاء مستخدم بواسطة الإدارة",
+            null or "" => "-",
+            _ => message
+        };
+    }
+
+    static string TranslateHttpMethod(string? method)
+    {
+        return method?.ToUpperInvariant() switch
+        {
+            "GET" => "عرض",
+            "POST" => "إرسال",
+            "PUT" => "تحديث",
+            "PATCH" => "تعديل",
+            "DELETE" => "حذف",
+            null or "" => "-",
+            _ => method ?? "-"
+        };
+    }
+
+    static string TranslateRequestPath(string? path)
+    {
+        return path switch
+        {
+            "/SuperAdmin/AuditTrail" => "صفحة سجل النظام",
+            "/SuperAdmin/LoginAudit" => "صفحة سجل الدخول",
+            "/SuperAdmin/ErrorAudit" => "صفحة سجل الأخطاء",
+            "/SuperAdmin/ActivityAudit" => "صفحة سجل الحركات",
+            "/SuperAdmin/DeleteUser" => "عملية حذف مستخدم",
+            "/SuperAdmin/BulkDeleteUsers" => "عملية حذف مجموعة مستخدمين",
+            "/SuperAdmin/Users" => "صفحة المستخدمين",
+            "/SuperAdmin/UserDetails" => "صفحة تفاصيل المستخدم",
+            "/SuperAdmin/EditUser" => "صفحة تعديل المستخدم",
+            "/SuperAdmin/Reports" => "صفحة التقارير",
+            "/SuperAdmin/SendNotification" => "صفحة إرسال الإشعارات",
+            "/SuperAdmin/BackupDatabase" => "صفحة النسخ الاحتياطي",
+            "/SuperAdmin/RestoreDatabase" => "صفحة استعادة النسخة الاحتياطية",
+            "/Account/CreateUserByAdmin" => "صفحة إنشاء مستخدم بواسطة الإدارة",
+            "/Admin/Users" => "صفحة المستخدمين",
+            "/Admin/DeleteUser" => "عملية حذف مستخدم",
+            "/Admin/BulkDeleteUsers" => "عملية حذف مجموعة مستخدمين",
+            "/Admin/EditUser" => "صفحة تعديل المستخدم",
+            _ => path ?? "-"
+        };
+    }
+}
+
+<style>
+    .audit-page {
+        display: grid;
+        gap: 16px;
+    }
+
+    .audit-hero {
+        background: #fff;
+        border-radius: 24px;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+        padding: 24px;
+    }
+
+    .audit-hero p {
+        margin: 10px 0 0;
+        color: #475569;
+        line-height: 1.9;
+    }
+
+    .audit-list {
+        display: grid;
+        gap: 14px;
+    }
+
+    .audit-item {
+        background: #fff;
+        border-radius: 20px;
+        border: 1px solid rgba(226, 232, 240, 0.95);
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+        padding: 18px 20px;
+    }
+
+    .audit-item-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+    }
+
+    .audit-item-title {
+        font-weight: 800;
+        color: #0f172a;
+    }
+
+    .audit-item-time {
+        color: #64748b;
+        font-size: 0.92rem;
+        font-weight: 700;
+    }
+
+    .audit-item-meta {
+        color: #475569;
+        line-height: 1.9;
+        font-size: 0.95rem;
+    }
+
+    .audit-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .audit-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        background: #e2e8f0;
+        color: #1e293b;
+        padding: 12px 16px;
+        border-radius: 14px;
+        font-weight: 700;
+    }
+
+    .audit-empty {
+        text-align: center;
+        background: #fff;
+        border-radius: 20px;
+        padding: 30px 20px;
+        color: #64748b;
+        border: 1px dashed rgba(148, 163, 184, 0.45);
+    }
+</style>
+
+<div class="audit-page">
+    <section class="audit-hero">
+        <div class="audit-actions">
+            <a asp-action="AuditTrail" class="audit-back">
+                <i class="bi bi-arrow-right-circle"></i>
+                <span>العودة إلى صفحة السجل</span>
+            </a>
+        </div>
+        <p>@Model.Subtitle</p>
+    </section>
+
+    @if (Model.Entries.Any())
+    {
+        <div class="audit-list">
+            @foreach (var entry in Model.Entries)
+            {
+                var translatedEventType = TranslateAuditEventType(entry.EventType);
+                var translatedMessage = TranslateAuditMessage(entry.Message);
+                var translatedRequest = $"{TranslateHttpMethod(entry.HttpMethod)} {TranslateRequestPath(entry.Path)}";
+                <article class="audit-item">
+                    <div class="audit-item-top">
+                        <div class="audit-item-title">@(string.IsNullOrWhiteSpace(translatedEventType) ? translatedMessage : translatedEventType)</div>
+                        <div class="audit-item-time">@entry.TimestampUtc.ToLocalTime().ToString("yyyy/MM/dd hh:mm tt")</div>
+                    </div>
+                    <div class="audit-item-meta">
+                        الرسالة: @translatedMessage<br />
+                        المستخدم: @(entry.UserEmail ?? entry.UserName ?? "غير معروف")<br />
+                        الطلب: @translatedRequest<br />
+                        IP: @(entry.IpAddress ?? "-")
+                        @if (!string.IsNullOrWhiteSpace(entry.Details))
+                        {
+                            <br />
+                            <span>التفاصيل: @entry.Details</span>
+                        }
+                    </div>
+                </article>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="audit-empty">
+            لا توجد سجلات في هذا القسم حتى الآن.
+        </div>
+    }
+</div>

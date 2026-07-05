@@ -2554,8 +2554,23 @@ body {
     }
 }
 
-        function exportCardToExcel(cardType, value) {
+        async function exportCardToExcel(cardType, value) {
             try {
+                const result = await Swal.fire({
+                    title: 'تأكيد التصدير',
+                    text: 'هل أنت متأكد من تحميل ملف Excel لهذه الإحصائية؟',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'نعم، تحميل',
+                    cancelButtonText: 'إلغاء',
+                    confirmButtonColor: '#198754',
+                    cancelButtonColor: '#6c757d'
+                });
+
+                if (!result.isConfirmed) {
+                    return;
+                }
+
                 const params = new URLSearchParams();
                 params.set('cardType', cardType || '');
                 if (value) params.set('value', value);

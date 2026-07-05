@@ -21,7 +21,9 @@
     var currentStatusFilter = ViewBag.StatusFilter as string ?? "";
     var currentManagerLevelFilter = ViewBag.ManagerLevelFilter as string ?? "";
     var currentEducationFilter = ViewBag.EducationFilter as string ?? "";
+    var currentProfileStageFilter = ViewBag.ProfileStageFilter as string ?? "";
     var canResetUserPasswords = ViewBag.CanResetUserPasswords is bool canResetPasswordsValue && canResetPasswordsValue;
+    var listAction = administrativeOnly ? "AdministrativeManagers" : "Users";
     
     // حساب الأدمن (الذين لديهم دور Admin وليس SuperAdmin)
     var admins = ViewBag.Admins is int adminsValue ? adminsValue : Model.Count(u => u.Roles != null &&
@@ -265,6 +267,41 @@
         flex: 0 0 36px;
     }
 
+    .name-status-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .profile-status-dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+        display: inline-block;
+        flex: 0 0 11px;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.95);
+    }
+
+    .profile-status-incomplete {
+        background: #9ca3af;
+    }
+
+    .profile-status-basic-pending {
+        background: #3b82f6;
+    }
+
+    .profile-status-needs-additional {
+        background: #facc15;
+    }
+
+    .profile-status-promotion-pending {
+        background: #f97316;
+    }
+
+    .profile-status-promoted {
+        background: #22c55e;
+    }
+
     .btn-add-user {
         background: rgba(255,255,255,0.2) !important;
         border: 1px solid rgba(255,255,255,0.3) !important;
@@ -349,6 +386,15 @@
             font-size: 0.95rem;
             line-height: 1;
         }
+
+    .btn-notify {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        color: white;
+        min-width: 36px;
+        width: 36px;
+        padding-left: 0;
+        padding-right: 0;
+    }
 
     .btn-toggle {
         background: linear-gradient(135deg, #ffc107, #e0a800);
@@ -449,15 +495,15 @@
 
 @Html.AntiForgeryToken()
 
-<div class="container mt-3">
+<div class="container mt-3" data-list-action="@listAction">
     <h3 class="mb-3" style="font-size: 1.5rem;">👑 @pageTitle</h3>
 
     <!-- شريط الإجراءات -->
     <div class="action-bar">
         <div class="row align-items-center">
-            <div class="col-md-6">
-                <div class="btn-group" role="group">
-                    <div class="dropdown me-2">
+            <div class="col-md-8">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="dropdown">
                         <button class="btn btn-excel dropdown-toggle" type="button" data-bs-toggle="dropdown">
                             <i class="fas fa-file-excel me-1"></i> تصدير
                         </button>
@@ -470,14 +516,16 @@
                             <li><a class="dropdown-item" href="@Url.Action("ExportStudentsOnlyToExcel")"><i class="fas fa-graduation-cap text-success me-2"></i> الطلاب الجامعيين</a></li>
                         </ul>
                     </div>
-                    <button class="btn btn-bulk-delete" id="bulkDeleteBtn" onclick="bulkDeleteSelected()" disabled>
-                        <i class="fas fa-trash-alt me-1"></i> حذف
-                        <span class="selected-count" id="selectedCount">0</span>
+                    <button class="btn btn-excel" id="bulkExportBtn" onclick="exportSelectedUsers()" disabled>
+                        <i class="fas fa-file-export me-1"></i> تصدير المحدد
                     </button>
                 </div>
             </div>
-            <div class="col-md-6 text-start text-md-end">
-                <small class="text-muted"><i class="fas fa-info-circle"></i> حدد المستخدمين للحذف المتعدد</small>
+            <div class="col-md-4 d-flex justify-content-start justify-content-md-end">
+                <button class="btn btn-bulk-delete mb-2 mb-md-0" id="bulkDeleteBtn" onclick="bulkDeleteSelected()" disabled>
+                    <i class="fas fa-trash-alt me-1"></i> حذف
+                    <span class="selected-count" id="selectedCount">0</span>
+                </button>
             </div>
         </div>
     </div>
@@ -649,7 +697,7 @@
                         <option value="أنثى">أنثى</option>
                     </select>
                 </div>
-                <div class="col-md-3 mb-3">
+                <div class="col-md-2 mb-3">
                     <label class="form-label fw-bold">🎓 التحصيل الدراسي:</label>
                     <select class="form-select" id="educationFilter">
                         <option value="">جميع المؤهلات</option>
@@ -684,15 +732,23 @@
     </optgroup>
 </select>
                 </div>
-                <div class="col-md-4 mb-3 d-flex align-items-end">
+                <div class="col-md-2 mb-3">
+                    <label class="form-label fw-bold">🧭 مرحلة الاستمارة:</label>
+                    <select class="form-select" id="profileStageFilter">
+                        <option value="">كل المراحل</option>
+                        <option value="incomplete">غير مكتمل</option>
+                        <option value="basic-pending">انتظار موافقة الأساسية</option>
+                        <option value="needs-additional">بانتظار إكمال الاستمارة الثانية</option>
+                        <option value="promotion-pending">انتظار الترقية</option>
+                    </select>
+                </div>
+                <div class="col-md-1 mb-3 d-flex align-items-end">
                     <div class="btn-group">
-                        <button class="btn btn-primary" id="applyFilter"><i class="fas fa-filter"></i> تطبيق الفلتر</button>
-                        <button class="btn btn-outline-secondary" id="clearFilter"><i class="fas fa-times"></i> مسح الفلاتر</button>
-                    </div>
-                    <div class="alert alert-info ms-3 mb-0 py-2">
-                        <i class="fas fa-info-circle"></i> إجمالي النتائج: <span id="filteredCount">@filteredUsers</span> @(administrativeOnly ? "مسؤول/معاون" : "مستخدم")
+                        <button class="btn btn-primary" id="applyFilter"><i class="fas fa-filter"></i> بحث </button>
+                        <button class="btn btn-outline-secondary" id="clearFilter"><i class="fas fa-times"></i> مسح </button>
                     </div>
                 </div>
+                
             </div>
         </div>
     </div>
@@ -745,9 +801,10 @@
                                 data-work-governorate="@user.WorkGovernorate?.ToLower() ?? "" "
                                 data-gender="@user.Gender?.ToLower() ?? "" "
                                 data-status="@(user.IsActive ? "active" : "inactive")"
-                               data-ismanager="@(user.IsManager ? "yes" : "no")"
-data-managerlevel="@(user.ManagementLevel?.ToLower() ?? "")"
-data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
+                                data-ismanager="@(user.IsManager ? "yes" : "no")"
+                                data-managerlevel="@(user.ManagementLevel?.ToLower() ?? "")"
+                                data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
+                                data-profilestage="@(user.IsPromoted || user.AccountType == "فرد" || user.IsMember ? "promoted" : user.RequestedPromotion ? "promotion-pending" : user.IsBasicInfoApproved ? "needs-additional" : user.HasCompleteProfile ? "basic-pending" : "incomplete")"
                                 class="@(isSuperAdmin ? "table-danger" : isAdmin ? "table-warning" : "")">
 
                                 <!-- خانة الاختيار -->
@@ -784,7 +841,35 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
 
                                 <!-- الاسم -->
                                 <td data-label="الاسم">
-                                    <div class="fw-bold small">@user.FullName</div>
+                                    @{
+                                        var profileStatusClass = "profile-status-incomplete";
+                                        var profileStatusTitle = "لم يكمل الاستمارة الأساسية بعد";
+
+                                        if (user.IsPromoted || user.AccountType == "فرد" || user.IsMember)
+                                        {
+                                            profileStatusClass = "profile-status-promoted";
+                                            profileStatusTitle = "أصبح فردًا واكتمل المسار";
+                                        }
+                                        else if (user.RequestedPromotion)
+                                        {
+                                            profileStatusClass = "profile-status-promotion-pending";
+                                            profileStatusTitle = "أكمل الاستمارة الثانية وبانتظار الترقية";
+                                        }
+                                        else if (user.IsBasicInfoApproved)
+                                        {
+                                            profileStatusClass = "profile-status-needs-additional";
+                                            profileStatusTitle = "بانتظار إكمال الاستمارة الثانية";
+                                        }
+                                        else if (user.HasCompleteProfile)
+                                        {
+                                            profileStatusClass = "profile-status-basic-pending";
+                                            profileStatusTitle = "أكمل الاستمارة الأساسية وبانتظار الموافقة";
+                                        }
+                                    }
+                                    <div class="name-status-wrap">
+                                        <span class="profile-status-dot @profileStatusClass" title="@profileStatusTitle" data-bs-toggle="tooltip"></span>
+                                        <div class="fw-bold small">@user.FullName</div>
+                                    </div>
                                     @if ((isAdmin || isMapViewer) && !string.IsNullOrEmpty(user.ManagedGovernorate))
                                     {
                                         <small class="text-warning" style="font-size: 0.65rem;">
@@ -973,6 +1058,13 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
 
                                         @if (canResetUserPasswords)
                                         {
+                                            <a href="@Url.Action("SendNotification", "SuperAdmin", new { userId = user.Id })"
+                                               class="btn-action btn-notify"
+                                               title="إرسال إشعار"
+                                               aria-label="إرسال إشعار">
+                                                <i class="bi bi-send-fill"></i>
+                                            </a>
+
                                             <button class="btn-action btn-password reset-password-btn"
                                                     data-user-id="@user.Id"
                                                     data-user-email="@user.Email"
@@ -1000,12 +1092,12 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
                         <nav aria-label="Page navigation">
                             <ul class="pagination pagination-sm mb-0" id="serverPagination">
                                 <li class="page-item @(currentPage == 1 ? "disabled" : "")">
-                                    <a class="page-link" asp-action="Users" asp-route-page="@(currentPage - 1)" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">السابق</a>
+<a class="page-link" asp-action="@listAction" asp-route-page="@(currentPage - 1)" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">السابق</a>
                                 </li>
                                 @if (firstPage > 1)
                                 {
                                     <li class="page-item">
-                                        <a class="page-link" asp-action="Users" asp-route-page="1" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">1</a>
+<a class="page-link" asp-action="@listAction" asp-route-page="1" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">1</a>
                                     </li>
                                     @if (firstPage > 2)
                                     {
@@ -1017,7 +1109,7 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
                                 @for (var p = firstPage; p <= lastPage; p++)
                                 {
                                     <li class="page-item @(p == currentPage ? "active" : "")">
-                                        <a class="page-link" asp-action="Users" asp-route-page="@p" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">@p</a>
+<a class="page-link" asp-action="@listAction" asp-route-page="@p" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">@p</a>
                                     </li>
                                 }
                                 @if (lastPage < totalPages)
@@ -1029,11 +1121,11 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
                                         </li>
                                     }
                                     <li class="page-item">
-                                        <a class="page-link" asp-action="Users" asp-route-page="@totalPages" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">@totalPages</a>
+<a class="page-link" asp-action="@listAction" asp-route-page="@totalPages" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">@totalPages</a>
                                     </li>
                                 }
                                 <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
-                                    <a class="page-link" asp-action="Users" asp-route-page="@(currentPage + 1)" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">التالي</a>
+<a class="page-link" asp-action="@listAction" asp-route-page="@(currentPage + 1)" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">التالي</a>
                                 </li>
                             </ul>
                         </nav>
@@ -1218,7 +1310,8 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
             gender: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(currentGenderFilter)),
             status: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(currentStatusFilter)),
             managerLevel: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(currentManagerLevelFilter)),
-            education: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(currentEducationFilter))
+            education: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(currentEducationFilter)),
+            profileStage: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(currentProfileStageFilter))
         };
 
         function setSelectValue(id, value) {
@@ -1233,6 +1326,7 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
         setSelectValue('statusFilter', appliedServerFilters.status);
         setSelectValue('managerLevelFilter', appliedServerFilters.managerLevel);
         setSelectValue('educationFilter', appliedServerFilters.education);
+        setSelectValue('profileStageFilter', appliedServerFilters.profileStage);
 
         function redirectWithServerFilters() {
             const params = new URLSearchParams();
@@ -1248,9 +1342,10 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
             add('status', document.getElementById('statusFilter')?.value || '');
             add('managerLevel', document.getElementById('managerLevelFilter')?.value || '');
             add('education', document.getElementById('educationFilter')?.value || '');
+            add('profileStage', document.getElementById('profileStageFilter')?.value || '');
             add('pageSize', document.getElementById('pageSizeSelect')?.value || '@pageSize');
 
-            window.location.href = '/SuperAdmin/Users' + (params.toString() ? '?' + params.toString() : '');
+            window.location.href = '/SuperAdmin/@listAction' + (params.toString() ? '?' + params.toString() : '');
         }
 
         // ========== التحكم في ظهور حقول الأدمن ==========
@@ -1303,8 +1398,56 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
             const count = document.querySelectorAll('.user-checkbox:checked').length;
             const selectedCountSpan = document.getElementById('selectedCount');
             const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+            const bulkExportBtn = document.getElementById('bulkExportBtn');
             if (selectedCountSpan) selectedCountSpan.textContent = count;
             if (bulkDeleteBtn) bulkDeleteBtn.disabled = count === 0;
+            if (bulkExportBtn) bulkExportBtn.disabled = count === 0;
+        }
+
+        async function exportSelectedUsers() {
+            const selectedIds = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
+            if (selectedIds.length === 0) {
+                Swal.fire('تنبيه', 'الرجاء اختيار مستخدم واحد على الأقل للتصدير', 'warning');
+                return;
+            }
+
+            const csrfToken = document.querySelector('input[name="__RequestVerificationToken"]')?.value || '';
+
+            try {
+                const response = await fetch('/SuperAdmin/ExportSelectedUsersToExcel', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': csrfToken
+                    },
+                    body: JSON.stringify({ userIds: selectedIds })
+                });
+
+                const contentType = response.headers.get('content-type') || '';
+                if (!response.ok) {
+                    if (contentType.includes('application/json')) {
+                        const errorData = await response.json();
+                        Swal.fire('خطأ', errorData.message || 'فشل تصدير المستخدمين المحددين', 'error');
+                    } else {
+                        Swal.fire('خطأ', 'فشل تصدير المستخدمين المحددين', 'error');
+                    }
+                    return;
+                }
+
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                const disposition = response.headers.get('content-disposition') || '';
+                const fileNameMatch = disposition.match(/filename=\"?([^\"]+)\"?/);
+                link.href = downloadUrl;
+                link.download = fileNameMatch ? fileNameMatch[1] : 'Selected_Users.xlsx';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(downloadUrl);
+            } catch (error) {
+                Swal.fire('خطأ', 'حدث خطأ في الاتصال بالخادم', 'error');
+            }
         }
 
         // ========== حذف متعدد ==========
@@ -1474,6 +1617,7 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
             document.getElementById('workGovernorateFilter').value = '';
             document.getElementById('genderFilter').value = '';
             document.getElementById('statusFilter').value = '';
+            document.getElementById('profileStageFilter').value = '';
             document.getElementById('managerLevelFilter').value = '';
             document.getElementById('educationFilter').value = '';
             document.getElementById('pageSizeSelect').value = '10';
@@ -1487,6 +1631,7 @@ data-assignmentrole="@(user.AssignmentRole?.ToLower() ?? "")"
         document.getElementById('workGovernorateFilter')?.addEventListener('change', applyFilter);
         document.getElementById('genderFilter')?.addEventListener('change', applyFilter);
         document.getElementById('statusFilter')?.addEventListener('change', applyFilter);
+        document.getElementById('profileStageFilter')?.addEventListener('change', applyFilter);
         document.getElementById('managerLevelFilter')?.addEventListener('change', applyFilter);
         document.getElementById('educationFilter')?.addEventListener('change', applyFilter);
         document.getElementById('pageSizeSelect')?.addEventListener('change', applyFilter);
@@ -1736,7 +1881,8 @@ function checkAndClearStorage() {
     var allowedReferrers = [
         '/SuperAdmin/UserDetails',
         '/SuperAdmin/EditUser',
-        '/SuperAdmin/Users'
+        '/SuperAdmin/Users',
+        '/SuperAdmin/AdministrativeManagers'
     ];
     
     var isFromAllowedPage = false;
@@ -1765,6 +1911,12 @@ function checkAndClearStorage() {
         //     });
         // });
 
-        document.addEventListener('DOMContentLoaded', initializeFilter);
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+                new bootstrap.Tooltip(el);
+            });
+
+            initializeFilter();
+        });
     </script>
 }

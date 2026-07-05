@@ -379,6 +379,7 @@ namespace WebApplication2.Controllers
             string? status = null,
             string? managerLevel = null,
             string? education = null,
+            string? profileStage = null,
             int pageSize = 10)
         {
             try
@@ -386,7 +387,7 @@ namespace WebApplication2.Controllers
                 pageSize = NormalizeUserManagementPageSize(pageSize);
                 page = Math.Max(1, page);
 
-                return await UsersPagedFromDatabaseAsync(administrativeOnly, viewName, page, search, role, status, managerLevel, education, pageSize);
+                return await UsersPagedFromDatabaseAsync(administrativeOnly, viewName, page, search, role, status, managerLevel, education, profileStage, pageSize);
 
                 if (administrativeOnly && !User.IsInRole(clsRoles.Admin))
                 {
@@ -772,9 +773,11 @@ namespace WebApplication2.Controllers
                         District = GetEffectiveDistrictFast(profile) ?? "---",
                         AccountType = profile.AccountType ?? "عادي",
                         PromotionStatus = promotionStatus,
+                        IsBasicInfoApproved = profile.IsBasicInfoApproved,
                         RequestedPromotion = profile.RequestedPromotion,
                         IsPromoted = profile.IsPromoted,
                         IsActive = user?.EmailConfirmed ?? false,
+                        HasCompleteProfile = IsProfileComplete(profile, address, voterCard, affiliationInfo),
                         CompletionPercentage = CalculateCompletionPercentage(profile, address, voterCard),
                         CreatedAt = profile.CreatedAt,
                         Education = profile.Education ?? "---",
@@ -824,6 +827,7 @@ namespace WebApplication2.Controllers
                 ViewBag.StatusFilter = status;
                 ViewBag.ManagerLevelFilter = managerLevel;
                 ViewBag.EducationFilter = education;
+                ViewBag.ProfileStageFilter = profileStage;
 
                 viewName = viewName == "AdministrativeManagers" ? viewName : "Users";
                 return View(viewName, list);
@@ -846,6 +850,7 @@ namespace WebApplication2.Controllers
             string? status,
             string? managerLevel,
             string? education,
+            string? profileStage,
             int pageSize)
         {
             if (administrativeOnly && !User.IsInRole(clsRoles.Admin))
@@ -971,6 +976,57 @@ namespace WebApplication2.Controllers
 
             if (!string.IsNullOrWhiteSpace(education))
                 query = query.Where(i => i.Education == education);
+
+            if (!string.IsNullOrWhiteSpace(profileStage))
+            {
+                var normalizedProfileStage = profileStage.Trim().ToLowerInvariant();
+                var completeBasicInfoIds = query
+                    .Where(i =>
+                        !string.IsNullOrWhiteSpace(i.FullName) &&
+                        !string.IsNullOrWhiteSpace(i.MotherName) &&
+                        i.Date != DateTime.MinValue &&
+                        !string.IsNullOrWhiteSpace(i.Gender) &&
+                        !string.IsNullOrWhiteSpace(i.PhoneNumber) &&
+                        !string.IsNullOrWhiteSpace(i.IdentityCardN) &&
+                        i.IdentityCardN.Length == 12 &&
+                        (
+                            !string.IsNullOrWhiteSpace(i.WorkGovernorate) ||
+                            _context.WorkLocations.Any(w =>
+                                w.IdentifyId == i.Id &&
+                                !string.IsNullOrWhiteSpace(w.Governorate) &&
+                                (w.Governorate != "بغداد" || !string.IsNullOrWhiteSpace(w.District)))
+                        ))
+                    .Select(i => i.Id);
+
+                query = normalizedProfileStage switch
+                {
+                    "incomplete" => query.Where(i => !completeBasicInfoIds.Contains(i.Id)),
+                    "basic-pending" => query.Where(i => completeBasicInfoIds.Contains(i.Id) && !i.IsBasicInfoApproved),
+                    "needs-additional" => query.Where(i =>
+                        completeBasicInfoIds.Contains(i.Id) &&
+                        i.IsBasicInfoApproved &&
+                        !i.RequestedPromotion &&
+                        !i.IsPromoted &&
+                        i.AccountType != "فرد" &&
+                        !_context.UserRoles
+                            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
+                            .Any(r => r.UserId == i.UserId && r.RoleName == "فرد")),
+                    "promotion-pending" => query.Where(i =>
+                        i.RequestedPromotion &&
+                        !i.IsPromoted &&
+                        i.AccountType != "فرد" &&
+                        !_context.UserRoles
+                            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
+                            .Any(r => r.UserId == i.UserId && r.RoleName == "فرد")),
+                    "promoted" => query.Where(i =>
+                        i.IsPromoted ||
+                        i.AccountType == "فرد" ||
+                        _context.UserRoles
+                            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
+                            .Any(r => r.UserId == i.UserId && r.RoleName == "فرد")),
+                    _ => query
+                };
+            }
 
             var totalUsersCount = await query.CountAsync();
             var totalPages = Math.Max(1, (int)Math.Ceiling(totalUsersCount / (double)pageSize));
@@ -1108,6 +1164,7 @@ namespace WebApplication2.Controllers
             ViewBag.StatusFilter = status;
             ViewBag.ManagerLevelFilter = managerLevel;
             ViewBag.EducationFilter = education;
+            ViewBag.ProfileStageFilter = profileStage;
 
             viewName = viewName == "AdministrativeManagers" ? viewName : "Users";
             return View(viewName, list);
@@ -1120,9 +1177,25 @@ namespace WebApplication2.Controllers
         }
 
         [Authorize(Roles = clsRoles.Admin)]
-        public async Task<IActionResult> AdministrativeManagers()
+        public async Task<IActionResult> AdministrativeManagers(
+            int page = 1,
+            string? search = null,
+            string? role = null,
+            string? status = null,
+            string? managerLevel = null,
+            string? education = null,
+            int pageSize = 10)
         {
-            return await Users(administrativeOnly: true, viewName: "AdministrativeManagers");
+            return await Users(
+                administrativeOnly: true,
+                viewName: "AdministrativeManagers",
+                page: page,
+                search: search,
+                role: role,
+                status: status,
+                managerLevel: managerLevel,
+                education: education,
+                pageSize: pageSize);
         }
 
         // ===== عرض طلبات الترقية =====
@@ -1237,12 +1310,11 @@ namespace WebApplication2.Controllers
 
                 try
                 {
-                    await _notificationService.CreateNotification(
-                        "🎉 تهانينا! تمت الموافقة على طلب الترقية",
-                        "تمت ترقية حسابك إلى 'فرد' بنجاح.",
+                    await _notificationService.CreateNotificationFromTemplate(
+                        NotificationTemplateKeys.PromotionApproved,
                         identify.UserId,
-                        "bi-star-fill",
-                        "/Register/ProfileDetails"
+                        icon: "bi-star-fill",
+                        clickUrl: "/Register/ProfileDetails"
                     );
                 }
                 catch (Exception ex)
@@ -1285,10 +1357,10 @@ namespace WebApplication2.Controllers
 
                 try
                 {
-                    await _notificationService.CreateNotification(
-                        "❌ عذراً، لم يتم الموافقة على طلبك",
-                        $"سبب الرفض: {reason}",
+                    await _notificationService.CreateNotificationFromTemplate(
+                        NotificationTemplateKeys.PromotionRejected,
                         identify.UserId,
+                        new Dictionary<string, string?> { ["reason"] = reason },
                         "bi-x-circle-fill",
                         "/Register/ProfileDetails"
                     );
@@ -1576,12 +1648,11 @@ namespace WebApplication2.Controllers
 
                 try
                 {
-                    await _notificationService.CreateNotification(
-                        "✅ تمت الموافقة على بياناتك الأساسية",
-                        "يمكنك الآن إكمال البيانات الإضافية",
+                    await _notificationService.CreateNotificationFromTemplate(
+                        NotificationTemplateKeys.BasicInfoApproved,
                         identify.UserId,
-                        "bi-check-circle",
-                        "/Register/AdditionalInfo"
+                        icon: "bi-check-circle",
+                        clickUrl: "/Register/AdditionalInfo"
                     );
                 }
                 catch (Exception ex)
@@ -1624,10 +1695,10 @@ namespace WebApplication2.Controllers
 
                 try
                 {
-                    await _notificationService.CreateNotification(
-                        "❌ لم يتم الموافقة على بياناتك الأساسية",
-                        $"سبب الرفض: {reason}",
+                    await _notificationService.CreateNotificationFromTemplate(
+                        NotificationTemplateKeys.BasicInfoRejected,
                         identify.UserId,
+                        new Dictionary<string, string?> { ["reason"] = reason },
                         "bi-x-circle-fill",
                         "/Register/BasicInfo"
                     );
@@ -2447,6 +2518,47 @@ namespace WebApplication2.Controllers
                 _logger.LogError(ex, "خطأ في تصدير Excel لجميع المستخدمين");
                 TempData["ErrorMessage"] = $"❌ حدث خطأ: {ex.Message}";
                 return RedirectToAction(nameof(Users));
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ExportSelectedUsersToExcel([FromBody] BulkDeleteRequest request)
+        {
+            try
+            {
+                if (request?.UserIds == null || !request.UserIds.Any())
+                    return BadRequest(new { success = false, message = "الرجاء تحديد مستخدم واحد على الأقل للتصدير" });
+
+                var adminGovernorate = await GetAdminGovernorateAsync();
+                if (string.IsNullOrEmpty(adminGovernorate))
+                    return BadRequest(new { success = false, message = "لم يتم تعيين محافظة لك" });
+
+                var validUserIds = new List<string>();
+                foreach (var userId in request.UserIds.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct())
+                {
+                    if (await IsUserInAdminGovernorateAsync(userId))
+                    {
+                        validUserIds.Add(userId);
+                    }
+                }
+
+                if (!validUserIds.Any())
+                    return BadRequest(new { success = false, message = "لا يوجد مستخدمون ضمن صلاحياتك لتصديرهم" });
+
+                var users = await _userManager.Users
+                    .Where(u => validUserIds.Contains(u.Id))
+                    .OrderBy(u => u.Email)
+                    .ToListAsync();
+
+                var data = await BuildFullUsersExcelData(users);
+                byte[] fileContent = GenerateExcelFile(data);
+                return File(fileContent, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", $"Selected_Users_{adminGovernorate}_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "خطأ في تصدير Excel للمستخدمين المحددين");
+                return StatusCode(500, new { success = false, message = $"❌ حدث خطأ: {ex.Message}" });
             }
         }
 
@@ -3546,9 +3658,11 @@ namespace WebApplication2.Controllers
 
         public string AccountType { get; set; } = string.Empty;
         public string PromotionStatus { get; set; } = string.Empty;
+        public bool IsBasicInfoApproved { get; set; }
         public bool RequestedPromotion { get; set; }
         public bool IsPromoted { get; set; }
         public bool IsActive { get; set; }
+        public bool HasCompleteProfile { get; set; }
         public int CompletionPercentage { get; set; }
         public DateTime CreatedAt { get; set; }
         public string Education { get; set; } = string.Empty;

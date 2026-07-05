@@ -11,42 +11,53 @@ namespace WebApplication2.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<bool>(
-                name: "IsWhatsAppVerified",
-                table: "Identifies",
-                type: "bit",
-                nullable: false,
-                defaultValue: false);
+            migrationBuilder.Sql(@"
+                IF COL_LENGTH('dbo.Identifies', 'IsWhatsAppVerified') IS NULL
+                BEGIN
+                    ALTER TABLE dbo.Identifies ADD IsWhatsAppVerified bit NOT NULL CONSTRAINT DF_Identifies_IsWhatsAppVerified DEFAULT(0)
+                END
 
-            migrationBuilder.AddColumn<string>(
-                name: "WhatsAppNumber",
-                table: "Identifies",
-                type: "nvarchar(max)",
-                nullable: true);
+                IF COL_LENGTH('dbo.Identifies', 'WhatsAppNumber') IS NULL
+                BEGIN
+                    ALTER TABLE dbo.Identifies ADD WhatsAppNumber nvarchar(max) NULL
+                END
 
-            migrationBuilder.AddColumn<DateTime>(
-                name: "WhatsAppVerifiedAt",
-                table: "Identifies",
-                type: "datetime2",
-                nullable: true);
-
+                IF COL_LENGTH('dbo.Identifies', 'WhatsAppVerifiedAt') IS NULL
+                BEGIN
+                    ALTER TABLE dbo.Identifies ADD WhatsAppVerifiedAt datetime2 NULL
+                END
+            ");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "IsWhatsAppVerified",
-                table: "Identifies");
+            migrationBuilder.Sql(@"
+                IF COL_LENGTH('dbo.Identifies', 'IsWhatsAppVerified') IS NOT NULL
+                BEGIN
+                    DECLARE @dfName nvarchar(128);
+                    SELECT @dfName = dc.name
+                    FROM sys.default_constraints dc
+                    INNER JOIN sys.columns c ON c.default_object_id = dc.object_id
+                    INNER JOIN sys.tables t ON t.object_id = c.object_id
+                    WHERE t.name = 'Identifies' AND c.name = 'IsWhatsAppVerified';
 
-            migrationBuilder.DropColumn(
-                name: "WhatsAppNumber",
-                table: "Identifies");
+                    IF @dfName IS NOT NULL
+                        EXEC('ALTER TABLE dbo.Identifies DROP CONSTRAINT [' + @dfName + ']');
 
-            migrationBuilder.DropColumn(
-                name: "WhatsAppVerifiedAt",
-                table: "Identifies");
+                    ALTER TABLE dbo.Identifies DROP COLUMN IsWhatsAppVerified
+                END
 
+                IF COL_LENGTH('dbo.Identifies', 'WhatsAppNumber') IS NOT NULL
+                BEGIN
+                    ALTER TABLE dbo.Identifies DROP COLUMN WhatsAppNumber
+                END
+
+                IF COL_LENGTH('dbo.Identifies', 'WhatsAppVerifiedAt') IS NOT NULL
+                BEGIN
+                    ALTER TABLE dbo.Identifies DROP COLUMN WhatsAppVerifiedAt
+                END
+            ");
         }
     }
 }

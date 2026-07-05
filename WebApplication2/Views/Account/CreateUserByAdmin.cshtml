@@ -94,13 +94,43 @@
 
                     <form asp-action="CreateUserByAdmin" method="post">
                         @Html.AntiForgeryToken()
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
-                        <div class="mb-3">
+                        <div class="mb-4">
+                            <label asp-for="RegisterMethod" class="form-label fw-bold d-block mb-2">
+                                <i class="fas fa-user-check"></i> طريقة إنشاء الحساب
+                            </label>
+                            <div class="btn-group w-100" role="group" aria-label="طريقة إنشاء الحساب">
+                                <input type="radio" class="btn-check" asp-for="RegisterMethod" id="registerByEmail" value="Email" />
+                                <label class="btn btn-outline-primary" for="registerByEmail">
+                                    <i class="fas fa-envelope"></i> البريد الإلكتروني
+                                </label>
+
+                                <input type="radio" class="btn-check" asp-for="RegisterMethod" id="registerByWhatsApp" value="WhatsApp" />
+                                <label class="btn btn-outline-success" for="registerByWhatsApp">
+                                    <i class="fab fa-whatsapp"></i> الواتساب
+                                </label>
+                            </div>
+                            <span asp-validation-for="RegisterMethod" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3" id="emailField">
                             <label asp-for="Email" class="form-label fw-bold">
                                 <i class="fas fa-envelope"></i> البريد الإلكتروني
                             </label>
                             <input asp-for="Email" class="form-control" placeholder="example@domain.com" />
                             <span asp-validation-for="Email" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3" id="whatsAppField" style="display: none;">
+                            <label asp-for="PhoneNumber" class="form-label fw-bold">
+                                <i class="fab fa-whatsapp"></i> رقم الواتساب
+                            </label>
+                            <input asp-for="PhoneNumber" class="form-control" placeholder="07XXXXXXXXX" dir="ltr" />
+                            <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                            <small class="form-text text-muted">
+                                عند اختيار الواتساب سيتم إنشاء الحساب وتفعيله مباشرة الآن بدون كود، مع حفظ الرقم كمربوط ومؤكد داخل النظام.
+                            </small>
                         </div>
 
                         <div class="mb-3">
@@ -186,43 +216,60 @@
     <script>
         $(document).ready(function() {
             const isSuperAdmin = @isSuperAdmin.ToString().ToLower();
+            const emailMethod = $('#registerByEmail');
+            const whatsAppMethod = $('#registerByWhatsApp');
+            const emailField = $('#emailField');
+            const whatsAppField = $('#whatsAppField');
+            const emailInput = $('#Email');
+            const phoneInput = $('#PhoneNumber');
 
-            if (!isSuperAdmin) {
-                return;
+            function updateRegisterMethodFields() {
+                const useWhatsApp = whatsAppMethod.is(':checked');
+
+                emailField.toggle(!useWhatsApp);
+                whatsAppField.toggle(useWhatsApp);
+                emailInput.prop('required', !useWhatsApp);
+                phoneInput.prop('required', useWhatsApp);
             }
 
-            // إظهار/إخفاء حقل المحافظة عند تغيير الدور
-            $('#roleSelect').change(function() {
-                var selectedRole = $(this).val();
+            if (isSuperAdmin) {
+                // إظهار/إخفاء حقل المحافظة عند تغيير الدور
+                $('#roleSelect').change(function() {
+                    var selectedRole = $(this).val();
 
-                if (selectedRole === 'Admin') {
-                    $('#governorateField').slideDown();
-                    $('#adminInfo').slideDown();
+                    if (selectedRole === 'Admin') {
+                        $('#governorateField').slideDown();
+                        $('#adminInfo').slideDown();
+                        $('#ManagedGovernorate').prop('required', true);
+                    } else {
+                        $('#governorateField').slideUp();
+                        $('#adminInfo').slideUp();
+                        $('#ManagedGovernorate').prop('required', false);
+                    }
+                });
+
+                // التحقق من الدور عند تحميل الصفحة
+                if ($('#roleSelect').val() === 'Admin') {
+                    $('#governorateField').show();
+                    $('#adminInfo').show();
                     $('#ManagedGovernorate').prop('required', true);
-                } else {
-                    $('#governorateField').slideUp();
-                    $('#adminInfo').slideUp();
-                    $('#ManagedGovernorate').prop('required', false);
                 }
-            });
 
-            // التحقق من الدور عند تحميل الصفحة
-            if ($('#roleSelect').val() === 'Admin') {
-                $('#governorateField').show();
-                $('#adminInfo').show();
-                $('#ManagedGovernorate').prop('required', true);
+                // منع إرسال النموذج إذا كان الدور أدمن ولم يتم اختيار محافظة
+                $('form').submit(function(e) {
+                    var role = $('#roleSelect').val();
+                    var governorate = $('#ManagedGovernorate').val();
+
+                    if (role === 'Admin' && !governorate) {
+                        e.preventDefault();
+                        alert('❌ يجب اختيار المحافظة للأدمن');
+                    }
+                });
             }
 
-            // منع إرسال النموذج إذا كان الدور أدمن ولم يتم اختيار محافظة
-            $('form').submit(function(e) {
-                var role = $('#roleSelect').val();
-                var governorate = $('#ManagedGovernorate').val();
-
-                if (role === 'Admin' && !governorate) {
-                    e.preventDefault();
-                    alert('❌ يجب اختيار المحافظة للأدمن');
-                }
-            });
+            emailMethod.on('change', updateRegisterMethodFields);
+            whatsAppMethod.on('change', updateRegisterMethodFields);
+            updateRegisterMethodFields();
         });
     </script>
 }

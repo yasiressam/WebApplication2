@@ -5,6 +5,7 @@ namespace WebApplication2.Services
     public interface INotificationService
     {
         Task<Notification> CreateNotification(string title, string message, string? targetUserId = null, string? icon = null, string? clickUrl = null);
+        Task<Notification> CreateNotificationFromTemplate(string templateKey, string? targetUserId = null, Dictionary<string, string?>? tokens = null, string? icon = null, string? clickUrl = null);
         Task<List<Notification>> GetUserNotifications(string userId);
         Task<int> GetUnreadCount(string userId);
         Task<bool> MarkAsRead(int notificationId, string userId);

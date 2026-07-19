@@ -1,11 +1,10 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 #nullable disable
 
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
@@ -28,33 +27,22 @@ namespace WebApplication2.Areas.Identity.Pages.Account
         private readonly IEmailSender _emailSender;
         private readonly ApplicationDbContext _context;
         private readonly IOtpService _otpService;
-        private readonly IWhatsAppService _whatsAppService;
 
         public ResendEmailConfirmationModel(
             UserManager<IdentityUser> userManager,
             IEmailSender emailSender,
             ApplicationDbContext context,
-            IOtpService otpService,
-            IWhatsAppService whatsAppService)
+            IOtpService otpService)
         {
             _userManager = userManager;
             _emailSender = emailSender;
             _context = context;
             _otpService = otpService;
-            _whatsAppService = whatsAppService;
         }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
         [BindProperty]
         public InputModel Input { get; set; }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
         public class InputModel
         {
             [Required]
@@ -154,13 +142,10 @@ namespace WebApplication2.Areas.Identity.Pages.Account
                 return Page();
             }
 
-            var code = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
-            _otpService.StoreOtp(sendPhone, code);
-
-            var sent = await _whatsAppService.SendMessageAsync(sendPhone, $"كود تأكيد حسابك هو: {code}");
-            if (!sent)
+            var result = await _otpService.GenerateAndSendOtp(sendPhone);
+            if (!result.Success)
             {
-                ModelState.AddModelError(string.Empty, "تعذر إرسال كود واتساب. تحقق من الرقم أو إعدادات الخدمة.");
+                ModelState.AddModelError(string.Empty, result.Message);
                 return Page();
             }
 

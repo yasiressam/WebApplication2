@@ -3,7 +3,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -19,18 +18,15 @@ namespace WebApplication2.Areas.Identity.Pages.Account
         private readonly UserManager<IdentityUser> _userManager;
         private readonly ApplicationDbContext _context;
         private readonly IOtpService _otpService;
-        private readonly IWhatsAppService _whatsAppService;
 
         public ResetPasswordWhatsAppModel(
             UserManager<IdentityUser> userManager,
             ApplicationDbContext context,
-            IOtpService otpService,
-            IWhatsAppService whatsAppService)
+            IOtpService otpService)
         {
             _userManager = userManager;
             _context = context;
             _otpService = otpService;
-            _whatsAppService = whatsAppService;
         }
 
         [BindProperty]
@@ -74,9 +70,10 @@ namespace WebApplication2.Areas.Identity.Pages.Account
             if (!ModelState.IsValid)
                 return Page();
 
-            if (!_otpService.ValidateOtp(Input.PhoneNumber, Input.Code))
+            var verifyResult = await _otpService.ValidateOtpAsync(Input.PhoneNumber, Input.Code);
+            if (!verifyResult.Success)
             {
-                ModelState.AddModelError(nameof(Input.Code), "كود التحقق غير صحيح أو منتهي الصلاحية.");
+                ModelState.AddModelError(nameof(Input.Code), verifyResult.Message);
                 return Page();
             }
 
@@ -106,16 +103,10 @@ namespace WebApplication2.Areas.Identity.Pages.Account
             var user = await FindVerifiedWhatsAppUserAsync(normalizedPhone);
             if (user != null)
             {
-                var code = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
-                _otpService.StoreOtp(normalizedPhone, code);
-
-                var sent = await _whatsAppService.SendMessageAsync(
-                    normalizedPhone,
-                    $"كود إعادة تعيين كلمة المرور هو: {code}");
-
-                TempData[sent ? "SuccessMessage" : "ErrorMessage"] = sent
-                    ? "تم إرسال كود جديد إلى واتساب."
-                    : "تعذر إرسال كود واتساب. تحقق من إعدادات خدمة الواتساب.";
+                var result = await _otpService.SendResetPasswordCodeAsync(normalizedPhone);
+                TempData[result.Success ? "SuccessMessage" : "ErrorMessage"] = result.Success
+                    ? "تم إرسال كود جديد لإعادة تعيين كلمة المرور."
+                    : result.Message;
             }
             else
             {

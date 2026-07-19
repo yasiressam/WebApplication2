@@ -129,9 +129,10 @@ namespace WebApplication2.Controllers.Api
                 return BadRequest(new { success = false, message = "رقم الواتساب لا يطابق بيانات الحساب" });
             }
 
-            if (!_otpService.ValidateOtp(normalizedPhone, model.Code))
+            var verifyResult = await _otpService.ValidateOtpAsync(normalizedPhone, model.Code);
+            if (!verifyResult.Success)
             {
-                return BadRequest(new { success = false, message = "كود التحقق غير صحيح أو منتهي الصلاحية" });
+                return BadRequest(new { success = false, message = verifyResult.Message });
             }
 
             user.PhoneNumberConfirmed = true;
@@ -257,9 +258,10 @@ namespace WebApplication2.Controllers.Api
                 return BadRequest(new { success = false, message = "رقم الواتساب أو كود التحقق غير مكتمل" });
             }
 
-            if (!_otpService.ValidateOtp(normalizedPhone, request.Code))
+            var verifyResult = await _otpService.ValidateOtpAsync(normalizedPhone, request.Code);
+            if (!verifyResult.Success)
             {
-                return BadRequest(new { success = false, message = "كود التحقق غير صحيح أو منتهي الصلاحية" });
+                return BadRequest(new { success = false, message = verifyResult.Message });
             }
 
             var profile = await _context.Identifies.FirstOrDefaultAsync(i => i.UserId == userId);
@@ -1203,10 +1205,8 @@ namespace WebApplication2.Controllers.Api
 
         private async Task<bool> SendWhatsAppVerificationCodeAsync(string phoneNumber)
         {
-            var code = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
-            _otpService.StoreOtp(phoneNumber, code);
-            var message = $"كود تأكيد حسابك هو:\r\n\r\n{code}";
-            return await _whatsAppService.SendMessageAsync(phoneNumber, message);
+            var result = await _otpService.GenerateAndSendOtp(phoneNumber);
+            return result.Success;
         }
 
         private async Task SendConfirmationEmailAsync(IdentityUser user)
@@ -1346,3 +1346,4 @@ namespace WebApplication2.Controllers.Api
         public IFormFile? CoverImageFile { get; set; }
     }
 }
+

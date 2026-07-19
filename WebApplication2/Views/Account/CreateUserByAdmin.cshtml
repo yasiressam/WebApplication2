@@ -101,14 +101,14 @@
                                 <i class="fas fa-user-check"></i> طريقة إنشاء الحساب
                             </label>
                             <div class="btn-group w-100" role="group" aria-label="طريقة إنشاء الحساب">
-                                <input type="radio" class="btn-check" asp-for="RegisterMethod" id="registerByEmail" value="Email" />
-                                <label class="btn btn-outline-primary" for="registerByEmail">
-                                    <i class="fas fa-envelope"></i> البريد الإلكتروني
-                                </label>
-
                                 <input type="radio" class="btn-check" asp-for="RegisterMethod" id="registerByWhatsApp" value="WhatsApp" />
                                 <label class="btn btn-outline-success" for="registerByWhatsApp">
                                     <i class="fab fa-whatsapp"></i> الواتساب
+                                </label>
+
+                                <input type="radio" class="btn-check" asp-for="RegisterMethod" id="registerByEmail" value="Email" />
+                                <label class="btn btn-outline-primary" for="registerByEmail">
+                                    <i class="fas fa-envelope"></i> البريد الإلكتروني
                                 </label>
                             </div>
                             <span asp-validation-for="RegisterMethod" class="text-danger"></span>

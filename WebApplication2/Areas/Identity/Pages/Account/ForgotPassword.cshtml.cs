@@ -1,11 +1,10 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 #nullable disable
 
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
@@ -27,33 +26,22 @@ namespace WebApplication2.Areas.Identity.Pages.Account
         private readonly IEmailSender _emailSender;
         private readonly ApplicationDbContext _context;
         private readonly IOtpService _otpService;
-        private readonly IWhatsAppService _whatsAppService;
 
         public ForgotPasswordModel(
             UserManager<IdentityUser> userManager,
             IEmailSender emailSender,
             ApplicationDbContext context,
-            IOtpService otpService,
-            IWhatsAppService whatsAppService)
+            IOtpService otpService)
         {
             _userManager = userManager;
             _emailSender = emailSender;
             _context = context;
             _otpService = otpService;
-            _whatsAppService = whatsAppService;
         }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
         [BindProperty]
         public InputModel Input { get; set; }
 
-        /// <summary>
-        ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
-        ///     directly from your code. This API may change or be removed in future releases.
-        /// </summary>
         public class InputModel
         {
             [Required]
@@ -72,7 +60,7 @@ namespace WebApplication2.Areas.Identity.Pages.Account
                     var resetPhone = await TrySendWhatsAppResetCodeAsync(normalizedPhone);
                     if (string.IsNullOrWhiteSpace(resetPhone))
                     {
-                        TempData["ErrorMessage"] = "لم يتم إرسال كود واتساب. تأكد أن الرقم مربوط ومؤكد في حسابك أو تحقق من إعدادات خدمة الواتساب.";
+                        TempData["ErrorMessage"] = "لم يتم إرسال كود إعادة التعيين. تأكد أن الرقم مربوط ومؤكد في حسابك أو تحقق من إعدادات خدمة OTP.";
                         resetPhone = normalizedPhone;
                     }
 
@@ -82,12 +70,9 @@ namespace WebApplication2.Areas.Identity.Pages.Account
                 var user = await _userManager.FindByEmailAsync(identifier);
                 if (user == null || !(await _userManager.IsEmailConfirmedAsync(user)))
                 {
-                    // Don't reveal that the user does not exist or is not confirmed
                     return RedirectToPage("./ForgotPasswordConfirmation");
                 }
 
-                // For more information on how to enable account confirmation and password reset please
-                // visit https://go.microsoft.com/fwlink/?LinkID=532713
                 var code = await _userManager.GeneratePasswordResetTokenAsync(user);
                 code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
                 var callbackUrl = Url.Page(
@@ -135,14 +120,8 @@ namespace WebApplication2.Areas.Identity.Pages.Account
             if (string.IsNullOrWhiteSpace(verifiedWhatsAppPhone))
                 return string.Empty;
 
-            var code = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
-            _otpService.StoreOtp(verifiedWhatsAppPhone, code);
-
-            var sent = await _whatsAppService.SendMessageAsync(
-                verifiedWhatsAppPhone,
-                $"كود إعادة تعيين كلمة المرور هو: {code}");
-
-            return sent ? verifiedWhatsAppPhone : string.Empty;
+            var result = await _otpService.SendResetPasswordCodeAsync(verifiedWhatsAppPhone);
+            return result.Success ? verifiedWhatsAppPhone : string.Empty;
         }
 
         private static bool LooksLikePhoneNumber(string value)

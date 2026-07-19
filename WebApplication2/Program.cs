@@ -16,6 +16,7 @@ builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddSingleton<IAuditTrailService, FileAuditTrailService>();
 builder.Services.AddScoped<AuditActivityFilter>();
 builder.Services.Configure<WhatsAppApiSettings>(builder.Configuration.GetSection("WhatsAppApi"));
+builder.Services.Configure<OtpApiSettings>(builder.Configuration.GetSection("OtpApi"));
 builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();
 builder.Services.AddHostedService<RequestCleanupService>();
 builder.Services.AddHostedService<NotificationCleanupService>();

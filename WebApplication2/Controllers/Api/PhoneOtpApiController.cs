@@ -44,7 +44,7 @@ namespace WebApplication2.Controllers.Api
         }
 
         [HttpPost("verify")]
-        public IActionResult VerifyOtp([FromBody] VerifyPhoneOtpRequest request)
+        public async Task<IActionResult> VerifyOtp([FromBody] VerifyPhoneOtpRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.PhoneNumber))
             {
@@ -56,17 +56,18 @@ namespace WebApplication2.Controllers.Api
                 return BadRequest(new { success = false, message = "كود التحقق مطلوب" });
             }
 
-            if (_otpService.ValidateOtp(request.PhoneNumber, request.OtpCode))
+            var result = await _otpService.ValidateOtpAsync(request.PhoneNumber, request.OtpCode);
+            if (result.Success)
             {
                 return Ok(new
                 {
                     success = true,
-                    message = "تم التحقق من رقم الهاتف بنجاح",
+                    message = result.Message,
                     verifiedPhone = request.PhoneNumber
                 });
             }
 
-            return BadRequest(new { success = false, message = "كود غير صحيح" });
+            return BadRequest(new { success = false, message = result.Message });
         }
 
         private static string? NormalizePhoneNumber(string? countryCode, string? phoneNumber)

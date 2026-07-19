@@ -205,9 +205,10 @@ namespace WebApplication2.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            if (!_otpService.ValidateOtp(normalizedPhone, model.Code))
+            var verifyResult = await _otpService.ValidateOtpAsync(normalizedPhone, model.Code);
+            if (!verifyResult.Success)
             {
-                ModelState.AddModelError(nameof(model.Code), "كود التحقق غير صحيح أو منتهي الصلاحية.");
+                ModelState.AddModelError(nameof(model.Code), verifyResult.Message);
                 return View(model);
             }
 
@@ -223,7 +224,7 @@ namespace WebApplication2.Controllers
             await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = "تم تأكيد رقم الواتساب بنجاح. يمكنك تسجيل الدخول الآن برقم الواتساب وكلمة المرور.";
-            return RedirectToAction("Login", "Account");
+            return LocalRedirect("/Identity/Account/Login");
         }
 
         [HttpPost]
@@ -329,9 +330,10 @@ namespace WebApplication2.Controllers
                 return RedirectToAction(nameof(ProfileDetails));
             }
 
-            if (!_otpService.ValidateOtp(normalizedPhone, code))
+            var verifyResult = await _otpService.ValidateOtpAsync(normalizedPhone, code);
+            if (!verifyResult.Success)
             {
-                TempData["ErrorMessage"] = "كود التحقق غير صحيح أو منتهي الصلاحية.";
+                TempData["ErrorMessage"] = verifyResult.Message;
                 TempData["LinkWhatsAppPhone"] = normalizedPhone;
                 TempData["LinkWhatsAppPhoneDisplay"] = ToLocalIraqPhoneNumber(normalizedPhone);
                 return RedirectToAction(nameof(ProfileDetails));
@@ -2705,11 +2707,8 @@ namespace WebApplication2.Controllers
 
         private async Task<bool> SendWhatsAppVerificationCodeAsync(string phoneNumber)
         {
-            var code = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
-            _otpService.StoreOtp(phoneNumber, code);
-
-            var message = $"كود تأكيد حسابك هو:\r\n\r\n{code}";
-            return await _whatsAppService.SendMessageAsync(phoneNumber, message);
+            var result = await _otpService.GenerateAndSendOtp(phoneNumber);
+            return result.Success;
         }
 
         private static string NormalizeIraqPhoneNumber(string phoneNumber)

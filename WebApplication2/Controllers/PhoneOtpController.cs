@@ -1,6 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using WebApplication2.Services;
+using Microsoft.AspNetCore.Mvc;
 using System.Text.RegularExpressions;
+using WebApplication2.Services;
 
 namespace WebApplication2.Controllers
 {
@@ -25,14 +25,12 @@ namespace WebApplication2.Controllers
         {
             try
             {
-                // التحقق من المدخلات
                 if (string.IsNullOrEmpty(phoneNumber))
                 {
                     TempData["ErrorMessage"] = "رقم الهاتف مطلوب";
                     return RedirectToAction("Index");
                 }
 
-                // تنظيف الرقم
                 phoneNumber = Regex.Replace(phoneNumber, @"[^0-9]", "");
 
                 if (phoneNumber.StartsWith("0"))
@@ -47,11 +45,7 @@ namespace WebApplication2.Controllers
                 }
 
                 var fullPhoneNumber = countryCode + phoneNumber;
-
-                // استخدام Task.Run لمنع التجميد
-                var result = await Task.Run(async () =>
-                    await _otpService.GenerateAndSendOtp(fullPhoneNumber)
-                ).ConfigureAwait(false);
+                var result = await _otpService.GenerateAndSendOtp(fullPhoneNumber);
 
                 if (result.Success)
                 {
@@ -59,13 +53,11 @@ namespace WebApplication2.Controllers
                     TempData["OtpCode"] = result.Code;
                     return RedirectToAction("Verify");
                 }
-                else
-                {
-                    TempData["ErrorMessage"] = result.Message;
-                    return RedirectToAction("Index");
-                }
+
+                TempData["ErrorMessage"] = result.Message;
+                return RedirectToAction("Index");
             }
-            catch (Exception ex)
+            catch
             {
                 TempData["ErrorMessage"] = "حدث خطأ. يرجى المحاولة مرة أخرى.";
                 return RedirectToAction("Index");
@@ -89,7 +81,7 @@ namespace WebApplication2.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult VerifyOtp(string otpCode)
+        public async Task<IActionResult> VerifyOtp(string otpCode)
         {
             var phoneNumber = TempData["PhoneNumber"] as string;
 
@@ -105,13 +97,14 @@ namespace WebApplication2.Controllers
                 return RedirectToAction("Verify");
             }
 
-            if (_otpService.ValidateOtp(phoneNumber, otpCode))
+            var result = await _otpService.ValidateOtpAsync(phoneNumber, otpCode);
+            if (result.Success)
             {
                 TempData["VerifiedPhone"] = phoneNumber;
                 return RedirectToAction("Index", "Register");
             }
 
-            TempData["ErrorMessage"] = "كود غير صحيح";
+            TempData["ErrorMessage"] = result.Message;
             return RedirectToAction("Verify");
         }
     }

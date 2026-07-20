@@ -83,8 +83,8 @@ namespace WebApplication2.Areas.Identity.Pages.Account
 
                 await _emailSender.SendEmailAsync(
                     identifier,
-                    "Reset Password",
-                    $"Please reset your password by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
+                    "إعادة تعيين كلمة المرور",
+                    $"يرجى إعادة تعيين كلمة المرور من خلال <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>الضغط هنا</a>.");
 
                 return RedirectToPage("./ForgotPasswordConfirmation");
             }

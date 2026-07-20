@@ -1345,16 +1345,55 @@ ORDER BY file_id;";
             string? profileStage,
             int pageSize)
         {
+            var roleMembershipQuery = _context.UserRoles
+                .AsNoTracking()
+                .Join(
+                    _context.Roles.AsNoTracking(),
+                    userRole => userRole.RoleId,
+                    roleRow => roleRow.Id,
+                    (userRole, roleRow) => new
+                    {
+                        userRole.UserId,
+                        RoleName = roleRow.Name ?? string.Empty
+                    });
+
+            var superAdminUserIdsQuery = roleMembershipQuery
+                .Where(x => x.RoleName == clsRoles.SuperAdmin)
+                .Select(x => x.UserId)
+                .Distinct();
+
+            var adminUserIdsQuery = roleMembershipQuery
+                .Where(x => x.RoleName == clsRoles.Admin)
+                .Select(x => x.UserId)
+                .Distinct();
+
+            var districtAdminUserIdsQuery = roleMembershipQuery
+                .Where(x => x.RoleName == clsRoles.DistrictAdmin)
+                .Select(x => x.UserId)
+                .Distinct();
+
+            var managerRoleUserIdsQuery = roleMembershipQuery
+                .Where(x => x.RoleName == clsRoles.Manager || x.RoleName == clsRoles.AssistantManager)
+                .Select(x => x.UserId)
+                .Distinct();
+
+            var memberRoleUserIdsQuery = roleMembershipQuery
+                .Where(x => x.RoleName == "فرد")
+                .Select(x => x.UserId)
+                .Distinct();
+
+            var assignedManagerUserIdsQuery = _context.ManagementAssignments
+                .AsNoTracking()
+                .Select(a => a.UserId)
+                .Distinct();
+
             var query = _context.Users.AsNoTracking().AsQueryable();
 
             if (administrativeOnly)
             {
                 query = query.Where(u =>
-                    _context.ManagementAssignments.Any(a => a.UserId == u.Id) ||
-                    _context.UserRoles
-                        .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                        .Any(r => r.UserId == u.Id &&
-                                  (r.RoleName == clsRoles.Manager || r.RoleName == clsRoles.AssistantManager)));
+                    assignedManagerUserIdsQuery.Contains(u.Id) ||
+                    managerRoleUserIdsQuery.Contains(u.Id));
             }
 
             var unfilteredUsersCount = await query.CountAsync();
@@ -1391,12 +1430,11 @@ ORDER BY file_id;";
                 query = normalizedRole.Equals("member", StringComparison.OrdinalIgnoreCase)
                     ? query.Where(u =>
                         _context.Identifies.Any(i => i.UserId == u.Id && i.AccountType == "فرد") ||
-                        _context.UserRoles
-                            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                            .Any(r => r.UserId == u.Id && r.RoleName == "فرد"))
-                    : query.Where(u => _context.UserRoles
-                        .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                        .Any(r => r.UserId == u.Id && r.RoleName == normalizedRole));
+                        memberRoleUserIdsQuery.Contains(u.Id))
+                    : query.Where(u => roleMembershipQuery
+                        .Where(r => r.RoleName == normalizedRole)
+                        .Select(r => r.UserId)
+                        .Contains(u.Id));
             }
 
             if (!string.IsNullOrWhiteSpace(residenceGovernorate))
@@ -1478,22 +1516,16 @@ ORDER BY file_id;";
                         !i.RequestedPromotion &&
                         !i.IsPromoted &&
                         i.AccountType != "فرد") &&
-                        !_context.UserRoles
-                            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                            .Any(r => r.UserId == u.Id && r.RoleName == "فرد")),
+                        !memberRoleUserIdsQuery.Contains(u.Id)),
                     "promotion-pending" => query.Where(u => _context.Identifies.Any(i =>
                         i.UserId == u.Id &&
                         i.RequestedPromotion &&
                         !i.IsPromoted &&
                         i.AccountType != "فرد") &&
-                        !_context.UserRoles
-                            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                            .Any(r => r.UserId == u.Id && r.RoleName == "فرد")),
+                        !memberRoleUserIdsQuery.Contains(u.Id)),
                     "promoted" => query.Where(u =>
                         _context.Identifies.Any(i => i.UserId == u.Id && (i.IsPromoted || i.AccountType == "فرد")) ||
-                        _context.UserRoles
-                            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                            .Any(r => r.UserId == u.Id && r.RoleName == "فرد")),
+                        memberRoleUserIdsQuery.Contains(u.Id)),
                     _ => query
                 };
             }
@@ -1503,20 +1535,12 @@ ORDER BY file_id;";
             page = Math.Min(page, totalPages);
 
             var users = await query
-                .OrderByDescending(u => _context.UserRoles
-                    .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                    .Any(r => r.UserId == u.Id && r.RoleName == clsRoles.SuperAdmin))
-                .ThenByDescending(u => _context.UserRoles
-                    .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                    .Any(r => r.UserId == u.Id && r.RoleName == clsRoles.Admin))
-                .ThenByDescending(u => _context.UserRoles
-                    .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                    .Any(r => r.UserId == u.Id && r.RoleName == clsRoles.DistrictAdmin))
+                .OrderByDescending(u => superAdminUserIdsQuery.Contains(u.Id))
+                .ThenByDescending(u => adminUserIdsQuery.Contains(u.Id))
+                .ThenByDescending(u => districtAdminUserIdsQuery.Contains(u.Id))
                 .ThenByDescending(u =>
-                    _context.ManagementAssignments.Any(a => a.UserId == u.Id) ||
-                    _context.UserRoles
-                        .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                        .Any(r => r.UserId == u.Id && (r.RoleName == clsRoles.Manager || r.RoleName == clsRoles.AssistantManager)))
+                    assignedManagerUserIdsQuery.Contains(u.Id) ||
+                    managerRoleUserIdsQuery.Contains(u.Id))
                 .ThenBy(u => u.Email)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -1639,9 +1663,9 @@ ORDER BY file_id;";
             ViewBag.EducationFilter = education;
             ViewBag.ProfileStageFilter = profileStage;
             ViewBag.ActiveUsers = await _context.Users.CountAsync(u => u.EmailConfirmed);
-            ViewBag.Admins = await _context.UserRoles.Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name).CountAsync(roleName => roleName == clsRoles.Admin);
-            ViewBag.SuperAdmins = await _context.UserRoles.Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name).CountAsync(roleName => roleName == clsRoles.SuperAdmin);
-            ViewBag.DistrictAdmins = await _context.UserRoles.Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => r.Name).CountAsync(roleName => roleName == clsRoles.DistrictAdmin);
+            ViewBag.Admins = await adminUserIdsQuery.CountAsync();
+            ViewBag.SuperAdmins = await superAdminUserIdsQuery.CountAsync();
+            ViewBag.DistrictAdmins = await districtAdminUserIdsQuery.CountAsync();
             ViewBag.AdministrativeManagers = await _context.ManagementAssignments.AsNoTracking().CountAsync(x => x.AssignmentRole == "Manager");
             ViewBag.AdministrativeAssistants = await _context.ManagementAssignments.AsNoTracking().CountAsync(x => x.AssignmentRole == "Assistant");
             ViewBag.TotalIndividuals = await _context.Identifies.AsNoTracking().CountAsync(i => i.Education != null && i.Education != "" && (i.AccountType == "فرد" || i.IsPromoted));
@@ -1760,7 +1784,7 @@ ORDER BY file_id;";
             page = Math.Max(1, Math.Min(page, totalPages));
 
             var pagedRequests = await requestsQuery
-                .OrderByDescending(i => i.CreatedAt)
+                .OrderByDescending(i => i.BasicInfoRequestedAt ?? i.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -1781,7 +1805,7 @@ ORDER BY file_id;";
                     Governorate = GetEffectiveGovernorate(p, userAddress),
                     District = GetEffectiveDistrict(p, userAddress),
                     IdentityCardN = p.IdentityCardN,
-                    RequestDate = p.CreatedAt,
+                    RequestDate = p.BasicInfoRequestedAt ?? p.CreatedAt,
                     AccountType = p.AccountType ?? "عادي",
                     CoverImage = p.CoverImage,
                     HasCompleteProfile = IsProfileComplete(p, userAddress, null, null),
@@ -1831,7 +1855,7 @@ ORDER BY file_id;";
 
             var identifies = await query
                 .OrderByDescending(i => normalizedType == "basic"
-                    ? i.CreatedAt
+                    ? (i.BasicInfoRequestedAt ?? i.CreatedAt)
                     : (i.RequestedPromotionDate ?? i.CreatedAt))
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -1857,7 +1881,7 @@ ORDER BY file_id;";
                     Governorate = GetEffectiveGovernorate(identify, address),
                     District = GetEffectiveDistrict(identify, address),
                     RequestDate = normalizedType == "basic"
-                        ? identify.CreatedAt
+                        ? identify.BasicInfoRequestedAt ?? identify.CreatedAt
                         : identify.RequestedPromotionDate ?? identify.CreatedAt,
                     ProcessedAt = normalizedType == "basic"
                         ? identify.BasicInfoApprovalDate

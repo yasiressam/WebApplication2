@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebApplication2.Data;
 using WebApplication2.Models;
+using WebApplication2.Models.Helpers;
 
 namespace WebApplication2.Controllers.Api
 {
@@ -43,42 +44,37 @@ namespace WebApplication2.Controllers.Api
                 request.RememberMe,
                 lockoutOnFailure: true);
 
-           if (result.Succeeded)
-{
-    _logger.LogInformation("تم تسجيل الدخول عبر API: {Email}", request.Email);
+            if (result.Succeeded)
+            {
+                _logger.LogInformation("تم تسجيل الدخول عبر API: {Email}", request.Email);
 
-    var user = await _userManager.FindByNameAsync(request.Email);
+                var user = await _userManager.FindByNameAsync(request.Email);
+                if (user == null)
+                {
+                    user = await _userManager.FindByEmailAsync(request.Email);
+                }
 
-    if (user == null)
-    {
-        user = await _userManager.FindByEmailAsync(request.Email);
-    }
+                if (user == null)
+                {
+                    return Unauthorized(new { success = false, message = "بيانات الدخول أو كلمة المرور غير صحيحة" });
+                }
 
-    if (user == null)
-    {
-        return Unauthorized(new
-        {
-            success = false,
-            message = "تعذر العثور على المستخدم"
-        });
-    }
+                var roles = await _userManager.GetRolesAsync(user);
 
-    var roles = await _userManager.GetRolesAsync(user);
-
-    return Ok(new
-    {
-        success = true,
-        message = "تم تسجيل الدخول بنجاح",
-        data = new
-        {
-            userId = user.Id,
-            email = user.Email,
-            userName = user.UserName,
-            phoneNumber = user.PhoneNumber,
-            roles = roles
-        }
-    });
-}
+                return Ok(new
+                {
+                    success = true,
+                    message = "تم تسجيل الدخول بنجاح",
+                    data = new
+                    {
+                        userId = user.Id,
+                        email = user.Email,
+                        userName = user.UserName,
+                        phoneNumber = user.PhoneNumber,
+                        roles
+                    }
+                });
+            }
 
             if (result.IsLockedOut)
             {
@@ -87,15 +83,15 @@ namespace WebApplication2.Controllers.Api
 
             if (result.RequiresTwoFactor)
             {
-                return BadRequest(new { success = false, message = "هذا الحساب يتطلب تحققاً إضافياً" });
+                return BadRequest(new { success = false, message = "بيانات الدخول أو كلمة المرور غير صحيحة" });
             }
 
             if (result.IsNotAllowed)
             {
-                return BadRequest(new { success = false, message = "الحساب غير مسموح له بتسجيل الدخول حالياً" });
+                return BadRequest(new { success = false, message = "بيانات الدخول أو كلمة المرور غير صحيحة" });
             }
 
-            return Unauthorized(new { success = false, message = "بيانات الدخول غير صحيحة" });
+            return Unauthorized(new { success = false, message = "بيانات الدخول أو كلمة المرور غير صحيحة" });
         }
 
         [HttpPost("logout")]
@@ -324,6 +320,7 @@ namespace WebApplication2.Controllers.Api
                 IdentityCardN = "",
                 identityDate = DateTime.Now,
                 CreatedAt = DateTime.UtcNow,
+                BasicInfoRequestedAt = IraqTime.Now(),
                 AccountType = "عادي",
                 IsPromoted = false,
                 Email = user.Email ?? string.Empty,
@@ -343,6 +340,7 @@ namespace WebApplication2.Controllers.Api
                 IdentityCardN = "",
                 identityDate = DateTime.Now,
                 CreatedAt = DateTime.UtcNow,
+                BasicInfoRequestedAt = IraqTime.Now(),
                 AccountType = "عادي",
                 IsPromoted = false,
                 Email = user.Email ?? string.Empty,

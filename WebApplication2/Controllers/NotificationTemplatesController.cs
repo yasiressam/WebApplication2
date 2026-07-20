@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using WebApplication2.Data;
 using WebApplication2.Models;
 
@@ -10,14 +11,21 @@ namespace WebApplication2.Controllers
     public class NotificationTemplatesController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IConfiguration _configuration;
 
-        public NotificationTemplatesController(ApplicationDbContext context)
+        public NotificationTemplatesController(ApplicationDbContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
         public async Task<IActionResult> Index()
         {
+            if (!IsAllowedEmail())
+            {
+                return Forbid();
+            }
+
             var settings = await GetOrCreateSettingsAsync();
             return View(settings);
         }
@@ -26,6 +34,11 @@ namespace WebApplication2.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Index(SiteSettings model)
         {
+            if (!IsAllowedEmail())
+            {
+                return Forbid();
+            }
+
             var settings = await GetOrCreateSettingsAsync();
 
             settings.PromotionApprovedTitle = model.PromotionApprovedTitle;
@@ -69,6 +82,11 @@ namespace WebApplication2.Controllers
 
         public async Task<IActionResult> Reset()
         {
+            if (!IsAllowedEmail())
+            {
+                return Forbid();
+            }
+
             var defaults = new SiteSettings();
             var settings = await GetOrCreateSettingsAsync();
 
@@ -121,6 +139,21 @@ namespace WebApplication2.Controllers
             _context.SiteSettings.Add(settings);
             await _context.SaveChangesAsync();
             return settings;
+        }
+
+        private bool IsAllowedEmail()
+        {
+            var currentEmail = User.FindFirstValue(ClaimTypes.Email);
+            if (string.IsNullOrWhiteSpace(currentEmail))
+            {
+                return false;
+            }
+
+            var allowedEmails = _configuration
+                .GetSection("SuperAdminPasswordReset:AllowedEmails")
+                .Get<string[]>() ?? Array.Empty<string>();
+
+            return allowedEmails.Contains(currentEmail, StringComparer.OrdinalIgnoreCase);
         }
     }
 }

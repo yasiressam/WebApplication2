@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 using System.Text;
 using WebApplication2.Data;
 using WebApplication2.Models;
+using WebApplication2.Models.Helpers;
 using WebApplication2.Models.Profile;
 using WebApplication2.Services;
 
@@ -358,6 +359,7 @@ namespace WebApplication2.Controllers.Api
             await UpdateOrCreateAddressAsync(model.UserId, model.Address);
 
             profile.IsBasicInfoApproved = false;
+            profile.BasicInfoRequestedAt = IraqTime.Now();
             profile.BasicInfoApprovedBy = null;
             profile.BasicInfoApprovalDate = null;
             profile.BasicInfoRejectionReason = null;
@@ -715,6 +717,7 @@ namespace WebApplication2.Controllers.Api
             {
                 UserId = user.Id,
                 CreatedAt = DateTime.UtcNow,
+                BasicInfoRequestedAt = IraqTime.Now(),
                 AccountType = "عادي",
                 IsPromoted = false,
                 FullName = "",
@@ -783,6 +786,7 @@ namespace WebApplication2.Controllers.Api
             {
                 UserId = user.Id,
                 CreatedAt = DateTime.UtcNow,
+                BasicInfoRequestedAt = IraqTime.Now(),
                 AccountType = "عادي",
                 IsPromoted = false,
                 FullName = "",
@@ -837,6 +841,7 @@ namespace WebApplication2.Controllers.Api
             {
                 UserId = user.Id,
                 CreatedAt = DateTime.UtcNow,
+                BasicInfoRequestedAt = IraqTime.Now(),
                 AccountType = "عادي",
                 IsPromoted = false,
                 Email = user.Email,

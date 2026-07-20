@@ -1141,7 +1141,7 @@ namespace WebApplication2.Controllers
                 page = Math.Max(1, Math.Min(page, totalPages));
 
                 var pagedRequests = await scopedRequestsQuery
-                    .OrderByDescending(i => i.CreatedAt)
+                    .OrderByDescending(i => i.BasicInfoRequestedAt ?? i.CreatedAt)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToListAsync();
@@ -1162,7 +1162,7 @@ namespace WebApplication2.Controllers
                         Governorate = GetEffectiveGovernorate(request, userAddress),
                         District = GetEffectiveDistrict(request, userAddress),
                         IdentityCardN = request.IdentityCardN,
-                        RequestDate = request.CreatedAt,
+                        RequestDate = request.BasicInfoRequestedAt ?? request.CreatedAt,
                         AccountType = request.AccountType ?? "Ø¹Ø§Ø¯ÙŠ",
                         CoverImage = request.CoverImage,
                         HasCompleteProfile = IsProfileComplete(request, userAddress, null, null),
@@ -1481,7 +1481,7 @@ namespace WebApplication2.Controllers
 
             var orderedScopedIdentifies = scopedIdentifies
                 .OrderByDescending(i => normalizedType == "basic"
-                    ? i.CreatedAt
+                    ? (i.BasicInfoRequestedAt ?? i.CreatedAt)
                     : (i.RequestedPromotionDate ?? i.CreatedAt))
                 .ToList();
             var governorateOptions = await GetRequestHistoryGovernorateOptionsAsync(orderedScopedIdentifies);
@@ -1520,7 +1520,7 @@ namespace WebApplication2.Controllers
                     Governorate = GetEffectiveGovernorate(identify, address),
                     District = GetEffectiveDistrict(identify, address),
                     RequestDate = normalizedType == "basic"
-                        ? identify.CreatedAt
+                        ? identify.BasicInfoRequestedAt ?? identify.CreatedAt
                         : identify.RequestedPromotionDate ?? identify.CreatedAt,
                     ProcessedAt = normalizedType == "basic"
                         ? identify.BasicInfoApprovalDate

@@ -140,6 +140,9 @@ namespace WebApplication2.Models
         [Display(Name = "البيانات الأساسية معتمدة")]
         public bool IsBasicInfoApproved { get; set; } = false;
 
+        [Display(Name = "تاريخ طلب مراجعة البيانات")]
+        public DateTime? BasicInfoRequestedAt { get; set; }
+
         [Display(Name = "تاريخ اعتماد البيانات")]
         public DateTime? BasicInfoApprovalDate { get; set; }
 

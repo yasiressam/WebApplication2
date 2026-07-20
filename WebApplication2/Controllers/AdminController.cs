@@ -866,24 +866,60 @@ namespace WebApplication2.Controllers
 
             var currentUserId = _userManager.GetUserId(User);
             var isBaghdadCentralScope = string.Equals(adminGovernorate, "بغداد عامة", StringComparison.OrdinalIgnoreCase);
+            var roleMembershipQuery = _context.UserRoles
+                .AsNoTracking()
+                .Join(
+                    _context.Roles.AsNoTracking(),
+                    userRole => userRole.RoleId,
+                    roleRow => roleRow.Id,
+                    (userRole, roleRow) => new
+                    {
+                        userRole.UserId,
+                        RoleName = roleRow.Name ?? string.Empty
+                    });
+
+            var superAdminUserIdsQuery = roleMembershipQuery
+                .Where(x => x.RoleName == clsRoles.SuperAdmin)
+                .Select(x => x.UserId)
+                .Distinct();
+
+            var adminUserIdsQuery = roleMembershipQuery
+                .Where(x => x.RoleName == clsRoles.Admin)
+                .Select(x => x.UserId)
+                .Distinct();
+
+            var districtAdminUserIdsQuery = roleMembershipQuery
+                .Where(x => x.RoleName == clsRoles.DistrictAdmin)
+                .Select(x => x.UserId)
+                .Distinct();
+
+            var managerRoleUserIdsQuery = roleMembershipQuery
+                .Where(x => x.RoleName == clsRoles.Manager || x.RoleName == clsRoles.AssistantManager)
+                .Select(x => x.UserId)
+                .Distinct();
+
+            var memberRoleUserIdsQuery = roleMembershipQuery
+                .Where(x => x.RoleName == "فرد")
+                .Select(x => x.UserId)
+                .Distinct();
+
+            var assignedManagerUserIdsQuery = _context.ManagementAssignments
+                .AsNoTracking()
+                .Select(a => a.UserId)
+                .Distinct();
 
             var scopedQuery = _context.Identifies.AsNoTracking().Where(i =>
-                !_context.UserRoles
-                    .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                    .Any(r => r.UserId == i.UserId && (r.RoleName == clsRoles.SuperAdmin || r.RoleName == clsRoles.Admin)) &&
+                !superAdminUserIdsQuery.Contains(i.UserId) &&
+                !adminUserIdsQuery.Contains(i.UserId) &&
                 (
                     (
-                        _context.UserRoles
-                            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                            .Any(r => r.UserId == i.UserId && r.RoleName == clsRoles.DistrictAdmin) &&
+                        districtAdminUserIdsQuery.Contains(i.UserId) &&
                         (i.ManagedGovernorate == adminGovernorate ||
                          (isBaghdadCentralScope && i.ManagedGovernorate != null &&
                           (i.ManagedGovernorate == "بغداد" || i.ManagedGovernorate.StartsWith("بغداد -"))))
                     ) ||
                     (
-                        !_context.UserRoles
-                            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                            .Any(r => r.UserId == i.UserId && r.RoleName == clsRoles.DistrictAdmin) &&
+                        !districtAdminUserIdsQuery.Contains(i.UserId) &&
                         (i.WorkGovernorate == adminGovernorate ||
                          (isBaghdadCentralScope && i.WorkGovernorate != null &&
                           (i.WorkGovernorate == "بغداد" || i.WorkGovernorate.StartsWith("بغداد -"))) ||
@@ -898,11 +934,8 @@ namespace WebApplication2.Controllers
             if (administrativeOnly)
             {
                 scopedQuery = scopedQuery.Where(i =>
-                    _context.ManagementAssignments.Any(a => a.UserId == i.UserId) ||
-                    _context.UserRoles
-                        .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                        .Any(r => r.UserId == i.UserId &&
-                                  (r.RoleName == clsRoles.Manager || r.RoleName == clsRoles.AssistantManager)));
+                    assignedManagerUserIdsQuery.Contains(i.UserId) ||
+                    managerRoleUserIdsQuery.Contains(i.UserId));
             }
 
             var unfilteredUsersCount = await scopedQuery.CountAsync();
@@ -910,10 +943,7 @@ namespace WebApplication2.Controllers
                 _context.Users.Any(u => u.Id == i.UserId && u.EmailConfirmed));
             var unfilteredPromotedUsersCount = await scopedQuery.CountAsync(i =>
                 !string.IsNullOrWhiteSpace(i.Education) &&
-                (i.AccountType == "فرد" || i.IsPromoted ||
-                 _context.UserRoles
-                    .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                    .Any(roleRow => roleRow.UserId == i.UserId && roleRow.RoleName == "فرد")));
+                (i.AccountType == "فرد" || i.IsPromoted || memberRoleUserIdsQuery.Contains(i.UserId)));
 
             var query = scopedQuery;
 
@@ -946,13 +976,11 @@ namespace WebApplication2.Controllers
             {
                 var normalizedRole = role.Trim();
                 query = normalizedRole.Equals("member", StringComparison.OrdinalIgnoreCase) || normalizedRole == "فرد"
-                    ? query.Where(i => i.AccountType == "فرد" ||
-                                       _context.UserRoles
-                                           .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                                           .Any(r => r.UserId == i.UserId && r.RoleName == "فرد"))
-                    : query.Where(i => _context.UserRoles
-                        .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                        .Any(r => r.UserId == i.UserId && r.RoleName == normalizedRole));
+                    ? query.Where(i => i.AccountType == "فرد" || memberRoleUserIdsQuery.Contains(i.UserId))
+                    : query.Where(i => roleMembershipQuery
+                        .Where(r => r.RoleName == normalizedRole)
+                        .Select(r => r.UserId)
+                        .Contains(i.UserId));
             }
 
             if (status == "active")
@@ -1008,22 +1036,16 @@ namespace WebApplication2.Controllers
                         !i.RequestedPromotion &&
                         !i.IsPromoted &&
                         i.AccountType != "فرد" &&
-                        !_context.UserRoles
-                            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                            .Any(r => r.UserId == i.UserId && r.RoleName == "فرد")),
+                        !memberRoleUserIdsQuery.Contains(i.UserId)),
                     "promotion-pending" => query.Where(i =>
                         i.RequestedPromotion &&
                         !i.IsPromoted &&
                         i.AccountType != "فرد" &&
-                        !_context.UserRoles
-                            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                            .Any(r => r.UserId == i.UserId && r.RoleName == "فرد")),
+                        !memberRoleUserIdsQuery.Contains(i.UserId)),
                     "promoted" => query.Where(i =>
                         i.IsPromoted ||
                         i.AccountType == "فرد" ||
-                        _context.UserRoles
-                            .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                            .Any(r => r.UserId == i.UserId && r.RoleName == "فرد")),
+                        memberRoleUserIdsQuery.Contains(i.UserId)),
                     _ => query
                 };
             }
@@ -1034,14 +1056,10 @@ namespace WebApplication2.Controllers
 
             var profilesForPage = await query
                 .OrderByDescending(i => i.UserId == currentUserId)
-                .ThenByDescending(i => _context.UserRoles
-                    .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                    .Any(r => r.UserId == i.UserId && r.RoleName == clsRoles.DistrictAdmin))
+                .ThenByDescending(i => districtAdminUserIdsQuery.Contains(i.UserId))
                 .ThenByDescending(i =>
-                    _context.ManagementAssignments.Any(a => a.UserId == i.UserId) ||
-                    _context.UserRoles
-                        .Join(_context.Roles, ur => ur.RoleId, r => r.Id, (ur, r) => new { ur.UserId, RoleName = r.Name ?? string.Empty })
-                        .Any(r => r.UserId == i.UserId && (r.RoleName == clsRoles.Manager || r.RoleName == clsRoles.AssistantManager)))
+                    assignedManagerUserIdsQuery.Contains(i.UserId) ||
+                    managerRoleUserIdsQuery.Contains(i.UserId))
                 .ThenBy(i => i.FullName)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -1406,7 +1424,7 @@ namespace WebApplication2.Controllers
                 page = Math.Max(1, Math.Min(page, totalPages));
 
                 var pagedRequests = await requestsQuery
-                    .OrderByDescending(i => i.CreatedAt)
+                    .OrderByDescending(i => i.BasicInfoRequestedAt ?? i.CreatedAt)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToListAsync();
@@ -1427,7 +1445,7 @@ namespace WebApplication2.Controllers
                         Governorate = GetEffectiveGovernorate(p, userAddress),
                         District = GetEffectiveDistrict(p, userAddress),
                         IdentityCardN = p.IdentityCardN,
-                        RequestDate = p.CreatedAt,
+                        RequestDate = p.BasicInfoRequestedAt ?? p.CreatedAt,
                         AccountType = p.AccountType ?? "عادي",
                         CoverImage = p.CoverImage,
                         HasCompleteProfile = IsProfileComplete(p, userAddress, null, null),
@@ -1496,7 +1514,7 @@ namespace WebApplication2.Controllers
 
             var identifies = await query
                 .OrderByDescending(i => normalizedType == "basic"
-                    ? i.CreatedAt
+                    ? (i.BasicInfoRequestedAt ?? i.CreatedAt)
                     : (i.RequestedPromotionDate ?? i.CreatedAt))
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -1522,7 +1540,7 @@ namespace WebApplication2.Controllers
                     Governorate = GetEffectiveGovernorate(identify, address),
                     District = GetEffectiveDistrict(identify, address),
                     RequestDate = normalizedType == "basic"
-                        ? identify.CreatedAt
+                        ? identify.BasicInfoRequestedAt ?? identify.CreatedAt
                         : identify.RequestedPromotionDate ?? identify.CreatedAt,
                     ProcessedAt = normalizedType == "basic"
                         ? identify.BasicInfoApprovalDate

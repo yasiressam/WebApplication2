@@ -11,6 +11,7 @@ using System.Text;
 using System.Web;
 using WebApplication2.Data;
 using WebApplication2.Models;
+using WebApplication2.Models.Helpers;
 using WebApplication2.Models.Profile;
 using WebApplication2.Services;
 
@@ -127,6 +128,7 @@ namespace WebApplication2.Controllers
                     {
                         UserId = user.Id,
                         CreatedAt = DateTime.UtcNow,
+                        BasicInfoRequestedAt = IraqTime.Now(),
                         AccountType = "عادي",
                         IsPromoted = false,
                         FullName = "",
@@ -539,6 +541,7 @@ namespace WebApplication2.Controllers
                 {
                     UserId = userId,
                     CreatedAt = DateTime.UtcNow,
+                    BasicInfoRequestedAt = IraqTime.Now(),
                     AccountType = "عادي",
                     IsPromoted = false,
                     Email = user.Email,
@@ -859,6 +862,7 @@ namespace WebApplication2.Controllers
                 await UpdateOrCreateAddress(model.UserId, model.Address);
 
                 profile.IsBasicInfoApproved = false;
+                profile.BasicInfoRequestedAt = IraqTime.Now();
                 profile.BasicInfoApprovedBy = null;
                 profile.BasicInfoApprovalDate = null;
                 profile.BasicInfoRejectionReason = null;

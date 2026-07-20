@@ -233,41 +233,39 @@
                                             <i class="bi bi-gear me-2"></i> إعدادات الموقع
                                         </a>
                                     </li>
-                                    <li>
-                                        <a class="dropdown-item" asp-controller="SuperAdmin" asp-action="BackupDatabase">
-                                            <i class="bi bi-database-down me-2"></i> النسخة الاحتياطية
-                                        </a>
-                                    </li>
                                     var email = User.FindFirst(ClaimTypes.Email)?.Value;
-
-var allowedEmails = Configuration
-    .GetSection("SuperAdminPasswordReset:AllowedEmails")
-    .Get<string[]>() ?? Array.Empty<string>();
-
-if (allowedEmails.Contains(email, StringComparer.OrdinalIgnoreCase))
-{
-    <li>
-        <a class="dropdown-item"
-           asp-controller="SuperAdmin"
-           asp-action="AuditTrail">
-            <i class="bi bi-journal-text me-2"></i> السجل
-        </a>
-    </li>
-    <li>
-        <a class="dropdown-item"
-           asp-controller="SuperAdmin"
-           asp-action="RestoreDatabase">
-            <i class="bi bi-database-fill-gear me-2"></i> استعادة البيانات
-        </a>
-    </li>
-    <li>
-        <a class="dropdown-item"
-           asp-controller="NotificationTemplates"
-           asp-action="Index">
-            <i class="bi bi-bell me-2"></i> قوالب الإشعارات
-        </a>
-    </li>
-}
+                                    var allowedEmails = Configuration
+                                        .GetSection("SuperAdminPasswordReset:AllowedEmails")
+                                        .Get<string[]>() ?? Array.Empty<string>();
+                                    @if (allowedEmails.Contains(email, StringComparer.OrdinalIgnoreCase))
+                                    {
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="SuperAdmin" asp-action="BackupDatabase">
+                                                <i class="bi bi-database-down me-2"></i> النسخة الاحتياطية
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item"
+                                               asp-controller="SuperAdmin"
+                                               asp-action="AuditTrail">
+                                                <i class="bi bi-journal-text me-2"></i> السجل
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item"
+                                               asp-controller="SuperAdmin"
+                                               asp-action="RestoreDatabase">
+                                                <i class="bi bi-database-fill-gear me-2"></i> استعادة البيانات
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item"
+                                               asp-controller="NotificationTemplates"
+                                               asp-action="Index">
+                                                <i class="bi bi-bell me-2"></i> قوالب الإشعارات
+                                            </a>
+                                        </li>
+                                    }
                                     
                                     <li>
                                         <a class="dropdown-item" asp-controller="ManageableEntities" asp-action="Dashboard">

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WebApplication2.Data;
 using WebApplication2.Models;
+using WebApplication2.Models.Helpers;
 using WebApplication2.Models.Request;
 using WebApplication2.Services;
 
@@ -307,7 +308,7 @@ namespace WebApplication2.Controllers.Api
             var visibleUserIds = await GetVisibleUserIdsAsync();
             var query = _context.Identifies
                 .Where(i => visibleUserIds.Contains(i.UserId) && !i.IsBasicInfoApproved)
-                .OrderByDescending(i => i.CreatedAt);
+                .OrderByDescending(i => i.BasicInfoRequestedAt ?? i.CreatedAt);
 
             var totalCount = await query.CountAsync();
             var data = await query
@@ -322,6 +323,7 @@ namespace WebApplication2.Controllers.Api
                     i.PhoneNumber,
                     i.WorkGovernorate,
                     i.WorkDistrict,
+                    i.BasicInfoRequestedAt,
                     i.CreatedAt,
                     i.BasicInfoRejectionReason
                 })
@@ -504,7 +506,8 @@ namespace WebApplication2.Controllers.Api
                     Email = user.Email ?? string.Empty,
                     Date = DateTime.Now,
                     identityDate = DateTime.Now,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
+                    BasicInfoRequestedAt = IraqTime.Now()
                 };
                 _context.Identifies.Add(profile);
             }

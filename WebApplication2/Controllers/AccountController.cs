@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using WebApplication2.Data;
 using WebApplication2.Models;
+using WebApplication2.Models.Helpers;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxTokenParser;
 
 namespace WebApplication2.Controllers
@@ -282,6 +283,7 @@ namespace WebApplication2.Controllers
                             IdentityCardN = "",
                             identityDate = DateTime.Now,
                             CreatedAt = DateTime.UtcNow,
+                            BasicInfoRequestedAt = IraqTime.Now(),
                             AccountType = "عادي",
                             IsPromoted = false,
                             Email = registerMethod == "Email" ? (user.Email ?? "") : "",
@@ -307,6 +309,7 @@ namespace WebApplication2.Controllers
                             IdentityCardN = "",
                             identityDate = DateTime.Now,
                             CreatedAt = DateTime.UtcNow,
+                            BasicInfoRequestedAt = IraqTime.Now(),
                             AccountType = "عادي",
                             IsPromoted = false,
                             Email = registerMethod == "Email" ? (user.Email ?? "") : "",

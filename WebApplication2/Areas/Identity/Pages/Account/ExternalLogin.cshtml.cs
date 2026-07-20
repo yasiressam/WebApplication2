@@ -101,13 +101,13 @@ namespace WebApplication2.Areas.Identity.Pages.Account
             returnUrl = returnUrl ?? Url.Content("~/");
             if (remoteError != null)
             {
-                ErrorMessage = $"Error from external provider: {remoteError}";
+                ErrorMessage = $"حدث خطأ من مزود تسجيل الدخول الخارجي: {remoteError}";
                 return RedirectToPage("./Login", new { ReturnUrl = returnUrl });
             }
             var info = await _signInManager.GetExternalLoginInfoAsync();
             if (info == null)
             {
-                ErrorMessage = "Error loading external login information.";
+                ErrorMessage = "تعذر تحميل معلومات تسجيل الدخول الخارجي.";
                 return RedirectToPage("./Login", new { ReturnUrl = returnUrl });
             }
 
@@ -145,7 +145,7 @@ namespace WebApplication2.Areas.Identity.Pages.Account
             var info = await _signInManager.GetExternalLoginInfoAsync();
             if (info == null)
             {
-                ErrorMessage = "Error loading external login information during confirmation.";
+                ErrorMessage = "تعذر تحميل معلومات تسجيل الدخول الخارجي أثناء التأكيد.";
                 return RedirectToPage("./Login", new { ReturnUrl = returnUrl });
             }
 
@@ -173,8 +173,8 @@ namespace WebApplication2.Areas.Identity.Pages.Account
                             values: new { area = "Identity", userId = userId, code = code },
                             protocol: Request.Scheme);
 
-                        await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
-                            $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
+                        await _emailSender.SendEmailAsync(Input.Email, "تأكيد البريد الإلكتروني",
+                            $"يرجى تأكيد حسابك من خلال <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>الضغط هنا</a>.");
 
                         // If account confirmation is required, we need to show the link if we don't have a real email sender
                         if (_userManager.Options.SignIn.RequireConfirmedAccount)

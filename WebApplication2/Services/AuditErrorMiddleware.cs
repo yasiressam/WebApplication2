@@ -24,15 +24,15 @@ namespace WebApplication2.Services
                 {
                     TimestampUtc = DateTime.UtcNow,
                     Severity = "Error",
-                    EventType = ex.GetType().Name,
-                    Message = ex.Message,
+                    EventType = AuditTrailDisplayFormatter.ToArabicErrorType(ex.GetType().Name),
+                    Message = AuditTrailDisplayFormatter.ToArabicErrorMessage(ex),
                     UserId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
                     UserEmail = user.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value,
                     UserName = user.Identity?.Name,
                     IpAddress = context.Connection.RemoteIpAddress?.ToString(),
                     Path = context.Request.Path,
                     HttpMethod = context.Request.Method,
-                    Details = ex.StackTrace
+                    Details = AuditTrailDisplayFormatter.BuildShortDetails(ex)
                 });
 
                 throw;

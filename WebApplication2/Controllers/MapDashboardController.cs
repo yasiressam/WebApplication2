@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ClosedXML.Excel;
+using System.Text;
 using WebApplication2.Data;
 using WebApplication2.Models;
 
@@ -24,6 +25,14 @@ namespace WebApplication2.Controllers
             public string? ManagedGovernorate { get; set; }
             public string? ManagedDistrict { get; set; }
             public List<ManagementAssignment> Assignments { get; set; } = new();
+        }
+
+        private sealed class ScopedMapUsersData
+        {
+            public required List<Identify> FilteredIdentifies { get; init; }
+            public required Dictionary<string, Address> AddressLookup { get; init; }
+            public required Dictionary<string, AffiliationInfo> AffiliationLookup { get; init; }
+            public required HashSet<string> FilteredUserIds { get; init; }
         }
 
         private const string AllGovernoratesScopeName = "مركزي لكل المحافظات";
@@ -164,6 +173,48 @@ namespace WebApplication2.Controllers
                 .Where(a => !string.IsNullOrWhiteSpace(a.UserId))
                 .GroupBy(a => a.UserId)
                 .ToDictionary(g => g.Key, g => g.First());
+        }
+
+        private async Task<ScopedMapUsersData> LoadScopedMapUsersDataAsync(
+            MapAccessScope accessScope,
+            IEnumerable<string>? allowedGovernorates = null,
+            string? exactGovernorate = null)
+        {
+            var allIdentifies = await _context.Identifies
+                .AsNoTracking()
+                .Include(i => i.WorkLocation)
+                .ToListAsync();
+            var allAddresses = await _context.Addresses
+                .AsNoTracking()
+                .ToListAsync();
+            var addressLookup = BuildAddressLookup(allAddresses);
+            var allAffiliations = await _context.AffiliationInfos
+                .AsNoTracking()
+                .Include(a => a.AffiliationEntity)
+                .Include(a => a.Division)
+                .Include(a => a.Section)
+                .Include(a => a.Group)
+                .ToListAsync();
+            var affiliationLookup = allAffiliations
+                .Where(a => !string.IsNullOrWhiteSpace(a.UserId))
+                .GroupBy(a => a.UserId)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            var filteredIdentifies = FilterUsersByScope(
+                allIdentifies,
+                addressLookup,
+                affiliationLookup,
+                accessScope,
+                allowedGovernorates,
+                exactGovernorate);
+
+            return new ScopedMapUsersData
+            {
+                FilteredIdentifies = filteredIdentifies,
+                AddressLookup = addressLookup,
+                AffiliationLookup = affiliationLookup,
+                FilteredUserIds = filteredIdentifies.Select(i => i.UserId).ToHashSet()
+            };
         }
 
         private static bool IsGovernorateInManagedScope(string? governorate, string? managedGovernorate)
@@ -628,7 +679,7 @@ namespace WebApplication2.Controllers
 
         private static bool IsIndividualAccount(Identify identify, IReadOnlySet<string> memberRoleUserIds)
         {
-            return IsIndividualAccount(identify) || memberRoleUserIds.Contains(identify.UserId);
+            return IsIndividualAccount(identify);
         }
 
         private async Task<HashSet<string>> GetMemberRoleUserIdsAsync(IEnumerable<string> userIds)
@@ -709,44 +760,45 @@ namespace WebApplication2.Controllers
                     }
                 }
 
-                var allUsers = _userManager.Users.ToList();
-                var allIdentifies = await _context.Identifies
-                    .Include(i => i.WorkLocation)
-                    .ToListAsync();
-                var allAddresses = await _context.Addresses.ToListAsync();
-                var addressLookup = BuildAddressLookup(allAddresses);
-                var allAffiliations = await _context.AffiliationInfos
-                    .Include(a => a.AffiliationEntity)
-                    .Include(a => a.Division)
-                    .Include(a => a.Section)
-                    .Include(a => a.Group)
-                    .ToListAsync();
-                var affiliationLookup = allAffiliations
-                    .Where(a => !string.IsNullOrWhiteSpace(a.UserId))
-                    .GroupBy(a => a.UserId)
-                    .ToDictionary(g => g.Key, g => g.First());
+                var scopedUsersData = await LoadScopedMapUsersDataAsync(accessScope);
+                var filteredIdentifies = scopedUsersData.FilteredIdentifies;
+                var filteredUserIds = scopedUsersData.FilteredUserIds;
+                var addressLookup = scopedUsersData.AddressLookup;
+                var affiliationLookup = scopedUsersData.AffiliationLookup;
+                var allAffiliations = affiliationLookup.Values.ToList();
 
-                var allUnions = await _context.UnionMemberships.ToListAsync();
+                var allUnions = await _context.UnionMemberships
+                    .AsNoTracking()
+                    .Where(u => filteredUserIds.Contains(u.UserId))
+                    .ToListAsync();
                 var allFederations = await _context.FederationMemberships
+                    .AsNoTracking()
+                    .Where(f => filteredUserIds.Contains(f.UserId))
                     .Include(f => f.Federation)
                     .Include(f => f.FederationDivision)
                     .Include(f => f.FederationSection)
                     .Include(f => f.FederationGroup)
                     .ToListAsync();
-                var allAssociations = await _context.AssociationMemberships.ToListAsync();
-                var allNgos = await _context.NgoMemberships.ToListAsync();
-
-                var allUnionsMaster = await _context.Unions.ToListAsync();
-                var allFederationsMaster = await _context.Federations.ToListAsync();
-                var allAssociationsMaster = await _context.Associations.ToListAsync();
-                var allNgosMaster = await _context.Ngos.ToListAsync();
-
-                var allAffiliationEntities = await _context.AffiliationEntities.ToListAsync();
-                var allDivisions = await _context.Divisions.ToListAsync();
-                var allSections = await _context.Sections.ToListAsync();
-                var allGroups = await _context.Groups.ToListAsync();
-                var allManagementAssignments = await _context.ManagementAssignments
+                var allAssociations = await _context.AssociationMemberships
                     .AsNoTracking()
+                    .Where(a => filteredUserIds.Contains(a.UserId))
+                    .ToListAsync();
+                var allNgos = await _context.NgoMemberships
+                    .AsNoTracking()
+                    .Where(n => filteredUserIds.Contains(n.UserId))
+                    .ToListAsync();
+
+                var allUnionsMaster = await _context.Unions.AsNoTracking().ToListAsync();
+                var allFederationsMaster = await _context.Federations.AsNoTracking().ToListAsync();
+                var allAssociationsMaster = await _context.Associations.AsNoTracking().ToListAsync();
+                var allNgosMaster = await _context.Ngos.AsNoTracking().ToListAsync();
+
+                var allAffiliationEntities = await _context.AffiliationEntities.AsNoTracking().ToListAsync();
+                var allDivisions = await _context.Divisions.AsNoTracking().ToListAsync();
+                var allSections = await _context.Sections.AsNoTracking().ToListAsync();
+                var allGroups = await _context.Groups.AsNoTracking().ToListAsync();
+                var allManagementAssignments = await _context.ManagementAssignments
+                    .Where(a => filteredUserIds.Contains(a.UserId))
                     .ToListAsync();
                 var scopedCatalog = FilterAffiliationCatalogByScope(
                     accessScope,
@@ -803,13 +855,6 @@ namespace WebApplication2.Controllers
                 allSections = scopedCatalog.Sections;
                 allGroups = scopedCatalog.Groups;
 
-                var filteredIdentifies = FilterUsersByScope(
-                    allIdentifies,
-                    addressLookup,
-                    affiliationLookup,
-                    accessScope);
-
-                var filteredUserIds = filteredIdentifies.Select(i => i.UserId).ToHashSet();
                 var usersWithRoles = await _context.UserRoles
                     .Where(ur => filteredUserIds.Contains(ur.UserId))
                     .Join(
@@ -893,7 +938,7 @@ namespace WebApplication2.Controllers
                 }
 
                 model.TotalIndividuals = promotedUsers.Count;
-                model.TotalUsers = allUsers.Count(u => filteredUserIds.Contains(u.Id));
+                model.TotalUsers = filteredUserIds.Count;
 
                 // ✅ إحصائيات الذكور والإناث الكلية
                 model.TotalMaleIndividuals = promotedUsers.Count(u => u.Gender == "ذكر");
@@ -1215,33 +1260,20 @@ namespace WebApplication2.Controllers
             try
             {
                 var accessScope = await GetCurrentMapAccessScopeAsync();
-
-                var allAddresses = await _context.Addresses.ToListAsync();
-                var allIdentifies = await _context.Identifies.ToListAsync();
-                var addressLookup = BuildAddressLookup(allAddresses);
-                var allManagementAssignments = await _context.ManagementAssignments.ToListAsync();
-                var allAffiliations = await _context.AffiliationInfos.ToListAsync();
-                var affiliationLookup = allAffiliations
-                    .Where(a => !string.IsNullOrWhiteSpace(a.UserId))
-                    .GroupBy(a => a.UserId)
-                    .ToDictionary(g => g.Key, g => g.First());
+                var scopedUsersData = await LoadScopedMapUsersDataAsync(accessScope);
 
                 // تصفية المحافظات المسموحة
                 List<string> allowedGovernorates = GetGovernoratesForScope(accessScope);
-
-                var filteredIdentifies = FilterUsersByScope(
-                    allIdentifies,
-                    addressLookup,
-                    affiliationLookup,
-                    accessScope,
-                    allowedGovernorates);
-
+                var filteredIdentifies = allowedGovernorates.Any()
+                    ? scopedUsersData.FilteredIdentifies
+                    : new List<Identify>();
                 var allowedUserIds = filteredIdentifies.Select(i => i.UserId).ToHashSet();
 
                 // تصفية التعيينات حسب المستخدمين المسموحين
-                var filteredAssignments = allManagementAssignments
-                    .Where(a => allowedUserIds.Contains(a.UserId))
-                    .ToList();
+                    var filteredAssignments = await _context.ManagementAssignments
+                        .AsNoTracking()
+                        .Where(a => allowedUserIds.Contains(a.UserId))
+                        .ToListAsync();
 
                 var entityManagers = filteredAssignments.Count(a => a.ManagementLevel == "Entity" && a.AssignmentRole == "Manager");
                 var divisionManagers = filteredAssignments.Count(a => a.ManagementLevel == "Division" && a.AssignmentRole == "Manager");
@@ -1297,54 +1329,36 @@ namespace WebApplication2.Controllers
                     return Json(new { success = false, message = "غير مصرح لك بعرض بيانات هذه المحافظة" });
                 }
 
-                var allUsers = _userManager.Users.ToList();
-                var allIdentifies = await _context.Identifies
-                    .Include(i => i.WorkLocation)
-                    .ToListAsync();
-                var allAddresses = await _context.Addresses.ToListAsync();
-                var addressLookup = BuildAddressLookup(allAddresses);
-                var allAffiliations = await _context.AffiliationInfos
-                    .Include(a => a.AffiliationEntity)
-                    .Include(a => a.Division)
-                    .Include(a => a.Section)
-                    .Include(a => a.Group)
-                    .ToListAsync();
-                var affiliationLookup = allAffiliations
-                    .Where(a => !string.IsNullOrWhiteSpace(a.UserId))
-                    .GroupBy(a => a.UserId)
-                    .ToDictionary(g => g.Key, g => g.First());
+                var scopedUsersData = await LoadScopedMapUsersDataAsync(accessScope, exactGovernorate: governorate);
+                var filteredIdentifies = scopedUsersData.FilteredIdentifies;
+                var addressLookup = scopedUsersData.AddressLookup;
+                var affiliationLookup = scopedUsersData.AffiliationLookup;
+                var allAffiliations = affiliationLookup.Values.ToList();
 
-                var allUnions = await _context.UnionMemberships.ToListAsync();
+                var allUnions = await _context.UnionMemberships.AsNoTracking().ToListAsync();
                 var allFederations = await _context.FederationMemberships
+                    .AsNoTracking()
                     .Include(f => f.Federation)
                     .Include(f => f.FederationDivision)
                     .Include(f => f.FederationSection)
                     .Include(f => f.FederationGroup)
                     .ToListAsync();
-                var allAssociations = await _context.AssociationMemberships.ToListAsync();
-                var allNgos = await _context.NgoMemberships.ToListAsync();
-
-                var allAffiliationEntities = await _context.AffiliationEntities.ToListAsync();
-                var allDivisions = await _context.Divisions.ToListAsync();
-                var allSections = await _context.Sections.ToListAsync();
-                var allGroups = await _context.Groups.ToListAsync();
-
-                var filteredIdentifies = FilterUsersByScope(
-                    allIdentifies,
-                    addressLookup,
-                    affiliationLookup,
-                    accessScope,
-                    exactGovernorate: governorate);
+                var allAssociations = await _context.AssociationMemberships.AsNoTracking().ToListAsync();
+                var allNgos = await _context.NgoMemberships.AsNoTracking().ToListAsync();
 
                 var allUserIdsInGov = filteredIdentifies.Select(i => i.UserId).ToHashSet();
                 var userIdsInGov = filteredIdentifies.Select(i => i.UserId).ToList();
                 var memberRoleUserIds = await GetMemberRoleUserIdsAsync(userIdsInGov);
 
-                var usersInGov = allIdentifies
+                var usersInGov = filteredIdentifies
                     .Where(i => userIdsInGov.Contains(i.UserId) && IsIndividualAccount(i, memberRoleUserIds))
                     .ToList();
 
                 var userIds = usersInGov.Select(u => u.UserId).ToList();
+                var identityUsersById = await _userManager.Users
+                    .AsNoTracking()
+                    .Where(u => userIds.Contains(u.Id))
+                    .ToDictionaryAsync(u => u.Id);
 
                 var usersWithRoles = await _context.UserRoles
                     .Where(ur => userIds.Contains(ur.UserId))
@@ -1358,11 +1372,29 @@ namespace WebApplication2.Controllers
                         group => group.Key,
                         group => (IList<string>)group.Select(x => x.RoleName).ToList());
 
-                var affiliationsDict = allAffiliations.Where(a => userIds.Contains(a.UserId)).ToDictionary(a => a.UserId, a => a);
+                var affiliationsDict = scopedUsersData.AffiliationLookup
+                    .Where(a => userIds.Contains(a.Key))
+                    .ToDictionary(a => a.Key, a => a.Value);
                 var unionsDict = allUnions.Where(u => userIds.Contains(u.UserId)).ToDictionary(u => u.UserId, u => u);
                 var federationsDict = allFederations.Where(f => userIds.Contains(f.UserId)).ToDictionary(f => f.UserId, f => f);
                 var associationsDict = allAssociations.Where(a => userIds.Contains(a.UserId)).ToDictionary(a => a.UserId, a => a);
                 var ngosDict = allNgos.Where(n => userIds.Contains(n.UserId)).ToDictionary(n => n.UserId, n => n);
+                var affiliationEntityNames = allAffiliations
+                    .Where(a => userIds.Contains(a.UserId) && a.AffiliationEntityId.HasValue && a.AffiliationEntity != null)
+                    .GroupBy(a => a.AffiliationEntityId!.Value)
+                    .ToDictionary(g => g.Key, g => g.First().AffiliationEntity!.Name);
+                var divisionNames = allAffiliations
+                    .Where(a => userIds.Contains(a.UserId) && a.DivisionId.HasValue && a.Division != null)
+                    .GroupBy(a => a.DivisionId!.Value)
+                    .ToDictionary(g => g.Key, g => g.First().Division!.Name);
+                var sectionNames = allAffiliations
+                    .Where(a => userIds.Contains(a.UserId) && a.SectionId.HasValue && a.Section != null)
+                    .GroupBy(a => a.SectionId!.Value)
+                    .ToDictionary(g => g.Key, g => g.First().Section!.Name);
+                var groupNames = allAffiliations
+                    .Where(a => userIds.Contains(a.UserId) && a.GroupId.HasValue && a.Group != null)
+                    .GroupBy(a => a.GroupId!.Value)
+                    .ToDictionary(g => g.Key, g => g.First().Group!.Name);
 
                 var maleCount = usersInGov.Count(u => u.Gender == "ذكر");
                 var femaleCount = usersInGov.Count(u => u.Gender == "أنثى");
@@ -1450,7 +1482,7 @@ namespace WebApplication2.Controllers
                 var usersDataList = new List<object>();
                 foreach (var user in usersInGov.OrderByDescending(u => u.CreatedAt))
                 {
-                    var identityUser = allUsers.FirstOrDefault(u => u.Id == user.UserId);
+                    identityUsersById.TryGetValue(user.UserId, out var identityUser);
                     addressLookup.TryGetValue(user.UserId, out var address);
                     var affiliationInfo = affiliationsDict.ContainsKey(user.UserId) ? affiliationsDict[user.UserId] : null;
                     var roles = usersWithRoles.TryGetValue(user.UserId, out var userRoles) ? userRoles : new List<string>();
@@ -1464,23 +1496,19 @@ namespace WebApplication2.Controllers
                     {
                         if (affiliationInfo.AffiliationEntityId.HasValue)
                         {
-                            var entity = allAffiliationEntities.FirstOrDefault(e => e.Id == affiliationInfo.AffiliationEntityId.Value);
-                            affiliationEntityName = entity?.Name;
+                            affiliationEntityNames.TryGetValue(affiliationInfo.AffiliationEntityId.Value, out affiliationEntityName);
                         }
                         if (affiliationInfo.DivisionId.HasValue)
                         {
-                            var division = allDivisions.FirstOrDefault(d => d.Id == affiliationInfo.DivisionId.Value);
-                            divisionName = division?.Name;
+                            divisionNames.TryGetValue(affiliationInfo.DivisionId.Value, out divisionName);
                         }
                         if (affiliationInfo.SectionId.HasValue)
                         {
-                            var section = allSections.FirstOrDefault(s => s.Id == affiliationInfo.SectionId.Value);
-                            sectionName = section?.Name;
+                            sectionNames.TryGetValue(affiliationInfo.SectionId.Value, out sectionName);
                         }
                         if (affiliationInfo.GroupId.HasValue)
                         {
-                            var group = allGroups.FirstOrDefault(g => g.Id == affiliationInfo.GroupId.Value);
-                            groupName = group?.Name;
+                            groupNames.TryGetValue(affiliationInfo.GroupId.Value, out groupName);
                         }
                     }
 
@@ -1629,19 +1657,9 @@ namespace WebApplication2.Controllers
                 }
 
                 var accessScope = await GetCurrentMapAccessScopeAsync();
-                var allIdentifies = await _context.Identifies.ToListAsync();
-                var allAddresses = await _context.Addresses.ToListAsync();
-                var addressLookup = BuildAddressLookup(allAddresses);
-                var allAffiliations = await _context.AffiliationInfos.ToListAsync();
-                var affiliationLookup = allAffiliations
-                    .Where(a => !string.IsNullOrWhiteSpace(a.UserId))
-                    .GroupBy(a => a.UserId)
-                    .ToDictionary(g => g.Key, g => g.First());
-                var scopedIdentifies = FilterUsersByScope(
-                        allIdentifies,
-                        addressLookup,
-                        affiliationLookup,
-                        accessScope);
+                var scopedUsersData = await LoadScopedMapUsersDataAsync(accessScope);
+                var allAffiliations = scopedUsersData.AffiliationLookup.Values.ToList();
+                var scopedIdentifies = scopedUsersData.FilteredIdentifies;
                 var scopedUserIds = scopedIdentifies.Select(i => i.UserId).ToHashSet();
                 var memberRoleUserIds = await GetMemberRoleUserIdsAsync(scopedUserIds);
                 var allowedUserIds = scopedIdentifies
@@ -1649,12 +1667,13 @@ namespace WebApplication2.Controllers
                     .Select(i => i.UserId)
                     .ToHashSet();
 
-                var allEntities = await _context.AffiliationEntities.ToListAsync();
-                var allDivisions = await _context.Divisions.ToListAsync();
-                var allSections = await _context.Sections.ToListAsync();
-                var allGroups = await _context.Groups.ToListAsync();
+                var allEntities = await _context.AffiliationEntities.AsNoTracking().ToListAsync();
+                var allDivisions = await _context.Divisions.AsNoTracking().ToListAsync();
+                var allSections = await _context.Sections.AsNoTracking().ToListAsync();
+                var allGroups = await _context.Groups.AsNoTracking().ToListAsync();
                 var allManagementAssignments = await _context.ManagementAssignments
                     .AsNoTracking()
+                    .Where(a => scopedUserIds.Contains(a.UserId))
                     .ToListAsync();
                 var scopedCatalog = FilterAffiliationCatalogByScope(
                     accessScope,
@@ -1778,29 +1797,22 @@ namespace WebApplication2.Controllers
                 }
 
                 var accessScope = await GetCurrentMapAccessScopeAsync();
-                var allIdentifies = await _context.Identifies.ToListAsync();
-                var allAddresses = await _context.Addresses.ToListAsync();
-                var addressLookup = BuildAddressLookup(allAddresses);
-                var allAffiliations = await _context.AffiliationInfos.ToListAsync();
-                var affiliationLookup = allAffiliations
-                    .Where(a => !string.IsNullOrWhiteSpace(a.UserId))
-                    .GroupBy(a => a.UserId)
-                    .ToDictionary(g => g.Key, g => g.First());
-                var scopedIdentifies = FilterUsersByScope(
-                        allIdentifies,
-                        addressLookup,
-                        affiliationLookup,
-                        accessScope);
+                var scopedUsersData = await LoadScopedMapUsersDataAsync(accessScope);
+                var scopedIdentifies = scopedUsersData.FilteredIdentifies;
                 var scopedUserIds = scopedIdentifies.Select(i => i.UserId).ToHashSet();
                 var memberRoleUserIds = await GetMemberRoleUserIdsAsync(scopedUserIds);
                 var allowedUserIds = scopedIdentifies
                     .Where(i => IsIndividualAccount(i, memberRoleUserIds))
                     .Select(i => i.UserId)
                     .ToHashSet();
-                var federationMemberships = await _context.FederationMemberships.ToListAsync();
+                var federationMemberships = await _context.FederationMemberships
+                    .AsNoTracking()
+                    .Where(f => allowedUserIds.Contains(f.UserId))
+                    .ToListAsync();
 
                 // جلب جميع أقسام الاتحاد
                 var divisions = await _context.FederationDivisions
+                    .AsNoTracking()
                     .Where(d => d.FederationId == federationMaster.Id)
                     .ToListAsync();
 
@@ -1814,6 +1826,7 @@ namespace WebApplication2.Controllers
 
                     // جلب جميع شعب هذا القسم
                     var sections = await _context.FederationSections
+                        .AsNoTracking()
                         .Where(s => s.FederationDivisionId == division.Id)
                         .ToListAsync();
 
@@ -1827,6 +1840,7 @@ namespace WebApplication2.Controllers
 
                         // جلب جميع تجمعات هذه الشعبة
                         var groups = await _context.FederationGroups
+                            .AsNoTracking()
                             .Where(g => g.FederationSectionId == section.Id)
                             .ToListAsync();
 
@@ -1951,32 +1965,21 @@ namespace WebApplication2.Controllers
             try
             {
                 var accessScope = await GetCurrentMapAccessScopeAsync();
-
-                var allAddresses = await _context.Addresses.ToListAsync();
-                var allIdentifies = await _context.Identifies.ToListAsync();
-                var addressLookup = BuildAddressLookup(allAddresses);
-                var allAffiliations = await _context.AffiliationInfos.ToListAsync();
-                var affiliationLookup = allAffiliations
-                    .Where(a => !string.IsNullOrWhiteSpace(a.UserId))
-                    .GroupBy(a => a.UserId)
-                    .ToDictionary(g => g.Key, g => g.First());
-
-                var filteredIdentifies = FilterUsersByScope(
-                    allIdentifies,
-                    addressLookup,
-                    affiliationLookup,
-                    accessScope);
-
-                var allowedUserIds = filteredIdentifies.Select(i => i.UserId).ToList();
+                var scopedUsersData = await LoadScopedMapUsersDataAsync(accessScope);
+                var filteredIdentifies = scopedUsersData.FilteredIdentifies;
+                var allowedUserIds = scopedUsersData.FilteredUserIds.ToList();
                 var memberRoleUserIds = await GetMemberRoleUserIdsAsync(allowedUserIds);
-                var promotedUserIds = allIdentifies
-                    .Where(i => IsIndividualAccount(i, memberRoleUserIds) && allowedUserIds.Contains(i.UserId))
+                var promotedUserIds = filteredIdentifies
+                    .Where(i => IsIndividualAccount(i, memberRoleUserIds))
                     .Select(i => i.UserId)
                     .ToHashSet();
 
                 // إحصائيات النقابات
-                var unions = await _context.UnionMemberships.ToListAsync();
-                var unionsMaster = await _context.Unions.ToListAsync();
+                var unions = await _context.UnionMemberships
+                    .AsNoTracking()
+                    .Where(u => promotedUserIds.Contains(u.UserId))
+                    .ToListAsync();
+                var unionsMaster = await _context.Unions.AsNoTracking().ToListAsync();
                 var unionsDetails = unionsMaster.Select(m => new
                 {
                     name = m.Name,
@@ -1985,9 +1988,11 @@ namespace WebApplication2.Controllers
 
                 // إحصائيات الاتحادات
                 var federations = await _context.FederationMemberships
+                    .AsNoTracking()
+                    .Where(f => promotedUserIds.Contains(f.UserId))
                     .Include(f => f.Federation)
                     .ToListAsync();
-                var federationsMaster = await _context.Federations.ToListAsync();
+                var federationsMaster = await _context.Federations.AsNoTracking().ToListAsync();
                 var federationsDetails = federationsMaster.Select(m => new
                 {
                     name = m.Name,
@@ -1995,8 +2000,11 @@ namespace WebApplication2.Controllers
                 }).OrderByDescending(x => x.memberCount).ToList();
 
                 // إحصائيات الجمعيات
-                var associations = await _context.AssociationMemberships.ToListAsync();
-                var associationsMaster = await _context.Associations.ToListAsync();
+                var associations = await _context.AssociationMemberships
+                    .AsNoTracking()
+                    .Where(a => promotedUserIds.Contains(a.UserId))
+                    .ToListAsync();
+                var associationsMaster = await _context.Associations.AsNoTracking().ToListAsync();
                 var associationsDetails = associationsMaster.Select(m => new
                 {
                     name = m.Name,
@@ -2004,8 +2012,11 @@ namespace WebApplication2.Controllers
                 }).OrderByDescending(x => x.memberCount).ToList();
 
                 // إحصائيات المنظمات
-                var ngos = await _context.NgoMemberships.ToListAsync();
-                var ngosMaster = await _context.Ngos.ToListAsync();
+                var ngos = await _context.NgoMemberships
+                    .AsNoTracking()
+                    .Where(n => promotedUserIds.Contains(n.UserId))
+                    .ToListAsync();
+                var ngosMaster = await _context.Ngos.AsNoTracking().ToListAsync();
                 var ngosDetails = ngosMaster.Select(m => new
                 {
                     name = m.Name,
@@ -2058,23 +2069,21 @@ namespace WebApplication2.Controllers
             try
             {
                 var accessScope = await GetCurrentMapAccessScopeAsync();
-                var allAddresses = await _context.Addresses.AsNoTracking().ToListAsync();
-                var allIdentifies = await _context.Identifies.AsNoTracking().ToListAsync();
-                var addressLookup = BuildAddressLookup(allAddresses);
-                var allAffiliations = await _context.AffiliationInfos.AsNoTracking().ToListAsync();
-                var affiliationLookup = allAffiliations
-                    .Where(a => !string.IsNullOrWhiteSpace(a.UserId))
-                    .GroupBy(a => a.UserId)
-                    .ToDictionary(g => g.Key, g => g.First());
-
-                var scopedIdentifies = FilterUsersByScope(allIdentifies, addressLookup, affiliationLookup, accessScope);
+                var scopedUsersData = await LoadScopedMapUsersDataAsync(accessScope);
+                var scopedIdentifies = scopedUsersData.FilteredIdentifies;
                 var allowedUserIds = scopedIdentifies.Select(i => i.UserId).Distinct().ToHashSet();
                 var memberRoleUserIds = await GetMemberRoleUserIdsAsync(allowedUserIds);
                 var promotedUsers = scopedIdentifies
                     .Where(i => IsIndividualAccount(i, memberRoleUserIds))
                     .ToList();
 
-                var selectedUserIds = await GetMapCardExportUserIdsAsync(cardType, value, promotedUsers, allowedUserIds, allAffiliations, addressLookup);
+                var selectedUserIds = await GetMapCardExportUserIdsAsync(
+                    cardType,
+                    value,
+                    promotedUsers,
+                    allowedUserIds,
+                    scopedUsersData.AffiliationLookup.Values.ToList(),
+                    scopedUsersData.AddressLookup);
 
                 if (!selectedUserIds.Any())
                 {
@@ -2142,17 +2151,18 @@ namespace WebApplication2.Controllers
 
                 case "admins":
                 {
-                    var adminUserIds = new HashSet<string>();
-                    var users = await _userManager.Users.Where(u => allowedUserIds.Contains(u.Id)).ToListAsync();
-                    foreach (var user in users)
-                    {
-                        var roles = await _userManager.GetRolesAsync(user);
-                        if (roles.Contains("Admin") || roles.Contains("SuperAdmin") || roles.Contains("DistrictAdmin") || roles.Contains("MapViewer"))
-                        {
-                            adminUserIds.Add(user.Id);
-                        }
-                    }
-                    return adminUserIds;
+                    var adminRoles = new[] { "Admin", "SuperAdmin", "DistrictAdmin", "MapViewer" };
+                    return await _context.UserRoles
+                        .AsNoTracking()
+                        .Join(
+                            _context.Roles.AsNoTracking(),
+                            userRole => userRole.RoleId,
+                            role => role.Id,
+                            (userRole, role) => new { userRole.UserId, RoleName = role.Name ?? string.Empty })
+                        .Where(x => allowedUserIds.Contains(x.UserId) && adminRoles.Contains(x.RoleName))
+                        .Select(x => x.UserId)
+                        .Distinct()
+                        .ToHashSetAsync();
                 }
 
                 case "manager":
@@ -2285,45 +2295,140 @@ namespace WebApplication2.Controllers
                 "طلب ترقية؟", "تاريخ الطلب", "سبب الرفض", "المسؤوليات الإدارية", "المحافظة المُدارة", "القضاء المُدار"
             });
 
+            var userIds = users.Select(u => u.Id).ToList();
+            var profiles = await _context.Identifies.AsNoTracking()
+                .Where(i => userIds.Contains(i.UserId))
+                .ToListAsync();
+            var profilesByUserId = profiles.ToDictionary(i => i.UserId, i => i);
+            var profileIds = profiles.Select(p => p.Id).ToList();
+
+            var addressesByUserId = await _context.Addresses.AsNoTracking()
+                .Where(a => userIds.Contains(a.UserId))
+                .GroupBy(a => a.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+            var voterCardsByUserId = await _context.VoterCards.AsNoTracking()
+                .Where(v => userIds.Contains(v.UserId))
+                .GroupBy(v => v.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+            var unionsByUserId = await _context.UnionMemberships.AsNoTracking()
+                .Where(u => userIds.Contains(u.UserId))
+                .GroupBy(u => u.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+            var federationsByUserId = await _context.FederationMemberships.AsNoTracking()
+                .Include(f => f.Federation)
+                .Include(f => f.FederationDivision)
+                .Include(f => f.FederationSection)
+                .Include(f => f.FederationGroup)
+                .Where(f => userIds.Contains(f.UserId))
+                .GroupBy(f => f.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+            var associationsByUserId = await _context.AssociationMemberships.AsNoTracking()
+                .Where(a => userIds.Contains(a.UserId))
+                .GroupBy(a => a.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+            var ngosByUserId = await _context.NgoMemberships.AsNoTracking()
+                .Where(n => userIds.Contains(n.UserId))
+                .GroupBy(n => n.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+            var workLocationsByIdentifyId = await _context.WorkLocations.AsNoTracking()
+                .Where(w => profileIds.Contains(w.IdentifyId))
+                .ToDictionaryAsync(w => w.IdentifyId);
+            var affiliations = await _context.AffiliationInfos.AsNoTracking()
+                .Include(a => a.AffiliationEntity)
+                .Include(a => a.Division)
+                .Include(a => a.Section)
+                .Include(a => a.Group)
+                .Where(a => userIds.Contains(a.UserId))
+                .ToListAsync();
+            var affiliationsByUserId = affiliations
+                .GroupBy(a => a.UserId)
+                .ToDictionary(g => g.Key, g => g.First());
+            var rolesByUserId = await _context.UserRoles
+                .Where(ur => userIds.Contains(ur.UserId))
+                .Join(_context.Roles,
+                    userRole => userRole.RoleId,
+                    role => role.Id,
+                    (userRole, role) => new { userRole.UserId, RoleName = role.Name ?? string.Empty })
+                .GroupBy(x => x.UserId)
+                .ToDictionaryAsync(g => g.Key, g => (IList<string>)g.Select(x => x.RoleName).ToList());
+            var managementAssignments = await _context.ManagementAssignments.AsNoTracking()
+                .Where(x => userIds.Contains(x.UserId))
+                .ToListAsync();
+            var managementAssignmentsByUserId = managementAssignments
+                .GroupBy(x => x.UserId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+            var assignmentEntityIds = managementAssignments
+                .Where(x => x.ManagementLevel == "Entity" && x.AffiliationEntityId.HasValue)
+                .Select(x => x.AffiliationEntityId!.Value)
+                .Distinct()
+                .ToList();
+            var assignmentDivisionIds = managementAssignments
+                .Where(x => x.ManagementLevel == "Division" && x.DivisionId.HasValue)
+                .Select(x => x.DivisionId!.Value)
+                .Distinct()
+                .ToList();
+            var assignmentSectionIds = managementAssignments
+                .Where(x => x.ManagementLevel == "Section" && x.SectionId.HasValue)
+                .Select(x => x.SectionId!.Value)
+                .Distinct()
+                .ToList();
+            var assignmentGroupIds = managementAssignments
+                .Where(x => x.ManagementLevel == "Group" && x.GroupId.HasValue)
+                .Select(x => x.GroupId!.Value)
+                .Distinct()
+                .ToList();
+            var assignmentEntitiesById = await _context.AffiliationEntities.AsNoTracking()
+                .Where(e => assignmentEntityIds.Contains(e.Id))
+                .ToDictionaryAsync(e => e.Id, e => e.Name ?? string.Empty);
+            var assignmentDivisionsById = await _context.Divisions.AsNoTracking()
+                .Where(d => assignmentDivisionIds.Contains(d.Id))
+                .ToDictionaryAsync(d => d.Id, d => d.Name ?? string.Empty);
+            var assignmentSectionsById = await _context.Sections.AsNoTracking()
+                .Where(s => assignmentSectionIds.Contains(s.Id))
+                .ToDictionaryAsync(s => s.Id, s => s.Name ?? string.Empty);
+            var assignmentGroupsById = await _context.Groups.AsNoTracking()
+                .Where(g => assignmentGroupIds.Contains(g.Id))
+                .ToDictionaryAsync(g => g.Id, g => g.Name ?? string.Empty);
+            var actorDisplayCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
             foreach (var user in users)
             {
-                var profile = await _context.Identifies.AsNoTracking().FirstOrDefaultAsync(i => i.UserId == user.Id);
-                var address = await _context.Addresses.AsNoTracking().FirstOrDefaultAsync(a => a.UserId == user.Id);
-                var voterCard = await _context.VoterCards.AsNoTracking().FirstOrDefaultAsync(v => v.UserId == user.Id);
-                var union = await _context.UnionMemberships.AsNoTracking().FirstOrDefaultAsync(u => u.UserId == user.Id);
-                var federation = await _context.FederationMemberships.AsNoTracking()
-                    .Include(f => f.Federation)
-                    .Include(f => f.FederationDivision)
-                    .Include(f => f.FederationSection)
-                    .Include(f => f.FederationGroup)
-                    .FirstOrDefaultAsync(f => f.UserId == user.Id);
-                var association = await _context.AssociationMemberships.AsNoTracking().FirstOrDefaultAsync(a => a.UserId == user.Id);
-                var ngo = await _context.NgoMemberships.AsNoTracking().FirstOrDefaultAsync(n => n.UserId == user.Id);
-                var workLocation = profile != null
-                    ? await _context.WorkLocations.AsNoTracking().FirstOrDefaultAsync(w => w.IdentifyId == profile.Id)
+                profilesByUserId.TryGetValue(user.Id, out var profile);
+                addressesByUserId.TryGetValue(user.Id, out var address);
+                voterCardsByUserId.TryGetValue(user.Id, out var voterCard);
+                unionsByUserId.TryGetValue(user.Id, out var union);
+                federationsByUserId.TryGetValue(user.Id, out var federation);
+                associationsByUserId.TryGetValue(user.Id, out var association);
+                ngosByUserId.TryGetValue(user.Id, out var ngo);
+                affiliationsByUserId.TryGetValue(user.Id, out var affiliation);
+                var workLocation = profile != null && workLocationsByIdentifyId.TryGetValue(profile.Id, out var storedWorkLocation)
+                    ? storedWorkLocation
                     : null;
-                var affiliation = await _context.AffiliationInfos.AsNoTracking()
-                    .Include(a => a.AffiliationEntity)
-                    .Include(a => a.Division)
-                    .Include(a => a.Section)
-                    .Include(a => a.Group)
-                    .FirstOrDefaultAsync(a => a.UserId == user.Id);
-                var roles = await _userManager.GetRolesAsync(user);
+                var roles = rolesByUserId.TryGetValue(user.Id, out var userRoles)
+                    ? userRoles
+                    : Array.Empty<string>();
                 var workGovernorate = FirstNonBlank(workLocation?.Governorate, profile?.WorkGovernorate);
                 var workDistrict = workGovernorate == "بغداد"
                     ? FirstNonBlank(workLocation?.District, profile?.WorkDistrict)
                     : "";
-                var managementAssignments = await _context.ManagementAssignments.AsNoTracking()
-                    .Where(x => x.UserId == user.Id)
-                    .ToListAsync();
-                var managementDisplay = "";
+                var managementDisplayParts = new List<string>();
                 var managedGovernorate = profile?.ManagedGovernorate ?? "";
                 var managedDistrict = profile?.ManagedDistrict ?? "";
+                var userAssignments = managementAssignmentsByUserId.TryGetValue(user.Id, out var assignmentList)
+                    ? assignmentList
+                    : new List<ManagementAssignment>();
 
-                foreach (var assignment in managementAssignments)
+                foreach (var assignment in userAssignments)
                 {
-                    var entityName = await GetManagedEntityNameAsync(assignment);
-                    managementDisplay += $"{GetArabicLevelName(assignment.ManagementLevel, assignment.AssignmentRole)}: {entityName}, ";
+                    var entityName = assignment.ManagementLevel switch
+                    {
+                        "Entity" when assignment.AffiliationEntityId.HasValue && assignmentEntitiesById.TryGetValue(assignment.AffiliationEntityId.Value, out var entityLabel) => entityLabel,
+                        "Division" when assignment.DivisionId.HasValue && assignmentDivisionsById.TryGetValue(assignment.DivisionId.Value, out var divisionLabel) => divisionLabel,
+                        "Section" when assignment.SectionId.HasValue && assignmentSectionsById.TryGetValue(assignment.SectionId.Value, out var sectionLabel) => sectionLabel,
+                        "Group" when assignment.GroupId.HasValue && assignmentGroupsById.TryGetValue(assignment.GroupId.Value, out var groupLabel) => groupLabel,
+                        _ => string.Empty
+                    };
+                    managementDisplayParts.Add($"{GetArabicLevelName(assignment.ManagementLevel, assignment.AssignmentRole)}: {entityName}");
 
                     if (!string.IsNullOrEmpty(assignment.Governorate) && string.IsNullOrEmpty(managedGovernorate))
                         managedGovernorate = assignment.Governorate;
@@ -2341,7 +2446,15 @@ namespace WebApplication2.Controllers
                     managedDistrict = FirstNonBlank(profile?.ManagedDistrict, profile?.WorkDistrict, workLocation?.District);
                 }
 
-                managementDisplay = managementDisplay.TrimEnd(',', ' ');
+                var promotedByDisplay = string.Empty;
+                if (!string.IsNullOrWhiteSpace(profile?.PromotedBy))
+                {
+                    if (!actorDisplayCache.TryGetValue(profile.PromotedBy, out promotedByDisplay))
+                    {
+                        promotedByDisplay = await ResolveActorDisplayNameAsync(profile.PromotedBy);
+                        actorDisplayCache[profile.PromotedBy] = promotedByDisplay;
+                    }
+                }
 
                 data.Add(new object[]
                 {
@@ -2408,16 +2521,16 @@ namespace WebApplication2.Controllers
                     ngo?.IdNumber ?? "",
                     ngo?.AffiliationDate?.ToString("yyyy-MM-dd") ?? "",
                     user.Email ?? "",
-                    string.Join(", ", roles),
+                    TranslateRolesForExport(roles),
                     user.EmailConfirmed ? "نشط" : "غير نشط",
-                    profile?.AccountType ?? "عادي",
+                    TranslateAccountTypeForExport(profile?.AccountType),
                     profile?.IsPromoted == true ? "مصعد" : "غير مصعد",
                     profile?.PromotionDate?.ToString("yyyy-MM-dd") ?? "",
-                    profile?.PromotedBy ?? "",
+                    NormalizeExcelText(promotedByDisplay),
                     profile?.RequestedPromotion == true ? "نعم" : "لا",
                     profile?.RequestedPromotionDate?.ToString("yyyy-MM-dd") ?? "",
                     profile?.RejectionReason ?? "",
-                    managementDisplay,
+                    TranslateManagementDisplayForExport(string.Join(", ", managementDisplayParts)),
                     managedGovernorate,
                     managedDistrict
                 });
@@ -2434,7 +2547,7 @@ namespace WebApplication2.Controllers
             {
                 for (var j = 0; j < data[i].Length; j++)
                 {
-                    worksheet.Cell(i + 1, j + 1).Value = data[i][j]?.ToString() ?? "";
+                    worksheet.Cell(i + 1, j + 1).Value = NormalizeExcelText(data[i][j]?.ToString());
                 }
             }
 
@@ -2453,6 +2566,71 @@ namespace WebApplication2.Controllers
             using var stream = new MemoryStream();
             workbook.SaveAs(stream);
             return stream.ToArray();
+        }
+
+        private static string NormalizeExcelText(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            var text = value.Trim();
+            if (!LooksLikeMojibake(text))
+                return text;
+
+            try
+            {
+                return Encoding.UTF8.GetString(Encoding.GetEncoding("Windows-1252").GetBytes(text));
+            }
+            catch
+            {
+                return text;
+            }
+        }
+
+        private static bool LooksLikeMojibake(string value)
+        {
+            return value.Contains('Ø') || value.Contains('Ù') || value.Contains('â');
+        }
+
+        private static string TranslateRolesForExport(IEnumerable<string> roles)
+        {
+            return string.Join("، ", roles
+                .Select(TranslateRoleForExport)
+                .Where(role => !string.IsNullOrWhiteSpace(role)));
+        }
+
+        private static string TranslateRoleForExport(string? role)
+        {
+            return role switch
+            {
+                clsRoles.SuperAdmin => "سوبر أدمن",
+                clsRoles.Admin => "أدمن",
+                clsRoles.DistrictAdmin => "أدمن قضاء",
+                clsRoles.User => "مستخدم",
+                clsRoles.Member => "فرد",
+                clsRoles.NewsEditor => "محرر أخبار",
+                clsRoles.MapViewer => "مراقب الخريطة",
+                clsRoles.Manager => "مسؤول",
+                clsRoles.AssistantManager => "معاون مسؤول",
+                null or "" => string.Empty,
+                _ => NormalizeExcelText(role)
+            };
+        }
+
+        private static string TranslateAccountTypeForExport(string? accountType)
+        {
+            return accountType switch
+            {
+                "User" => "مستخدم",
+                "Member" => "فرد",
+                null or "" => "عادي",
+                _ => NormalizeExcelText(accountType)
+            };
+        }
+
+        private static string TranslateManagementDisplayForExport(string? managementDisplay)
+        {
+            return NormalizeExcelText(managementDisplay);
         }
 
         private async Task<string> GetManagedEntityNameAsync(ManagementAssignment assignment)
@@ -2518,6 +2696,44 @@ namespace WebApplication2.Controllers
             return values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))?.Trim() ?? string.Empty;
         }
 
+        private async Task<string> ResolveActorDisplayNameAsync(string? actorValue)
+        {
+            if (string.IsNullOrWhiteSpace(actorValue))
+                return string.Empty;
+
+            var trimmedValue = actorValue.Trim();
+
+            IdentityUser? actorUser = await _userManager.FindByIdAsync(trimmedValue);
+            if (actorUser == null)
+            {
+                var normalizedValue = trimmedValue.ToLower();
+                actorUser = await _userManager.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u =>
+                        (u.Email != null && u.Email.ToLower() == normalizedValue) ||
+                        (u.UserName != null && u.UserName.ToLower() == normalizedValue) ||
+                        (u.PhoneNumber != null && u.PhoneNumber == trimmedValue));
+            }
+
+            var profile = await _context.Identifies
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i =>
+                    (actorUser != null && i.UserId == actorUser.Id) ||
+                    i.PhoneNumber == trimmedValue ||
+                    i.WhatsAppNumber == trimmedValue);
+
+            if (!string.IsNullOrWhiteSpace(profile?.FullName))
+                return profile.FullName;
+
+            if (actorUser == null)
+                return trimmedValue;
+
+            if (!string.IsNullOrWhiteSpace(actorUser.UserName) && !actorUser.UserName.Contains('@'))
+                return actorUser.UserName;
+
+            return actorUser.Email ?? trimmedValue;
+        }
+
         private static string GetMapCardExportTitle(string cardType, string? value)
         {
             return cardType switch
@@ -2560,35 +2776,36 @@ namespace WebApplication2.Controllers
                 var userManagedDistrict = accessScope.ManagedDistrict;
                 bool isSuperAdmin = accessScope.IsSuperAdmin;
 
-                var allAddresses = await _context.Addresses.ToListAsync();
-                var allIdentifies = await _context.Identifies.ToListAsync();
-                var addressLookup = BuildAddressLookup(allAddresses);
-                var allUnions = await _context.UnionMemberships.ToListAsync();
-                var allFederations = await _context.FederationMemberships
-                    .Include(f => f.Federation)
-                    .ToListAsync();
-                var allAssociations = await _context.AssociationMemberships.ToListAsync();
-                var allNgos = await _context.NgoMemberships.ToListAsync();
-                var allAffiliations = await _context.AffiliationInfos.ToListAsync();
-                var affiliationLookup = allAffiliations
-                    .Where(a => !string.IsNullOrWhiteSpace(a.UserId))
-                    .GroupBy(a => a.UserId)
-                    .ToDictionary(g => g.Key, g => g.First());
-
-                var filteredIdentifies = FilterUsersByScope(
-                    allIdentifies,
-                    addressLookup,
-                    affiliationLookup,
-                    accessScope);
-
+                var scopedUsersData = await LoadScopedMapUsersDataAsync(accessScope);
+                var filteredIdentifies = scopedUsersData.FilteredIdentifies;
+                var addressLookup = scopedUsersData.AddressLookup;
                 var allowedUserIds = filteredIdentifies
                     .Select(i => i.UserId)
                     .Distinct()
                     .ToHashSet();
 
+                var allUnions = await _context.UnionMemberships
+                    .AsNoTracking()
+                    .Where(u => allowedUserIds.Contains(u.UserId))
+                    .ToListAsync();
+                var allFederations = await _context.FederationMemberships
+                    .AsNoTracking()
+                    .Where(f => allowedUserIds.Contains(f.UserId))
+                    .Include(f => f.Federation)
+                    .ToListAsync();
+                var allAssociations = await _context.AssociationMemberships
+                    .AsNoTracking()
+                    .Where(a => allowedUserIds.Contains(a.UserId))
+                    .ToListAsync();
+                var allNgos = await _context.NgoMemberships
+                    .AsNoTracking()
+                    .Where(n => allowedUserIds.Contains(n.UserId))
+                    .ToListAsync();
+                var allAffiliations = scopedUsersData.AffiliationLookup.Values.ToList();
+
                 var memberRoleUserIds = await GetMemberRoleUserIdsAsync(allowedUserIds);
-                var promotedUsers = allIdentifies
-                    .Where(i => IsIndividualAccount(i, memberRoleUserIds) && allowedUserIds.Contains(i.UserId))
+                var promotedUsers = filteredIdentifies
+                    .Where(i => IsIndividualAccount(i, memberRoleUserIds))
                     .ToList();
 
                 if (IsManagerScopedOnly(accessScope))
@@ -2648,6 +2865,18 @@ namespace WebApplication2.Controllers
                 }
 
                 var resultGovernorates = new List<object>();
+                var usersWithRoles = await _context.UserRoles
+                    .AsNoTracking()
+                    .Where(ur => allowedUserIds.Contains(ur.UserId))
+                    .Join(
+                        _context.Roles.AsNoTracking(),
+                        userRole => userRole.RoleId,
+                        role => role.Id,
+                        (userRole, role) => new { userRole.UserId, RoleName = role.Name ?? string.Empty })
+                    .GroupBy(x => x.UserId)
+                    .ToDictionaryAsync(
+                        group => group.Key,
+                        group => group.Select(x => x.RoleName).ToHashSet(StringComparer.OrdinalIgnoreCase));
 
                 // إذا كان سوبر أدمن نعرض كل المحافظات، وإذا أدمن نعرض فقط المسموح له
                 var governoratesToExport = GetGovernoratesForScope(accessScope);
@@ -2682,10 +2911,8 @@ namespace WebApplication2.Controllers
 
                     foreach (var userId in userIds)
                     {
-                        var user = await _userManager.FindByIdAsync(userId);
-                        if (user == null) continue;
-
-                        var roles = await _userManager.GetRolesAsync(user);
+                        if (!usersWithRoles.TryGetValue(userId, out var roles))
+                            continue;
 
                         if (roles.Contains("SuperAdmin")) superAdminCount++;
                         if (roles.Contains("Admin")) adminCount++;
@@ -2861,26 +3088,13 @@ namespace WebApplication2.Controllers
             try
             {
                 var accessScope = await GetCurrentMapAccessScopeAsync();
-                var allIdentifies = await _context.Identifies.ToListAsync();
-                var allAddresses = await _context.Addresses.ToListAsync();
-                var addressLookup = BuildAddressLookup(allAddresses);
-                var allAffiliations = await _context.AffiliationInfos.ToListAsync();
-                var affiliationLookup = allAffiliations
-                    .Where(a => !string.IsNullOrWhiteSpace(a.UserId))
-                    .GroupBy(a => a.UserId)
-                    .ToDictionary(g => g.Key, g => g.First());
-
-                var filteredIdentifies = FilterUsersByScope(
-                    allIdentifies,
-                    addressLookup,
-                    affiliationLookup,
-                    accessScope);
-
+                var scopedUsersData = await LoadScopedMapUsersDataAsync(accessScope);
+                var filteredIdentifies = scopedUsersData.FilteredIdentifies;
                 var allowedUserIds = filteredIdentifies.Select(i => i.UserId).ToList();
                 var memberRoleUserIds = await GetMemberRoleUserIdsAsync(allowedUserIds);
 
-                var promotedUsers = allIdentifies
-                    .Where(i => IsIndividualAccount(i, memberRoleUserIds) && allowedUserIds.Contains(i.UserId) && !string.IsNullOrEmpty(i.Education))
+                var promotedUsers = filteredIdentifies
+                    .Where(i => IsIndividualAccount(i, memberRoleUserIds) && !string.IsNullOrEmpty(i.Education))
                     .ToList();
 
                 var educationStats = promotedUsers
@@ -2916,33 +3130,24 @@ namespace WebApplication2.Controllers
                 }
 
                 var accessScope = await GetCurrentMapAccessScopeAsync();
-                var allIdentifies = await _context.Identifies.ToListAsync();
-                var allUsers = _userManager.Users.ToList();
-                var allAddresses = await _context.Addresses.ToListAsync();
-                var addressLookup = BuildAddressLookup(allAddresses);
-                var allAffiliations = await _context.AffiliationInfos.ToListAsync();
-                var affiliationLookup = allAffiliations
-                    .Where(a => !string.IsNullOrWhiteSpace(a.UserId))
-                    .GroupBy(a => a.UserId)
-                    .ToDictionary(g => g.Key, g => g.First());
-
-                var filteredIdentifies = FilterUsersByScope(
-                    allIdentifies,
-                    addressLookup,
-                    affiliationLookup,
-                    accessScope);
-
+                var scopedUsersData = await LoadScopedMapUsersDataAsync(accessScope);
+                var filteredIdentifies = scopedUsersData.FilteredIdentifies;
+                var addressLookup = scopedUsersData.AddressLookup;
                 var allowedUserIds = filteredIdentifies.Select(i => i.UserId).ToList();
                 var memberRoleUserIds = await GetMemberRoleUserIdsAsync(allowedUserIds);
 
-                var usersInEducation = allIdentifies
-                    .Where(i => i.Education == education && IsIndividualAccount(i, memberRoleUserIds) && allowedUserIds.Contains(i.UserId))
+                var usersInEducation = filteredIdentifies
+                    .Where(i => i.Education == education && IsIndividualAccount(i, memberRoleUserIds))
                     .ToList();
+                var usersById = await _userManager.Users
+                    .AsNoTracking()
+                    .Where(u => allowedUserIds.Contains(u.Id))
+                    .ToDictionaryAsync(u => u.Id);
 
                 var usersList = new List<EducationUserDetail>();
                 foreach (var user in usersInEducation)
                 {
-                    var identityUser = allUsers.FirstOrDefault(u => u.Id == user.UserId);
+                    usersById.TryGetValue(user.UserId, out var identityUser);
                     addressLookup.TryGetValue(user.UserId, out var address);
 
                     usersList.Add(new EducationUserDetail
@@ -2982,28 +3187,19 @@ namespace WebApplication2.Controllers
             try
             {
                 var accessScope = await GetCurrentMapAccessScopeAsync();
-                var allIdentifies = await _context.Identifies.ToListAsync();
-                var allUsers = _userManager.Users.ToList();
-                var allAddresses = await _context.Addresses.ToListAsync();
-                var addressLookup = BuildAddressLookup(allAddresses);
-                var allAffiliations = await _context.AffiliationInfos.ToListAsync();
-                var affiliationLookup = allAffiliations
-                    .Where(a => !string.IsNullOrWhiteSpace(a.UserId))
-                    .GroupBy(a => a.UserId)
-                    .ToDictionary(g => g.Key, g => g.First());
-
-                var filteredIdentifies = FilterUsersByScope(
-                    allIdentifies,
-                    addressLookup,
-                    affiliationLookup,
-                    accessScope);
-
+                var scopedUsersData = await LoadScopedMapUsersDataAsync(accessScope);
+                var filteredIdentifies = scopedUsersData.FilteredIdentifies;
+                var addressLookup = scopedUsersData.AddressLookup;
                 var allowedUserIds = filteredIdentifies.Select(i => i.UserId).ToList();
                 var memberRoleUserIds = await GetMemberRoleUserIdsAsync(allowedUserIds);
 
-                var promotedUsers = allIdentifies
-                    .Where(i => IsIndividualAccount(i, memberRoleUserIds) && allowedUserIds.Contains(i.UserId) && !string.IsNullOrEmpty(i.Education))
+                var promotedUsers = filteredIdentifies
+                    .Where(i => IsIndividualAccount(i, memberRoleUserIds) && !string.IsNullOrEmpty(i.Education))
                     .ToList();
+                var usersById = await _userManager.Users
+                    .AsNoTracking()
+                    .Where(u => allowedUserIds.Contains(u.Id))
+                    .ToDictionaryAsync(u => u.Id);
 
                 var educationStats = promotedUsers
                     .GroupBy(i => i.Education)
@@ -3014,7 +3210,7 @@ namespace WebApplication2.Controllers
                 var usersList = new List<object>();
                 foreach (var user in promotedUsers)
                 {
-                    var identityUser = allUsers.FirstOrDefault(u => u.Id == user.UserId);
+                    usersById.TryGetValue(user.UserId, out var identityUser);
                     addressLookup.TryGetValue(user.UserId, out var address);
 
                     usersList.Add(new

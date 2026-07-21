@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
 using WebApplication2.Data;
 using WebApplication2.Models;
 using WebApplication2.Services;
@@ -79,6 +80,85 @@ namespace WebApplication2.Controllers
                 .Include(a => a.Section)
                 .Include(a => a.Group)
                 .FirstOrDefaultAsync(a => a.UserId == userId);
+        }
+
+        private async Task<Dictionary<string, IdentityUser>> GetUsersByIdsAsync(IEnumerable<string> userIds)
+        {
+            var ids = userIds
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+
+            if (ids.Count == 0)
+            {
+                return new Dictionary<string, IdentityUser>();
+            }
+
+            return await _userManager.Users
+                .AsNoTracking()
+                .Where(u => ids.Contains(u.Id))
+                .ToDictionaryAsync(u => u.Id);
+        }
+
+        private async Task<Dictionary<string, Address>> GetAddressesByUserIdsAsync(IEnumerable<string> userIds)
+        {
+            var ids = userIds
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+
+            if (ids.Count == 0)
+            {
+                return new Dictionary<string, Address>();
+            }
+
+            return await _context.Addresses
+                .AsNoTracking()
+                .Where(a => ids.Contains(a.UserId))
+                .GroupBy(a => a.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+        }
+
+        private async Task<Dictionary<string, VoterCard>> GetVoterCardsByUserIdsAsync(IEnumerable<string> userIds)
+        {
+            var ids = userIds
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+
+            if (ids.Count == 0)
+            {
+                return new Dictionary<string, VoterCard>();
+            }
+
+            return await _context.VoterCards
+                .AsNoTracking()
+                .Where(v => ids.Contains(v.UserId))
+                .GroupBy(v => v.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+        }
+
+        private async Task<Dictionary<string, AffiliationInfo>> GetAffiliationsByUserIdsAsync(IEnumerable<string> userIds)
+        {
+            var ids = userIds
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+
+            if (ids.Count == 0)
+            {
+                return new Dictionary<string, AffiliationInfo>();
+            }
+
+            return await _context.AffiliationInfos
+                .AsNoTracking()
+                .Include(a => a.AffiliationEntity)
+                .Include(a => a.Division)
+                .Include(a => a.Section)
+                .Include(a => a.Group)
+                .Where(a => ids.Contains(a.UserId))
+                .GroupBy(a => a.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
         }
 
         private async Task<string?> GetAffiliationEntityNameAsync(int? id)
@@ -506,12 +586,13 @@ namespace WebApplication2.Controllers
                 return new List<Identify>();
             }
 
-            var allIdentifies = await _context.Identifies
-                .AsNoTracking()
+            return await BuildManagerScopedIdentifyQuery(
+                    _context.Identifies
+                        .AsNoTracking()
+                        .Include(i => i.WorkLocation),
+                    assignments)
                 .OrderBy(i => i.FullName)
                 .ToListAsync();
-
-            return await FilterUsersByManagerScopeAsync(allIdentifies);
         }
 
         [HttpGet]
@@ -674,12 +755,13 @@ namespace WebApplication2.Controllers
                     return View(new List<ManagerScopedUserVM>());
                 }
 
-                var allIdentifies = await _context.Identifies
-                    .AsNoTracking()
+                var scopedIdentifies = await BuildManagerScopedIdentifyQuery(
+                        _context.Identifies
+                            .AsNoTracking()
+                            .Include(i => i.WorkLocation),
+                        assignments)
                     .OrderBy(i => i.FullName)
                     .ToListAsync();
-
-                var scopedIdentifies = await FilterUsersByManagerScopeAsync(allIdentifies);
                 var scopedUserIds = scopedIdentifies.Select(i => i.UserId).ToHashSet();
 
                 var usersById = await _userManager.Users
@@ -899,25 +981,86 @@ namespace WebApplication2.Controllers
                 "ØªØ§Ø±ÙŠØ® Ø§Ù„Ø·Ù„Ø¨", "Ø³Ø¨Ø¨ Ø§Ù„Ø±ÙØ¶", "Ø§Ù„Ù…Ø³Ø¤ÙˆÙ„ÙŠØ§Øª Ø§Ù„Ø¥Ø¯Ø§Ø±ÙŠØ©", "Ø§Ù„Ù…Ø­Ø§ÙØ¸Ø© Ø§Ù„Ù…ÙØ¯Ø§Ø±Ø©", "Ø§Ù„Ù‚Ø¶Ø§Ø¡ Ø§Ù„Ù…ÙØ¯Ø§Ø±"
             });
 
+            var userIds = users.Select(u => u.Id).ToList();
+            var profiles = await _context.Identifies.AsNoTracking()
+                .Where(i => userIds.Contains(i.UserId))
+                .ToListAsync();
+            var profilesByUserId = profiles.ToDictionary(i => i.UserId, i => i);
+            var profileIds = profiles.Select(p => p.Id).ToList();
+
+            var addressesByUserId = await _context.Addresses.AsNoTracking()
+                .Where(a => userIds.Contains(a.UserId))
+                .GroupBy(a => a.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+            var voterCardsByUserId = await _context.VoterCards.AsNoTracking()
+                .Where(v => userIds.Contains(v.UserId))
+                .GroupBy(v => v.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+            var unionsByUserId = await _context.UnionMemberships.AsNoTracking()
+                .Where(u => userIds.Contains(u.UserId))
+                .GroupBy(u => u.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+            var federationsByUserId = await _context.FederationMemberships.AsNoTracking()
+                .Include(f => f.Federation)
+                .Include(f => f.FederationDivision)
+                .Include(f => f.FederationSection)
+                .Include(f => f.FederationGroup)
+                .Where(f => userIds.Contains(f.UserId))
+                .GroupBy(f => f.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+            var associationsByUserId = await _context.AssociationMemberships.AsNoTracking()
+                .Where(a => userIds.Contains(a.UserId))
+                .GroupBy(a => a.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+            var ngosByUserId = await _context.NgoMemberships.AsNoTracking()
+                .Where(n => userIds.Contains(n.UserId))
+                .GroupBy(n => n.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+            var affiliations = await _context.AffiliationInfos.AsNoTracking()
+                .Include(a => a.AffiliationEntity)
+                .Include(a => a.Division)
+                .Include(a => a.Section)
+                .Include(a => a.Group)
+                .Where(a => userIds.Contains(a.UserId))
+                .ToListAsync();
+            var affiliationsByUserId = affiliations
+                .GroupBy(a => a.UserId)
+                .ToDictionary(g => g.Key, g => g.First());
+            var workLocationsByIdentifyId = await _context.WorkLocations.AsNoTracking()
+                .Where(w => profileIds.Contains(w.IdentifyId))
+                .ToDictionaryAsync(w => w.IdentifyId);
+            var rolesByUserId = await _context.UserRoles
+                .Where(ur => userIds.Contains(ur.UserId))
+                .Join(_context.Roles,
+                    userRole => userRole.RoleId,
+                    role => role.Id,
+                    (userRole, role) => new { userRole.UserId, RoleName = role.Name ?? string.Empty })
+                .GroupBy(x => x.UserId)
+                .ToDictionaryAsync(g => g.Key, g => (IList<string>)g.Select(x => x.RoleName).ToList());
+            var managementAssignments = await _context.ManagementAssignments.AsNoTracking()
+                .Where(x => userIds.Contains(x.UserId))
+                .ToListAsync();
+            var managementAssignmentsByUserId = managementAssignments
+                .GroupBy(x => x.UserId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+            var actorDisplayCache = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
             foreach (var user in users)
             {
-                var roles = await _userManager.GetRolesAsync(user);
-                var userProfile = await _context.Identifies.FirstOrDefaultAsync(i => i.UserId == user.Id);
-                var address = userProfile != null ? await GetUserAddressAsync(user.Id) : null;
-                var workLocation = userProfile != null
-                    ? await _context.WorkLocations.AsNoTracking().FirstOrDefaultAsync(w => w.IdentifyId == userProfile.Id)
+                var roles = rolesByUserId.TryGetValue(user.Id, out var userRoles)
+                    ? userRoles
+                    : Array.Empty<string>();
+                profilesByUserId.TryGetValue(user.Id, out var userProfile);
+                addressesByUserId.TryGetValue(user.Id, out var address);
+                var workLocation = userProfile != null && workLocationsByIdentifyId.TryGetValue(userProfile.Id, out var storedWorkLocation)
+                    ? storedWorkLocation
                     : null;
-                var voterCard = userProfile != null ? await GetUserVoterCardAsync(user.Id) : null;
-                var union = userProfile != null ? await GetUserUnionAsync(user.Id) : null;
-                var federation = userProfile != null ? await GetUserFederationAsync(user.Id) : null;
-                var association = userProfile != null ? await GetUserAssociationAsync(user.Id) : null;
-                var ngo = userProfile != null ? await GetUserNgoAsync(user.Id) : null;
-                var affiliationInfo = userProfile != null ? await GetUserAffiliationInfoAsync(user.Id) : null;
-
-                var affiliationEntityName = await GetAffiliationEntityNameAsync(affiliationInfo?.AffiliationEntityId);
-                var divisionName = await GetDivisionNameAsync(affiliationInfo?.DivisionId);
-                var sectionName = await GetSectionNameAsync(affiliationInfo?.SectionId);
-                var groupName = await GetGroupNameAsync(affiliationInfo?.GroupId);
+                voterCardsByUserId.TryGetValue(user.Id, out var voterCard);
+                unionsByUserId.TryGetValue(user.Id, out var union);
+                federationsByUserId.TryGetValue(user.Id, out var federation);
+                associationsByUserId.TryGetValue(user.Id, out var association);
+                ngosByUserId.TryGetValue(user.Id, out var ngo);
+                affiliationsByUserId.TryGetValue(user.Id, out var affiliationInfo);
 
                 var federationName = federation?.Federation?.Name ?? "";
                 var federationDivisionName = federation?.FederationDivision?.Name ?? "";
@@ -931,15 +1074,14 @@ namespace WebApplication2.Controllers
                     ? workLocation?.District ?? userProfile?.WorkDistrict ?? ""
                     : "";
 
-                var managementAssignments = await _context.ManagementAssignments
-                    .Where(x => x.UserId == user.Id)
-                    .ToListAsync();
-
                 var managementDisplayParts = new List<string>();
                 var managedGovernorate = userProfile?.ManagedGovernorate ?? "";
                 var managedDistrict = userProfile?.ManagedDistrict ?? "";
+                var userAssignments = managementAssignmentsByUserId.TryGetValue(user.Id, out var assignmentList)
+                    ? assignmentList
+                    : new List<ManagementAssignment>();
 
-                foreach (var assignment in managementAssignments)
+                foreach (var assignment in userAssignments)
                 {
                     var entityName = "";
                     var levelArabic = GetArabicLevelName(assignment.ManagementLevel, assignment.AssignmentRole);
@@ -986,6 +1128,16 @@ namespace WebApplication2.Controllers
                         ?? "";
                 }
 
+                var promotedByDisplay = string.Empty;
+                if (!string.IsNullOrWhiteSpace(userProfile?.PromotedBy))
+                {
+                    if (!actorDisplayCache.TryGetValue(userProfile.PromotedBy, out promotedByDisplay))
+                    {
+                        promotedByDisplay = await ResolveActorDisplayNameAsync(userProfile.PromotedBy);
+                        actorDisplayCache[userProfile.PromotedBy] = promotedByDisplay;
+                    }
+                }
+
                 data.Add(new object[]
                 {
                     userProfile?.CoverImage ?? "",
@@ -1024,10 +1176,10 @@ namespace WebApplication2.Controllers
                     userProfile?.Position ?? "",
                     userProfile?.JobTitle ?? "",
                     CleanExcelPlaceholder(userProfile?.JobGrade, "-- Ø§Ø®ØªØ± Ø§Ù„Ø¯Ø±Ø¬Ø© Ø§Ù„ÙˆØ¸ÙŠÙÙŠØ© --"),
-                    affiliationEntityName ?? "",
-                    divisionName ?? "",
-                    sectionName ?? "",
-                    groupName ?? "",
+                    affiliationInfo?.AffiliationEntity?.Name ?? "",
+                    affiliationInfo?.Division?.Name ?? "",
+                    affiliationInfo?.Section?.Name ?? "",
+                    affiliationInfo?.Group?.Name ?? "",
                     affiliationInfo?.BadgeNumber ?? "",
                     affiliationInfo?.MozakeName ?? "",
                     affiliationInfo?.MozakePhoneNumber ?? "",
@@ -1052,16 +1204,16 @@ namespace WebApplication2.Controllers
                     ngo?.IdNumber ?? "",
                     ngo?.AffiliationDate?.ToString("yyyy-MM-dd") ?? "",
                     user.Email ?? "",
-                    string.Join(", ", roles),
-                    user.EmailConfirmed ? "Ù†Ø´Ø·" : "ØºÙŠØ± Ù†Ø´Ø·",
-                    userProfile?.AccountType ?? "Ø¹Ø§Ø¯ÙŠ",
-                    userProfile?.IsPromoted == true ? "Ù…ØµØ¹Ø¯" : "ØºÙŠØ± Ù…ØµØ¹Ø¯",
+                    TranslateRolesForExport(roles),
+                    NormalizeExcelText(user.EmailConfirmed ? "Ù†Ø´Ø·" : "ØºÙŠØ± Ù†Ø´Ø·"),
+                    TranslateAccountTypeForExport(userProfile?.AccountType),
+                    NormalizeExcelText(userProfile?.IsPromoted == true ? "Ù…ØµØ¹Ø¯" : "ØºÙŠØ± Ù…ØµØ¹Ø¯"),
                     userProfile?.PromotionDate?.ToString("yyyy-MM-dd") ?? "",
-                    userProfile?.PromotedBy ?? "",
-                    userProfile?.RequestedPromotion == true ? "Ù†Ø¹Ù…" : "Ù„Ø§",
+                    NormalizeExcelText(promotedByDisplay),
+                    NormalizeExcelText(userProfile?.RequestedPromotion == true ? "Ù†Ø¹Ù…" : "Ù„Ø§"),
                     userProfile?.RequestedPromotionDate?.ToString("yyyy-MM-dd") ?? "",
                     userProfile?.RejectionReason ?? "",
-                    string.Join(", ", managementDisplayParts),
+                    TranslateManagementDisplayForExport(string.Join(", ", managementDisplayParts)),
                     managedGovernorate,
                     managedDistrict
                 });
@@ -1079,7 +1231,7 @@ namespace WebApplication2.Controllers
             {
                 for (var j = 0; j < data[i].Length; j++)
                 {
-                    worksheet.Cell(i + 1, j + 1).Value = data[i][j]?.ToString() ?? "";
+                    worksheet.Cell(i + 1, j + 1).Value = NormalizeExcelText(data[i][j]?.ToString());
                 }
             }
 
@@ -1097,6 +1249,71 @@ namespace WebApplication2.Controllers
             using var stream = new MemoryStream();
             workbook.SaveAs(stream);
             return stream.ToArray();
+        }
+
+        private static string NormalizeExcelText(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            var text = value.Trim();
+            if (!LooksLikeMojibake(text))
+                return text;
+
+            try
+            {
+                return Encoding.UTF8.GetString(Encoding.GetEncoding("Windows-1252").GetBytes(text));
+            }
+            catch
+            {
+                return text;
+            }
+        }
+
+        private static bool LooksLikeMojibake(string value)
+        {
+            return value.Contains('Ø') || value.Contains('Ù') || value.Contains('â');
+        }
+
+        private static string TranslateRolesForExport(IEnumerable<string> roles)
+        {
+            return string.Join("، ", roles
+                .Select(TranslateRoleForExport)
+                .Where(role => !string.IsNullOrWhiteSpace(role)));
+        }
+
+        private static string TranslateRoleForExport(string? role)
+        {
+            return role switch
+            {
+                clsRoles.SuperAdmin => "سوبر أدمن",
+                clsRoles.Admin => "أدمن",
+                clsRoles.DistrictAdmin => "أدمن قضاء",
+                clsRoles.User => "مستخدم",
+                clsRoles.Member => "فرد",
+                clsRoles.NewsEditor => "محرر أخبار",
+                clsRoles.MapViewer => "مراقب الخريطة",
+                clsRoles.Manager => "مسؤول",
+                clsRoles.AssistantManager => "معاون مسؤول",
+                null or "" => string.Empty,
+                _ => NormalizeExcelText(role)
+            };
+        }
+
+        private static string TranslateAccountTypeForExport(string? accountType)
+        {
+            return accountType switch
+            {
+                "User" => "مستخدم",
+                "Member" => "فرد",
+                null or "" => "عادي",
+                _ => NormalizeExcelText(accountType)
+            };
+        }
+
+        private static string TranslateManagementDisplayForExport(string? managementDisplay)
+        {
+            return NormalizeExcelText(managementDisplay);
         }
 
         private static string CleanExcelPlaceholder(string? value, params string[] placeholders)
@@ -1141,16 +1358,21 @@ namespace WebApplication2.Controllers
                 page = Math.Max(1, Math.Min(page, totalPages));
 
                 var pagedRequests = await scopedRequestsQuery
+                    .Include(i => i.WorkLocation)
                     .OrderByDescending(i => i.BasicInfoRequestedAt ?? i.CreatedAt)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToListAsync();
 
+                var userIds = pagedRequests.Select(r => r.UserId).ToList();
+                var usersById = await GetUsersByIdsAsync(userIds);
+                var addressesByUserId = await GetAddressesByUserIdsAsync(userIds);
+
                 var viewModel = new List<PromotionRequestViewModel>();
                 foreach (var request in pagedRequests)
                 {
-                    var user = await _userManager.FindByIdAsync(request.UserId);
-                    var userAddress = await GetUserAddressAsync(request.UserId);
+                    usersById.TryGetValue(request.UserId, out var user);
+                    addressesByUserId.TryGetValue(request.UserId, out var userAddress);
 
                     viewModel.Add(new PromotionRequestViewModel
                     {
@@ -1219,18 +1441,25 @@ namespace WebApplication2.Controllers
                 var totalPages = Math.Max(1, (int)Math.Ceiling(totalRequests / (double)pageSize));
                 page = Math.Max(1, Math.Min(page, totalPages));
                 var pagedRequests = await scopedRequestsQuery
+                    .Include(i => i.WorkLocation)
                     .OrderByDescending(i => i.RequestedPromotionDate)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToListAsync();
 
+                var userIds = pagedRequests.Select(r => r.UserId).ToList();
+                var usersById = await GetUsersByIdsAsync(userIds);
+                var addressesByUserId = await GetAddressesByUserIdsAsync(userIds);
+                var voterCardsByUserId = await GetVoterCardsByUserIdsAsync(userIds);
+                var affiliationsByUserId = await GetAffiliationsByUserIdsAsync(userIds);
+
                 var viewModel = new List<PromotionRequestViewModel>();
                 foreach (var request in pagedRequests)
                 {
-                    var user = await _userManager.FindByIdAsync(request.UserId);
-                    var userAddress = await GetUserAddressAsync(request.UserId);
-                    var voterCard = await GetUserVoterCardAsync(request.UserId);
-                    var affiliationInfo = await GetUserAffiliationInfoAsync(request.UserId);
+                    usersById.TryGetValue(request.UserId, out var user);
+                    addressesByUserId.TryGetValue(request.UserId, out var userAddress);
+                    voterCardsByUserId.TryGetValue(request.UserId, out var voterCard);
+                    affiliationsByUserId.TryGetValue(request.UserId, out var affiliationInfo);
 
                     viewModel.Add(new PromotionRequestViewModel
                     {
@@ -1403,7 +1632,7 @@ namespace WebApplication2.Controllers
                     AccountType = userProfile.AccountType ?? "Ø¹Ø§Ø¯ÙŠ",
                     IsPromoted = userProfile.IsPromoted,
                     PromotionDate = userProfile.PromotionDate,
-                    PromotedBy = userProfile.PromotedBy,
+                    PromotedBy = await ResolveActorDisplayNameAsync(userProfile.PromotedBy),
                     AffiliationEntity = affiliationEntityName,
                     Division = divisionName,
                     Section = sectionName,
@@ -1468,7 +1697,9 @@ namespace WebApplication2.Controllers
                 : "promotion";
 
             pageSize = NormalizeRequestHistoryPageSize(pageSize);
-            var query = _context.Identifies.AsNoTracking();
+            IQueryable<Identify> query = _context.Identifies
+                .AsNoTracking()
+                .Include(i => i.WorkLocation);
             query = normalizedType == "basic"
                 ? query.Where(i => i.IsBasicInfoApproved || !string.IsNullOrEmpty(i.BasicInfoRejectionReason))
                 : query.Where(i => i.IsPromoted || !string.IsNullOrEmpty(i.RejectionReason));
@@ -1501,11 +1732,15 @@ namespace WebApplication2.Controllers
                 .Take(pageSize)
                 .ToList();
 
+            var userIds = pagedIdentifies.Select(i => i.UserId).ToList();
+            var usersById = await GetUsersByIdsAsync(userIds);
+            var addressesByUserId = await GetAddressesByUserIdsAsync(userIds);
+
             var items = new List<RequestHistoryItemViewModel>();
             foreach (var identify in pagedIdentifies)
             {
-                var user = await _userManager.FindByIdAsync(identify.UserId);
-                var address = await GetUserAddressAsync(identify.UserId);
+                usersById.TryGetValue(identify.UserId, out var user);
+                addressesByUserId.TryGetValue(identify.UserId, out var address);
                 var isRejected = normalizedType == "basic"
                     ? !string.IsNullOrWhiteSpace(identify.BasicInfoRejectionReason)
                     : !string.IsNullOrWhiteSpace(identify.RejectionReason);
@@ -1637,7 +1872,7 @@ namespace WebApplication2.Controllers
                     return Json(new { success = false, message = "âŒ Ù„Ø§ ØªÙ…Ù„Ùƒ ØµÙ„Ø§Ø­ÙŠØ© Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø¹Ù„Ù‰ Ù‡Ø°Ø§ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…" });
 
                 identify.IsBasicInfoApproved = true;
-                identify.BasicInfoApprovedBy = User.Identity?.Name ?? "Manager";
+                identify.BasicInfoApprovedBy = await GetCurrentActorDisplayNameAsync("Manager");
                 identify.BasicInfoApprovalDate = DateTime.Now;
 
                 _context.Identifies.Update(identify);
@@ -1677,7 +1912,7 @@ namespace WebApplication2.Controllers
 
                 identify.BasicInfoRejectionReason = reason;
                 identify.IsBasicInfoApproved = false;
-                identify.BasicInfoApprovedBy = User.Identity?.Name ?? "Manager";
+                identify.BasicInfoApprovedBy = await GetCurrentActorDisplayNameAsync("Manager");
                 identify.BasicInfoApprovalDate = null;
 
                 _context.Identifies.Update(identify);
@@ -1716,7 +1951,7 @@ namespace WebApplication2.Controllers
                 identify.AccountType = "ÙØ±Ø¯";
                 identify.IsPromoted = true;
                 identify.PromotionDate = DateTime.Now;
-                identify.PromotedBy = User.Identity?.Name ?? "Manager";
+                identify.PromotedBy = await GetCurrentActorDisplayNameAsync("Manager");
                 identify.RequestedPromotion = false;
                 identify.RejectionReason = null;
 
@@ -1767,7 +2002,7 @@ namespace WebApplication2.Controllers
                 identify.RequestedPromotion = false;
                 identify.RejectionReason = reason;
                 identify.PromotionDate = null;
-                identify.PromotedBy = User.Identity?.Name ?? "Manager";
+                identify.PromotedBy = await GetCurrentActorDisplayNameAsync("Manager");
 
                 _context.Identifies.Update(identify);
                 await _context.SaveChangesAsync();
@@ -1786,6 +2021,67 @@ namespace WebApplication2.Controllers
                 _logger.LogError(ex, "Ø®Ø·Ø£ ÙÙŠ Ø±ÙØ¶ Ø§Ù„ØªØ±Ù‚ÙŠØ© Ù…Ù† Ù‚Ø¨Ù„ Ø§Ù„Ù…Ø³Ø¤ÙˆÙ„ Ø§Ù„Ø¥Ø¯Ø§Ø±ÙŠ");
                 return Json(new { success = false, message = $"âŒ Ø­Ø¯Ø« Ø®Ø·Ø£: {ex.Message}" });
             }
+        }
+
+        private async Task<string> GetCurrentActorDisplayNameAsync(string fallback)
+        {
+            var currentUserId = _userManager.GetUserId(User);
+            if (!string.IsNullOrWhiteSpace(currentUserId))
+            {
+                var profile = await _context.Identifies
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(i => i.UserId == currentUserId);
+
+                if (!string.IsNullOrWhiteSpace(profile?.FullName))
+                    return profile.FullName;
+
+                var user = await _userManager.FindByIdAsync(currentUserId);
+                if (!string.IsNullOrWhiteSpace(user?.UserName) && !user.UserName.Contains('@'))
+                    return user.UserName;
+
+                if (!string.IsNullOrWhiteSpace(user?.Email))
+                    return user.Email;
+            }
+
+            return User.Identity?.Name ?? fallback;
+        }
+
+        private async Task<string> ResolveActorDisplayNameAsync(string? actorValue)
+        {
+            if (string.IsNullOrWhiteSpace(actorValue))
+                return string.Empty;
+
+            var trimmedValue = actorValue.Trim();
+
+            IdentityUser? actorUser = await _userManager.FindByIdAsync(trimmedValue);
+            if (actorUser == null)
+            {
+                var normalizedValue = trimmedValue.ToLower();
+                actorUser = await _userManager.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u =>
+                        (u.Email != null && u.Email.ToLower() == normalizedValue) ||
+                        (u.UserName != null && u.UserName.ToLower() == normalizedValue) ||
+                        (u.PhoneNumber != null && u.PhoneNumber == trimmedValue));
+            }
+
+            var profile = await _context.Identifies
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i =>
+                    (actorUser != null && i.UserId == actorUser.Id) ||
+                    i.PhoneNumber == trimmedValue ||
+                    i.WhatsAppNumber == trimmedValue);
+
+            if (!string.IsNullOrWhiteSpace(profile?.FullName))
+                return profile.FullName;
+
+            if (actorUser == null)
+                return trimmedValue;
+
+            if (!string.IsNullOrWhiteSpace(actorUser.UserName) && !actorUser.UserName.Contains('@'))
+                return actorUser.UserName;
+
+            return actorUser.Email ?? trimmedValue;
         }
     }
 

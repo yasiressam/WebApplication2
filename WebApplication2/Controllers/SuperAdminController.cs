@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using WebApplication2.Data;
@@ -1887,8 +1888,8 @@ ORDER BY file_id;";
                         ? identify.BasicInfoApprovalDate
                         : identify.PromotionDate,
                     ProcessedBy = normalizedType == "basic"
-                        ? identify.BasicInfoApprovedBy
-                        : identify.PromotedBy,
+                        ? await ResolveActorDisplayNameAsync(identify.BasicInfoApprovedBy)
+                        : await ResolveActorDisplayNameAsync(identify.PromotedBy),
                     Status = isRejected ? "مرفوض" : "تمت الموافقة",
                     StatusClass = isRejected ? "danger" : "success",
                     Reason = normalizedType == "basic"
@@ -1997,7 +1998,7 @@ ORDER BY file_id;";
                 identify.AccountType = "فرد";
                 identify.IsPromoted = true;
                 identify.PromotionDate = DateTime.Now;
-                identify.PromotedBy = User.Identity?.Name ?? "System";
+                identify.PromotedBy = await GetCurrentActorDisplayNameAsync("System");
                 identify.RequestedPromotion = false;
                 identify.RejectionReason = null;
 
@@ -2053,7 +2054,7 @@ ORDER BY file_id;";
                 identify.RequestedPromotion = false;
                 identify.RejectionReason = reason;
                 identify.PromotionDate = null;
-                identify.PromotedBy = User.Identity?.Name ?? "System";
+                identify.PromotedBy = await GetCurrentActorDisplayNameAsync("System");
 
                 _context.Identifies.Update(identify);
                 await _context.SaveChangesAsync();
@@ -2093,7 +2094,7 @@ ORDER BY file_id;";
                     return Json(new { success = false, message = "المستخدم غير موجود" });
 
                 identify.IsBasicInfoApproved = true;
-                identify.BasicInfoApprovedBy = User.Identity?.Name ?? "System";
+                identify.BasicInfoApprovedBy = await GetCurrentActorDisplayNameAsync("System");
                 identify.BasicInfoApprovalDate = DateTime.Now;
 
                 _context.Identifies.Update(identify);
@@ -2137,7 +2138,7 @@ ORDER BY file_id;";
 
                 identify.BasicInfoRejectionReason = reason;
                 identify.IsBasicInfoApproved = false;
-                identify.BasicInfoApprovedBy = User.Identity?.Name ?? "System";
+                identify.BasicInfoApprovedBy = await GetCurrentActorDisplayNameAsync("System");
                 identify.BasicInfoApprovalDate = null;
 
                 _context.Identifies.Update(identify);
@@ -2316,7 +2317,7 @@ ORDER BY file_id;";
                     AccountType = userProfile?.AccountType ?? "عادي",
                     IsPromoted = userProfile?.IsPromoted ?? false,
                     PromotionDate = userProfile?.PromotionDate,
-                    PromotedBy = userProfile?.PromotedBy,
+                    PromotedBy = await ResolveActorDisplayNameAsync(userProfile?.PromotedBy),
                     AffiliationEntity = affiliationEntityName,
                     Division = divisionName,
                     Section = sectionName,
@@ -2792,7 +2793,7 @@ ORDER BY file_id;";
                         identityDate = DateTime.Now,
                         IsBasicInfoApproved = true,
                         BasicInfoApprovalDate = DateTime.Now,
-                        BasicInfoApprovedBy = User.Identity?.Name ?? "System"
+                        BasicInfoApprovedBy = await GetCurrentActorDisplayNameAsync("System")
                     };
                     _context.Identifies.Add(userProfile);
                     await _context.SaveChangesAsync();
@@ -2869,13 +2870,13 @@ ORDER BY file_id;";
                         userProfile.AccountType = "فرد";
                         userProfile.IsPromoted = true;
                         userProfile.PromotionDate ??= DateTime.Now;
-                        userProfile.PromotedBy ??= User.Identity?.Name ?? "System";
+                        userProfile.PromotedBy ??= await GetCurrentActorDisplayNameAsync("System");
                         userProfile.RequestedPromotion = false;
                         userProfile.RequestedPromotionDate = null;
                         userProfile.RejectionReason = null;
                         userProfile.IsBasicInfoApproved = true;
                         userProfile.BasicInfoApprovalDate ??= DateTime.Now;
-                        userProfile.BasicInfoApprovedBy ??= User.Identity?.Name ?? "System";
+                        userProfile.BasicInfoApprovedBy ??= await GetCurrentActorDisplayNameAsync("System");
                         userProfile.BasicInfoRejectionReason = null;
                     }
                     else
@@ -3235,7 +3236,7 @@ ORDER BY file_id;";
                     AccountType = profile?.AccountType ?? "عادي",
                     IsPromoted = profile?.IsPromoted ?? false,
                     PromotionDate = profile?.PromotionDate,
-                    PromotedBy = profile?.PromotedBy
+                    PromotedBy = await ResolveActorDisplayNameAsync(profile?.PromotedBy)
                 };
 
                 await LoadAdminDropdownLists(viewModel);
@@ -5215,11 +5216,11 @@ ORDER BY file_id;";
 
             // ===== معلومات الحساب =====
             user.Email ?? "",
-            string.Join(", ", roles),
-            userProfile?.AccountType ?? "عادي",
+            TranslateRolesForExport(roles),
+            TranslateAccountTypeForExport(userProfile?.AccountType),
             userProfile?.IsPromoted == true ? "مصعد" : "غير مصعد",
             userProfile?.PromotionDate?.ToString("yyyy-MM-dd") ?? "",
-            userProfile?.PromotedBy ?? "",
+            await ResolveActorDisplayNameAsync(userProfile?.PromotedBy),
             userProfile?.CreatedAt.ToString("yyyy-MM-dd") ?? "",
             user.EmailConfirmed ? "نشط" : "غير نشط",
 
@@ -5227,7 +5228,7 @@ ORDER BY file_id;";
             userProfile?.RequestedPromotion == true ? "نعم" : "لا",
             userProfile?.RequestedPromotionDate?.ToString("yyyy-MM-dd") ?? "",
             userProfile?.RejectionReason ?? "",
-            managementDisplay,
+            TranslateManagementDisplayForExport(managementDisplay),
             managedGovernorate,
             managedDistrict
                 });
@@ -5244,7 +5245,7 @@ ORDER BY file_id;";
                 var worksheet = workbook.Worksheets.Add("Users");
                 for (int i = 0; i < data.Count; i++)
                     for (int j = 0; j < data[i].Length; j++)
-                        worksheet.Cell(i + 1, j + 1).Value = data[i][j]?.ToString() ?? "";
+                        worksheet.Cell(i + 1, j + 1).Value = NormalizeExcelText(data[i][j]?.ToString());
 
                 var range = worksheet.Range(1, 1, data.Count, data[0].Length);
                 range.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
@@ -5265,6 +5266,71 @@ ORDER BY file_id;";
             }
         }
 
+        private static string NormalizeExcelText(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            var text = value.Trim();
+            if (!LooksLikeMojibake(text))
+                return text;
+
+            try
+            {
+                return Encoding.UTF8.GetString(Encoding.GetEncoding("Windows-1252").GetBytes(text));
+            }
+            catch
+            {
+                return text;
+            }
+        }
+
+        private static bool LooksLikeMojibake(string value)
+        {
+            return value.Contains('Ø') || value.Contains('Ù') || value.Contains('â');
+        }
+
+        private static string TranslateRolesForExport(IEnumerable<string> roles)
+        {
+            return string.Join("، ", roles
+                .Select(TranslateRoleForExport)
+                .Where(role => !string.IsNullOrWhiteSpace(role)));
+        }
+
+        private static string TranslateRoleForExport(string? role)
+        {
+            return role switch
+            {
+                clsRoles.SuperAdmin => "سوبر أدمن",
+                clsRoles.Admin => "أدمن",
+                clsRoles.DistrictAdmin => "أدمن قضاء",
+                clsRoles.User => "مستخدم",
+                clsRoles.Member => "فرد",
+                clsRoles.NewsEditor => "محرر أخبار",
+                clsRoles.MapViewer => "مراقب الخريطة",
+                clsRoles.Manager => "مسؤول",
+                clsRoles.AssistantManager => "معاون مسؤول",
+                null or "" => string.Empty,
+                _ => NormalizeExcelText(role)
+            };
+        }
+
+        private static string TranslateAccountTypeForExport(string? accountType)
+        {
+            return accountType switch
+            {
+                "User" => "مستخدم",
+                "Member" => "فرد",
+                null or "" => "عادي",
+                _ => NormalizeExcelText(accountType)
+            };
+        }
+
+        private static string TranslateManagementDisplayForExport(string? managementDisplay)
+        {
+            return NormalizeExcelText(managementDisplay);
+        }
+
         private static string CleanExcelPlaceholder(string? value, params string[] placeholders)
         {
             if (string.IsNullOrWhiteSpace(value))
@@ -5279,6 +5345,67 @@ ORDER BY file_id;";
         private static string FirstNonBlank(params string?[] values)
         {
             return values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value))?.Trim() ?? string.Empty;
+        }
+
+        private async Task<string> GetCurrentActorDisplayNameAsync(string fallback)
+        {
+            var currentUserId = _userManager.GetUserId(User);
+            if (!string.IsNullOrWhiteSpace(currentUserId))
+            {
+                var profile = await _context.Identifies
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(i => i.UserId == currentUserId);
+
+                if (!string.IsNullOrWhiteSpace(profile?.FullName))
+                    return profile.FullName;
+
+                var user = await _userManager.FindByIdAsync(currentUserId);
+                if (!string.IsNullOrWhiteSpace(user?.UserName) && !user.UserName.Contains('@'))
+                    return user.UserName;
+
+                if (!string.IsNullOrWhiteSpace(user?.Email))
+                    return user.Email;
+            }
+
+            return User.Identity?.Name ?? fallback;
+        }
+
+        private async Task<string> ResolveActorDisplayNameAsync(string? actorValue)
+        {
+            if (string.IsNullOrWhiteSpace(actorValue))
+                return string.Empty;
+
+            var trimmedValue = actorValue.Trim();
+
+            IdentityUser? actorUser = await _userManager.FindByIdAsync(trimmedValue);
+            if (actorUser == null)
+            {
+                var normalizedValue = trimmedValue.ToLower();
+                actorUser = await _userManager.Users
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(u =>
+                        (u.Email != null && u.Email.ToLower() == normalizedValue) ||
+                        (u.UserName != null && u.UserName.ToLower() == normalizedValue) ||
+                        (u.PhoneNumber != null && u.PhoneNumber == trimmedValue));
+            }
+
+            var profile = await _context.Identifies
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i =>
+                    (actorUser != null && i.UserId == actorUser.Id) ||
+                    i.PhoneNumber == trimmedValue ||
+                    i.WhatsAppNumber == trimmedValue);
+
+            if (!string.IsNullOrWhiteSpace(profile?.FullName))
+                return profile.FullName;
+
+            if (actorUser == null)
+                return trimmedValue;
+
+            if (!string.IsNullOrWhiteSpace(actorUser.UserName) && !actorUser.UserName.Contains('@'))
+                return actorUser.UserName;
+
+            return actorUser.Email ?? trimmedValue;
         }
 
         // عرض الأعضاء
@@ -5303,7 +5430,7 @@ ORDER BY file_id;";
                 var sectionName = await GetSectionNameAsync(affiliationInfo?.SectionId);
                 var groupName = await GetGroupNameAsync(affiliationInfo?.GroupId);
 
-                memberList.Add(new { member.Id, member.UserId, UserEmail = user?.Email ?? "", member.FullName, member.PhoneNumber, Governorate = GetEffectiveGovernorate(member, address), District = GetEffectiveDistrict(member, address), member.IdentityCardN, member.Date, member.Gender, member.Education, member.EmploymentStatus, member.Work, member.Position, HasUnion = union != null, UnionName = union?.UnionName, HasFederation = federation != null, FederationName = GetFederationFullName(federation), HasAssociation = association != null, AssociationName = association?.AssociationName, HasNgo = ngo != null, NgoName = ngo?.NgoName, AffiliationEntity = affiliationEntityName, Division = divisionName, Section = sectionName, Group = groupName, member.PromotionDate, member.PromotedBy, member.CreatedAt });
+                memberList.Add(new { member.Id, member.UserId, UserEmail = user?.Email ?? "", member.FullName, member.PhoneNumber, Governorate = GetEffectiveGovernorate(member, address), District = GetEffectiveDistrict(member, address), member.IdentityCardN, member.Date, member.Gender, member.Education, member.EmploymentStatus, member.Work, member.Position, HasUnion = union != null, UnionName = union?.UnionName, HasFederation = federation != null, FederationName = GetFederationFullName(federation), HasAssociation = association != null, AssociationName = association?.AssociationName, HasNgo = ngo != null, NgoName = ngo?.NgoName, AffiliationEntity = affiliationEntityName, Division = divisionName, Section = sectionName, Group = groupName, member.PromotionDate, PromotedBy = await ResolveActorDisplayNameAsync(member.PromotedBy), member.CreatedAt });
             }
             return View(memberList);
         }

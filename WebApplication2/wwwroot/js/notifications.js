@@ -142,18 +142,24 @@
     }
 
     // دالة النقر على الإشعار
-    window.handleNotificationClick = function (notificationId) {
+    window.handleNotificationClick = async function (notificationId) {
         if (!notificationId) return;
 
+        const element = document.querySelector(`[onclick="handleNotificationClick(${notificationId})"]`);
+        const destinationUrl = element?.dataset.url || `/Notifications/Details/${notificationId}`;
+
         // إرسال طلب لتحديد الإشعار كمقروء
-        fetch('/api/notifications/mark-read', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'RequestVerificationToken': getCsrfToken()
-            },
-            body: JSON.stringify(notificationId)
-        }).then(response => {
+        try {
+            const response = await fetch('/api/notifications/mark-read', {
+                method: 'POST',
+                keepalive: true,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'RequestVerificationToken': getCsrfToken()
+                },
+                body: JSON.stringify(notificationId)
+            });
+
             if (response.ok) {
                 const counter = document.getElementById('notificationsCount');
                 if (counter) {
@@ -163,15 +169,14 @@
                         if (currentCount - 1 === 0) counter.style.display = 'none';
                     }
                 }
-                const element = document.querySelector(`[onclick="handleNotificationClick(${notificationId})"]`);
                 if (element) element.classList.remove('unread');
             }
-        }).catch(error => {
+        } catch (error) {
             console.log('❌ فشل تحديث الإشعار:', error);
-        });
+        }
 
         // فتح صفحة التفاصيل
-        window.location.href = `/Notifications/Details/${notificationId}`;
+        window.location.assign(destinationUrl);
     };
 
     // دالة تحديد الكل كمقروء

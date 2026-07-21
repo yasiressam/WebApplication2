@@ -1,88 +1,9 @@
 @model WebApplication2.Models.Audit.AuditTrailCategoryViewModel
+@using WebApplication2.Models.Audit
 @{
     ViewData["Title"] = Model.Title;
     ViewData["Icon"] = Model.Icon;
     Layout = "_Layout";
-
-    static string TranslateAuditEventType(string? eventType)
-    {
-        return eventType switch
-        {
-            "Action" => "إجراء",
-            "LoginSuccess" => "دخول ناجح",
-            "LoginFailed" => "فشل تسجيل الدخول",
-            null or "" => "",
-            _ => eventType
-        };
-    }
-
-    static string TranslateAuditMessage(string? message)
-    {
-        return message switch
-        {
-            "SuperAdmin/AuditTrail" => "عرض سجل النظام",
-            "SuperAdmin/LoginAudit" => "عرض سجل الدخول",
-            "SuperAdmin/ErrorAudit" => "عرض سجل الأخطاء",
-            "SuperAdmin/ActivityAudit" => "عرض سجل الحركات",
-            "SuperAdmin/DeleteUser" => "حذف مستخدم",
-            "SuperAdmin/BulkDeleteUsers" => "حذف مجموعة مستخدمين",
-            "SuperAdmin/Users" => "عرض المستخدمين",
-            "SuperAdmin/UserDetails" => "عرض تفاصيل المستخدم",
-            "SuperAdmin/EditUser" => "تعديل بيانات المستخدم",
-            "SuperAdmin/Reports" => "عرض التقارير",
-            "SuperAdmin/SendNotification" => "فتح صفحة إرسال الإشعارات",
-            "SuperAdmin/BackupDatabase" => "إنشاء نسخة احتياطية",
-            "SuperAdmin/RestoreDatabase" => "استعادة نسخة احتياطية",
-            "Admin/DeleteUser" => "حذف مستخدم",
-            "Admin/BulkDeleteUsers" => "حذف مجموعة مستخدمين",
-            "Admin/Users" => "عرض المستخدمين",
-            "Admin/EditUser" => "تعديل بيانات المستخدم",
-            "Admin/SendNotification" => "فتح صفحة إرسال الإشعارات",
-            "Account/CreateUserByAdmin" => "إنشاء مستخدم بواسطة الإدارة",
-            null or "" => "-",
-            _ => message
-        };
-    }
-
-    static string TranslateHttpMethod(string? method)
-    {
-        return method?.ToUpperInvariant() switch
-        {
-            "GET" => "عرض",
-            "POST" => "إرسال",
-            "PUT" => "تحديث",
-            "PATCH" => "تعديل",
-            "DELETE" => "حذف",
-            null or "" => "-",
-            _ => method ?? "-"
-        };
-    }
-
-    static string TranslateRequestPath(string? path)
-    {
-        return path switch
-        {
-            "/SuperAdmin/AuditTrail" => "صفحة سجل النظام",
-            "/SuperAdmin/LoginAudit" => "صفحة سجل الدخول",
-            "/SuperAdmin/ErrorAudit" => "صفحة سجل الأخطاء",
-            "/SuperAdmin/ActivityAudit" => "صفحة سجل الحركات",
-            "/SuperAdmin/DeleteUser" => "عملية حذف مستخدم",
-            "/SuperAdmin/BulkDeleteUsers" => "عملية حذف مجموعة مستخدمين",
-            "/SuperAdmin/Users" => "صفحة المستخدمين",
-            "/SuperAdmin/UserDetails" => "صفحة تفاصيل المستخدم",
-            "/SuperAdmin/EditUser" => "صفحة تعديل المستخدم",
-            "/SuperAdmin/Reports" => "صفحة التقارير",
-            "/SuperAdmin/SendNotification" => "صفحة إرسال الإشعارات",
-            "/SuperAdmin/BackupDatabase" => "صفحة النسخ الاحتياطي",
-            "/SuperAdmin/RestoreDatabase" => "صفحة استعادة النسخة الاحتياطية",
-            "/Account/CreateUserByAdmin" => "صفحة إنشاء مستخدم بواسطة الإدارة",
-            "/Admin/Users" => "صفحة المستخدمين",
-            "/Admin/DeleteUser" => "عملية حذف مستخدم",
-            "/Admin/BulkDeleteUsers" => "عملية حذف مجموعة مستخدمين",
-            "/Admin/EditUser" => "صفحة تعديل المستخدم",
-            _ => path ?? "-"
-        };
-    }
 }
 
 <style>
@@ -187,19 +108,19 @@
         <div class="audit-list">
             @foreach (var entry in Model.Entries)
             {
-                var translatedEventType = TranslateAuditEventType(entry.EventType);
-                var translatedMessage = TranslateAuditMessage(entry.Message);
-                var translatedRequest = $"{TranslateHttpMethod(entry.HttpMethod)} {TranslateRequestPath(entry.Path)}";
+                var title = AuditTrailDisplayFormatter.GetEventTitle(entry);
+                var operationLabel = AuditTrailDisplayFormatter.GetOperationLabel(entry);
+                var messageLabel = AuditTrailDisplayFormatter.TranslateMessage(entry.Message);
                 <article class="audit-item">
                     <div class="audit-item-top">
-                        <div class="audit-item-title">@(string.IsNullOrWhiteSpace(translatedEventType) ? translatedMessage : translatedEventType)</div>
+                        <div class="audit-item-title">@title</div>
                         <div class="audit-item-time">@entry.TimestampUtc.ToLocalTime().ToString("yyyy/MM/dd hh:mm tt")</div>
                     </div>
                     <div class="audit-item-meta">
-                        الرسالة: @translatedMessage<br />
-                        المستخدم: @(entry.UserEmail ?? entry.UserName ?? "غير معروف")<br />
-                        الطلب: @translatedRequest<br />
-                        IP: @(entry.IpAddress ?? "-")
+                        <span>العملية أو الصفحة: @operationLabel</span><br />
+                        <span>الرسالة: @messageLabel</span><br />
+                        <span>المستخدم: @(entry.UserEmail ?? entry.UserName ?? "غير معروف")</span><br />
+                        <span>IP: @(entry.IpAddress ?? "-")</span>
                         @if (!string.IsNullOrWhiteSpace(entry.Details))
                         {
                             <br />

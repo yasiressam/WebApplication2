@@ -198,7 +198,7 @@ namespace WebApplication2.Areas.Identity.Pages.Account
                 IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
                 Path = HttpContext.Request.Path,
                 HttpMethod = HttpContext.Request.Method,
-                Details = $"RememberMe={Input.RememberMe}"
+                Details = $"تذكرني: {(Input.RememberMe ? "نعم" : "لا")}"
             });
         }
 

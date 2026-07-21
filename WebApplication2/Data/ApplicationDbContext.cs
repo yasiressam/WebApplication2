@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using WebApplication2.Models;
+using WebApplication2.Models.Audit;
 
 using WebApplication2.Models.Request;
 
@@ -55,6 +56,7 @@ namespace WebApplication2.Data
         public DbSet<PoliticalForumAttendance> PoliticalForumAttendances { get; set; }
         public DbSet<PeriodicMeetingAttendance> PeriodicMeetingAttendances { get; set; }
         public DbSet<Event> Events { get; set; }
+        public DbSet<AuditLogEntry> AuditLogs { get; set; }
 
         // جدول التقييم السنوي (يبقى كما هو)
 
@@ -100,6 +102,14 @@ namespace WebApplication2.Data
             modelBuilder.Entity<VoterCard>()
                 .HasIndex(v => v.UserId)
                 .HasDatabaseName("IX_VoterCards_UserId");
+
+            modelBuilder.Entity<AuditLogEntry>()
+                .HasIndex(a => new { a.Category, a.TimestampUtc })
+                .HasDatabaseName("IX_AuditLogs_Category_TimestampUtc");
+
+            modelBuilder.Entity<AuditLogEntry>()
+                .HasIndex(a => a.UserId)
+                .HasDatabaseName("IX_AuditLogs_UserId");
 
             modelBuilder.Entity<UnionMembership>()
                 .HasIndex(u => u.UserId)

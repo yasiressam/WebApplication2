@@ -2,6 +2,7 @@ namespace WebApplication2.Models.Audit
 {
     public class AuditLogEntry
     {
+        public int Id { get; set; }
         public DateTime TimestampUtc { get; set; } = DateTime.UtcNow;
         public string Category { get; set; } = string.Empty;
         public string Severity { get; set; } = "Information";

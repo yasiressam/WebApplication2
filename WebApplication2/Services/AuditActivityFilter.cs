@@ -131,18 +131,28 @@ namespace WebApplication2.Services
                 return string.Empty;
             }
 
-            return string.Join(" | ", actionArguments.Select(kvp => $"{kvp.Key}={ToLogValue(kvp.Value)}"));
+            return string.Join(" | ", actionArguments.Select(kvp => $"{TranslateArgumentName(kvp.Key)}: {ToLogValue(kvp.Value)}"));
         }
 
         private static string ToLogValue(object? value)
         {
             if (value == null)
             {
-                return "null";
+                return "فارغ";
             }
 
             var text = value.ToString() ?? string.Empty;
             return text.Length > 160 ? text[..160] + "..." : text;
         }
+
+        private static string TranslateArgumentName(string argumentName) => argumentName switch
+        {
+            "id" => "المعرف",
+            "userId" => "معرف المستخدم",
+            "requestId" => "معرف الطلب",
+            "model" => "البيانات",
+            "returnUrl" => "رابط العودة",
+            _ => argumentName
+        };
     }
 }

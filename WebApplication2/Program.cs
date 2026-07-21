@@ -9,17 +9,28 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
+var httpsPort = GetHttpsPort(builder.Configuration);
+
+if (httpsPort.HasValue)
+{
+    builder.Services.AddHttpsRedirection(options =>
+    {
+        options.HttpsPort = httpsPort.Value;
+        options.RedirectStatusCode = StatusCodes.Status307TemporaryRedirect;
+    });
+}
 
 // ===== Add services =====
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
-builder.Services.AddSingleton<IAuditTrailService, FileAuditTrailService>();
+builder.Services.AddScoped<IAuditTrailService, DbAuditTrailService>();
 builder.Services.AddScoped<AuditActivityFilter>();
 builder.Services.Configure<WhatsAppApiSettings>(builder.Configuration.GetSection("WhatsAppApi"));
 builder.Services.Configure<OtpApiSettings>(builder.Configuration.GetSection("OtpApi"));
 builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();
 builder.Services.AddHostedService<RequestCleanupService>();
 builder.Services.AddHostedService<NotificationCleanupService>();
+builder.Services.AddHostedService<AuditLogCleanupService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient();
 builder.Services.AddHttpContextAccessor();
@@ -138,7 +149,10 @@ else
 }
 
 app.UseMiddleware<AuditErrorMiddleware>();
-app.UseHttpsRedirection();
+if (httpsPort.HasValue)
+{
+    app.UseHttpsRedirection();
+}
 app.UseStaticFiles();
 
 // ✅ ✅ ✅ إضافة خدمة الملفات الثابتة للمجلدات الخارجية ✅ ✅ ✅
@@ -219,5 +233,33 @@ app.UseEndpoints(endpoints =>
     endpoints.MapHub<NotificationHub>("/notificationHub");
 });
 
+
+static int? GetHttpsPort(ConfigurationManager configuration)
+{
+    var configuredPort = configuration.GetValue<int?>("HTTPS_PORT")
+        ?? configuration.GetValue<int?>("ASPNETCORE_HTTPS_PORT");
+
+    if (configuredPort.HasValue)
+    {
+        return configuredPort.Value;
+    }
+
+    var urls = configuration["ASPNETCORE_URLS"] ?? configuration["urls"];
+    if (string.IsNullOrWhiteSpace(urls))
+    {
+        return null;
+    }
+
+    foreach (var url in urls.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+    {
+        if (Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
+            string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            return uri.Port;
+        }
+    }
+
+    return null;
+}
 
 app.Run();

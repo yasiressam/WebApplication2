@@ -144,7 +144,8 @@ namespace WebApplication2.Data
      // ✅ الجديد
      new IdentityRole { Id = "8", Name = "Manager", NormalizedName = "MANAGER" },
      new IdentityRole { Id = "9", Name = "AssistantManager", NormalizedName = "ASSISTANTMANAGER" },
-     new IdentityRole { Id = "10", Name = "ManagerViewer", NormalizedName = "MANAGERVIEWER" }
+     new IdentityRole { Id = "10", Name = "ManagerViewer", NormalizedName = "MANAGERVIEWER" },
+     new IdentityRole { Id = "11", Name = "SystemManager", NormalizedName = "SYSTEMMANAGER" }
  );
 
             

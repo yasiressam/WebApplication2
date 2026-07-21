@@ -13,7 +13,7 @@ namespace WebApplication2.Controllers.Api
 {
     [Route("api/admin")]
     [ApiController]
-    [Authorize(Roles = clsRoles.SuperAdmin + "," + clsRoles.Admin + "," + clsRoles.DistrictAdmin)]
+    [Authorize(Roles = clsRoles.SystemManager + "," + clsRoles.SuperAdmin + "," + clsRoles.Admin + "," + clsRoles.DistrictAdmin)]
     public class AdminApiController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -86,16 +86,36 @@ namespace WebApplication2.Controllers.Api
 
             var visibleUserIds = await GetVisibleUserIdsAsync();
             var users = await _userManager.Users
+                .AsNoTracking()
                 .Where(u => visibleUserIds.Contains(u.Id))
                 .ToListAsync();
+            var userIds = users.Select(u => u.Id).ToList();
+            var profilesByUserId = await _context.Identifies
+                .AsNoTracking()
+                .Where(i => userIds.Contains(i.UserId))
+                .ToDictionaryAsync(i => i.UserId);
+            var addressesByUserId = await _context.Addresses
+                .AsNoTracking()
+                .Where(a => userIds.Contains(a.UserId))
+                .GroupBy(a => a.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+            var rolesByUserId = await _context.UserRoles
+                .AsNoTracking()
+                .Where(userRole => userIds.Contains(userRole.UserId))
+                .Join(_context.Roles.AsNoTracking(),
+                    userRole => userRole.RoleId,
+                    roleRow => roleRow.Id,
+                    (userRole, roleRow) => new { userRole.UserId, RoleName = roleRow.Name })
+                .GroupBy(x => x.UserId)
+                .ToDictionaryAsync(g => g.Key, g => (IList<string>)g.Select(x => x.RoleName).ToList());
 
             var userRows = new List<object>();
 
             foreach (var user in users)
             {
-                var profile = await _context.Identifies.FirstOrDefaultAsync(i => i.UserId == user.Id);
-                var address = await _context.Addresses.FirstOrDefaultAsync(a => a.UserId == user.Id);
-                var roles = await _userManager.GetRolesAsync(user);
+                profilesByUserId.TryGetValue(user.Id, out var profile);
+                addressesByUserId.TryGetValue(user.Id, out var address);
+                var roles = rolesByUserId.GetValueOrDefault(user.Id, Array.Empty<string>());
                 var isLocked = user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.Now;
 
                 if (!string.IsNullOrWhiteSpace(search) &&
@@ -1033,7 +1053,7 @@ namespace WebApplication2.Controllers.Api
             foreach (var user in allUsers)
             {
                 var roles = await _userManager.GetRolesAsync(user);
-                if (roles.Contains(clsRoles.SuperAdmin) || roles.Contains(clsRoles.Admin))
+                if (roles.Contains(clsRoles.SystemManager) || roles.Contains(clsRoles.SuperAdmin) || roles.Contains(clsRoles.Admin))
                 {
                     continue;
                 }

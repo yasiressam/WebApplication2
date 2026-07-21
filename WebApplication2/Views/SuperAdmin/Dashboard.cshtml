@@ -10,32 +10,10 @@
     var allowedEmails = Configuration.GetSection("SuperAdminPasswordReset:AllowedEmails").Get<string[]>() ?? Array.Empty<string>();
     var canOpenAuditTrail = allowedEmails.Contains(currentEmail, StringComparer.OrdinalIgnoreCase);
 
-    // جلب جميع المستخدمين
-    var users = UserManager.Users.ToList();
-    var totalUsers = users.Count();
-
-    // جلب المستخدمين النشطين (يمكنك تعديل الشرط حسب منطق التطبيق الخاص بك)
-    var activeUsers = users.Count(); // افترض أن جميع المستخدمين نشطين
-
-    // جلب الأدمنية
-    var admins = new List<IdentityUser>();
-    var superAdmins = new List<IdentityUser>();
-
-    foreach (var user in users)
-    {
-        var roles = await UserManager.GetRolesAsync(user);
-        if (roles.Contains("Admin"))
-        {
-            admins.Add(user);
-        }
-        if (roles.Contains("SuperAdmin"))
-        {
-            superAdmins.Add(user);
-        }
-    }
-
-    var adminCount = admins.Count();
-    var superAdminCount = superAdmins.Count();
+    var totalUsers = (int?)ViewBag.TotalUsers ?? 0;
+    var activeUsers = (int?)ViewBag.ActiveUsers ?? totalUsers;
+    var adminCount = (int?)ViewBag.Admins ?? 0;
+    var superAdminCount = (int?)ViewBag.SuperAdmins ?? 0;
 }
 
 <!DOCTYPE html>

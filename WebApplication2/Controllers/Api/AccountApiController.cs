@@ -198,7 +198,7 @@ namespace WebApplication2.Controllers.Api
         }
 
         [HttpPost("create-user-by-admin")]
-        [Authorize(Roles = clsRoles.SuperAdmin + "," + clsRoles.Admin + "," + clsRoles.DistrictAdmin)]
+        [Authorize(Roles = clsRoles.SystemManager + "," + clsRoles.SuperAdmin + "," + clsRoles.Admin + "," + clsRoles.DistrictAdmin)]
         public async Task<IActionResult> CreateUserByAdmin([FromBody] CreateUserByAdminRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.Email))
@@ -369,11 +369,30 @@ namespace WebApplication2.Controllers.Api
             return voterCard != null && !string.IsNullOrWhiteSpace(voterCard.VoterCardNumber);
         }
 
-        private static string? ResolveAllowedRole(string? requestedRole, IList<string> currentUserRoles)
+        private string? ResolveAllowedRole(string? requestedRole, IList<string> currentUserRoles)
         {
             var normalizedRole = string.IsNullOrWhiteSpace(requestedRole)
                 ? clsRoles.User
                 : requestedRole.Trim();
+
+            if (currentUserRoles.Contains(clsRoles.SystemManager))
+            {
+                var systemManagerAllowedRoles = new HashSet<string>
+                {
+                    clsRoles.SystemManager,
+                    clsRoles.SuperAdmin,
+                    clsRoles.Admin,
+                    clsRoles.DistrictAdmin,
+                    clsRoles.User,
+                    clsRoles.Member,
+                    clsRoles.NewsEditor,
+                    clsRoles.MapViewer,
+                    clsRoles.Manager,
+                    clsRoles.AssistantManager
+                };
+
+                return systemManagerAllowedRoles.Contains(normalizedRole) ? normalizedRole : null;
+            }
 
             if (currentUserRoles.Contains(clsRoles.SuperAdmin))
             {

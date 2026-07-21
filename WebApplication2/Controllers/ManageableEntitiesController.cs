@@ -6,7 +6,7 @@ using WebApplication2.Models;
 
 namespace WebApplication2.Controllers
 {
-    [Authorize(Roles = clsRoles.SuperAdmin)]
+    [Authorize(Roles = clsRoles.SuperAdminOrSystemManager)]
     public class ManageableEntitiesController : Controller
     {
         private readonly ILogger<ManageableEntitiesController> _logger;

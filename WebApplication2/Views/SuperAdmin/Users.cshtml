@@ -893,6 +893,9 @@
                                     {
                                         switch (role)
                                         {
+                                            case "SystemManager":
+                                                <span class="badge bg-dark"><i class="fas fa-shield-alt"></i> مدير النظام</span>
+                                                break;
                                             case "SuperAdmin":
                                                 <span class="badge bg-danger"><i class="fas fa-crown"></i> سوبر أدمن</span>
                                                 break;
@@ -1188,6 +1191,13 @@
                             </div>
                         </div>
                         <div class="col-md-6">
+                            @if (ViewBag.CanManageSystemManager == true)
+                            {
+                                <div class="form-check mb-1">
+                                    <input class="form-check-input role-option" type="checkbox" name="roleOption" id="roleSystemManager" value="SystemManager">
+                                    <label class="form-check-label small" for="roleSystemManager"><i class="fas fa-shield-alt"></i> مدير النظام</label>
+                                </div>
+                            }
                             <div class="form-check mb-1">
                                 <input class="form-check-input role-option" type="checkbox" name="roleOption" id="roleSuperAdmin" value="SuperAdmin">
                                 <label class="form-check-label small" for="roleSuperAdmin"><i class="fas fa-crown"></i> سوبر أدمن</label>
@@ -1669,6 +1679,7 @@
                                         case 'فرد': inputId = 'roleMember'; break;
                                         case 'Admin': inputId = 'roleAdmin'; isAdmin = true; break;
                                         case 'DistrictAdmin': inputId = 'roleAdmin'; isAdmin = true; break;
+                                        case 'SystemManager': inputId = 'roleSystemManager'; break;
                                         case 'SuperAdmin': inputId = 'roleSuperAdmin'; break;
                                         case 'NewsEditor': inputId = 'roleNewsEditor'; break;
                                         case 'MapViewer': inputId = 'roleMapViewer'; isMapViewer = true; break;

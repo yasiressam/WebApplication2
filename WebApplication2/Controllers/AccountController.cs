@@ -123,7 +123,7 @@ namespace WebApplication2.Controllers
 
         // GET: /Account/CreateUserByAdmin
         [HttpGet]
-        [Authorize(Roles = clsRoles.SuperAdmin + "," + clsRoles.Admin + "," + clsRoles.DistrictAdmin)]
+        [Authorize(Roles = clsRoles.SystemManager + "," + clsRoles.SuperAdmin + "," + clsRoles.Admin + "," + clsRoles.DistrictAdmin)]
         public IActionResult CreateUserByAdmin()
         {
             var model = new RegisterViewModel
@@ -138,7 +138,7 @@ namespace WebApplication2.Controllers
         // POST: /Account/CreateUserByAdmin
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = clsRoles.SuperAdmin + "," + clsRoles.Admin + "," + clsRoles.DistrictAdmin)]
+        [Authorize(Roles = clsRoles.SystemManager + "," + clsRoles.SuperAdmin + "," + clsRoles.Admin + "," + clsRoles.DistrictAdmin)]
         public async Task<IActionResult> CreateUserByAdmin(RegisterViewModel model)
         {
             var registerMethod = string.Equals(model.RegisterMethod, "WhatsApp", StringComparison.OrdinalIgnoreCase)
@@ -332,7 +332,7 @@ namespace WebApplication2.Controllers
                     TempData["SuccessMessage"] = $"✅ تم إنشاء المستخدم '{createdIdentifier}' بنجاح. " +
                         (roleToAssign == clsRoles.Admin ? $"المحافظة: {model.ManagedGovernorate}" : $"محافظة: {adminGovernorate}");
 
-                    if (User.IsInRole(clsRoles.SuperAdmin))
+                    if (User.IsInRole(clsRoles.SystemManager) || User.IsInRole(clsRoles.SuperAdmin))
                     {
                         return RedirectToAction("Users", "SuperAdmin");
                     }
@@ -475,6 +475,25 @@ namespace WebApplication2.Controllers
             var normalizedRole = string.IsNullOrWhiteSpace(requestedRole)
                 ? clsRoles.User
                 : requestedRole.Trim();
+
+            if (currentUserRoles.Contains(clsRoles.SystemManager))
+            {
+                var systemManagerAllowedRoles = new HashSet<string>
+                {
+                    clsRoles.SystemManager,
+                    clsRoles.SuperAdmin,
+                    clsRoles.Admin,
+                    clsRoles.DistrictAdmin,
+                    clsRoles.User,
+                    clsRoles.Member,
+                    clsRoles.NewsEditor,
+                    clsRoles.MapViewer,
+                    clsRoles.Manager,
+                    clsRoles.AssistantManager
+                };
+
+                return systemManagerAllowedRoles.Contains(normalizedRole) ? normalizedRole : clsRoles.User;
+            }
 
             if (currentUserRoles.Contains(clsRoles.SuperAdmin))
             {

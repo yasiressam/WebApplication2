@@ -12,6 +12,7 @@
     var shouldShowProfileGuidance = false;
 
     if (User.Identity?.IsAuthenticated == true &&
+        !User.IsInRole("SystemManager") &&
         !User.IsInRole("SuperAdmin") &&
         !User.IsInRole("Admin") &&
         !User.IsInRole("DistrictAdmin") &&

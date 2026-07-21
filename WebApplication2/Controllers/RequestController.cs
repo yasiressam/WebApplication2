@@ -100,20 +100,48 @@ namespace WebApplication2.Controllers
 
         private async Task<Dictionary<string, string>> GetUsersRolesAsync(List<string> userIds)
         {
+            if (userIds == null || userIds.Count == 0)
+                return new Dictionary<string, string>();
+
+            var normalizedUserIds = userIds
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct()
+                .ToList();
+
+            var usersLookup = await _userManager.Users
+                .Where(u => normalizedUserIds.Contains(u.Id))
+                .Select(u => u.Id)
+                .ToDictionaryAsync(id => id, _ => true);
+
+            var rolesByUserId = await _context.UserRoles
+                .AsNoTracking()
+                .Where(ur => normalizedUserIds.Contains(ur.UserId))
+                .Join(
+                    _context.Roles.AsNoTracking(),
+                    userRole => userRole.RoleId,
+                    roleRow => roleRow.Id,
+                    (userRole, roleRow) => new
+                    {
+                        userRole.UserId,
+                        RoleName = roleRow.Name ?? string.Empty
+                    })
+                .GroupBy(x => x.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.Select(x => x.RoleName).ToList());
+
             var result = new Dictionary<string, string>();
-            foreach (var userId in userIds)
+            foreach (var userId in normalizedUserIds)
             {
-                var user = await _userManager.FindByIdAsync(userId);
-                if (user != null)
-                {
-                    var roles = await _userManager.GetRolesAsync(user);
-                    result[userId] = GetRolesDisplayName(roles);
-                }
-                else
+                if (!usersLookup.ContainsKey(userId))
                 {
                     result[userId] = "غير معروف";
+                    continue;
                 }
+
+                result[userId] = rolesByUserId.TryGetValue(userId, out var roles)
+                    ? GetRolesDisplayName(roles)
+                    : "مستخدم";
             }
+
             return result;
         }
 
@@ -143,12 +171,12 @@ namespace WebApplication2.Controllers
                 : "مستخدم";
         }
 
-        private async Task<bool> CanSendTo(IdentityUser sender, IList<string> senderRoles, IdentityUser recipient)
+        private async Task<bool> CanSendTo(IdentityUser sender, IList<string> senderRoles, IdentityUser recipient, IList<string>? recipientRoles = null)
         {
             if (sender.Id == recipient.Id)
                 return false;
 
-            var recipientRoles = await _userManager.GetRolesAsync(recipient);
+            recipientRoles ??= await _userManager.GetRolesAsync(recipient);
 
             if (senderRoles.Contains("SuperAdmin"))
                 return recipientRoles.Any(r => _targetRoles.Contains(r));
@@ -947,6 +975,24 @@ namespace WebApplication2.Controllers
         {
             var users = new List<RequestRecipientOptionViewModel>();
 
+            async Task<Dictionary<string, IList<string>>> GetRolesLookupAsync(List<string> userIds)
+            {
+                return await _context.UserRoles
+                    .AsNoTracking()
+                    .Where(ur => userIds.Contains(ur.UserId))
+                    .Join(
+                        _context.Roles.AsNoTracking(),
+                        userRole => userRole.RoleId,
+                        roleRow => roleRow.Id,
+                        (userRole, roleRow) => new
+                        {
+                            userRole.UserId,
+                            RoleName = roleRow.Name ?? string.Empty
+                        })
+                    .GroupBy(x => x.UserId)
+                    .ToDictionaryAsync(g => g.Key, g => (IList<string>)g.Select(x => x.RoleName).ToList());
+            }
+
             if (userRoles.Contains("SuperAdmin"))
             {
                 var allUsers = await _userManager.Users
@@ -956,10 +1002,11 @@ namespace WebApplication2.Controllers
 
                 var userIds = allUsers.Select(u => u.Id).ToList();
                 var usersData = await GetUsersFullNamesAsync(userIds);
+                var rolesLookup = await GetRolesLookupAsync(userIds);
 
                 foreach (var u in allUsers)
                 {
-                    var roles = await _userManager.GetRolesAsync(u);
+                    var roles = rolesLookup.GetValueOrDefault(u.Id) ?? Array.Empty<string>();
                     if (!roles.Any(r => _targetRoles.Contains(r)))
                         continue;
 
@@ -981,11 +1028,12 @@ namespace WebApplication2.Controllers
 
                 var userIds = scopedTargets.Select(u => u.Id).ToList();
                 var usersData = await GetUsersFullNamesAsync(userIds);
+                var rolesLookup = await GetRolesLookupAsync(userIds);
 
                 foreach (var u in scopedTargets)
                 {
-                    var roles = await _userManager.GetRolesAsync(u);
-                    if (!roles.Any(r => _targetRoles.Contains(r)) || !await CanSendTo(currentUser, userRoles, u))
+                    var roles = rolesLookup.GetValueOrDefault(u.Id) ?? Array.Empty<string>();
+                    if (!roles.Any(r => _targetRoles.Contains(r)) || !await CanSendTo(currentUser, userRoles, u, roles))
                         continue;
 
                     var fullName = usersData.GetValueOrDefault(u.Id) ?? u.Id;
@@ -1005,10 +1053,11 @@ namespace WebApplication2.Controllers
                     .ToListAsync();
                 var userIds = targets.Select(a => a.Id).ToList();
                 var usersData = await GetUsersFullNamesAsync(userIds);
+                var rolesLookup = await GetRolesLookupAsync(userIds);
 
                 foreach (var a in targets)
                 {
-                    var roles = await _userManager.GetRolesAsync(a);
+                    var roles = rolesLookup.GetValueOrDefault(a.Id) ?? Array.Empty<string>();
                     if (!roles.Any(r => r is "SuperAdmin" or "Admin" or "DistrictAdmin" or "Manager" or "AssistantManager"))
                         continue;
 

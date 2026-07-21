@@ -300,21 +300,21 @@ namespace WebApplication2.Controllers
 
             if (string.IsNullOrEmpty(adminGovernorate)) return new List<string>();
 
-            var allUserIds = await _userManager.Users
+            var allProfiles = await _context.Identifies
                 .AsNoTracking()
-                .Select(u => u.Id)
+                .Include(i => i.WorkLocation)
                 .ToListAsync();
-            var allAddresses = await _context.Addresses.AsNoTracking().ToListAsync();
-            var allProfiles = await _context.Identifies.AsNoTracking().ToListAsync();
+            var allUserIds = allProfiles
+                .Where(i => !string.IsNullOrWhiteSpace(i.UserId))
+                .Select(i => i.UserId)
+                .Distinct()
+                .ToList();
             var profilesByUserId = allProfiles
                 .Where(i => !string.IsNullOrWhiteSpace(i.UserId))
                 .GroupBy(i => i.UserId)
                 .ToDictionary(g => g.Key, g => g.First());
-            var addressesByUserId = allAddresses
-                .Where(a => !string.IsNullOrWhiteSpace(a.UserId))
-                .GroupBy(a => a.UserId)
-                .ToDictionary(g => g.Key, g => g.First());
             var rolesByUserId = await _context.UserRoles
+                .AsNoTracking()
                 .Join(_context.Roles,
                     userRole => userRole.RoleId,
                     role => role.Id,
@@ -370,15 +370,13 @@ namespace WebApplication2.Controllers
                     continue;
                 }
 
-                // ✅ للمستخدمين العاديين، تحقق من العنوان
-                addressesByUserId.TryGetValue(userId, out var userAddress);
                 profilesByUserId.TryGetValue(userId, out var userProfile);
-                if ((userAddress != null || userProfile != null) &&
-                    IsGovernorateInManagedScope(GetEffectiveGovernorate(userProfile, userAddress), adminGovernorate))
+                if (userProfile != null &&
+                    IsGovernorateInManagedScope(GetEffectiveGovernorate(userProfile, null), adminGovernorate))
                 {
                     if (hasDistrictScope)
                     {
-                        if (GetEffectiveDistrict(userProfile, userAddress) == adminDistrict)
+                        if (GetEffectiveDistrict(userProfile, null) == adminDistrict)
                             userIds.Add(userId);
                     }
                     else
@@ -455,15 +453,14 @@ namespace WebApplication2.Controllers
             ViewBag.AdminTypeColor = adminTypeColor;
 
             var userIdsInGovernorate = await GetUserIdsInAdminGovernorateAsync();
-            var allIdentifies = await _context.Identifies.ToListAsync();
-            var usersInGovernorate = allIdentifies.Where(i => userIdsInGovernorate.Contains(i.UserId)).ToList();
+            var scopedProfiles = _context.Identifies.AsNoTracking().Where(i => userIdsInGovernorate.Contains(i.UserId));
 
-            ViewBag.TotalUsers = usersInGovernorate.Count;
-            ViewBag.TotalMembers = usersInGovernorate.Count(i =>
+            ViewBag.TotalUsers = await scopedProfiles.CountAsync();
+            ViewBag.TotalMembers = await scopedProfiles.CountAsync(i =>
                 !string.IsNullOrWhiteSpace(i.Education) &&
                 (i.AccountType == "فرد" || i.IsPromoted));
-            ViewBag.PendingRequests = usersInGovernorate.Count(i => i.RequestedPromotion && !i.IsPromoted);
-            ViewBag.NewThisWeek = usersInGovernorate.Count(i => i.CreatedAt > DateTime.UtcNow.AddDays(-7));
+            ViewBag.PendingRequests = await scopedProfiles.CountAsync(i => i.RequestedPromotion && !i.IsPromoted);
+            ViewBag.NewThisWeek = await scopedProfiles.CountAsync(i => i.CreatedAt > DateTime.UtcNow.AddDays(-7));
             ViewBag.ManagedGovernorate = adminGovernorate;
 
             return View();
@@ -2722,14 +2719,12 @@ namespace WebApplication2.Controllers
                 if (string.IsNullOrEmpty(adminGovernorate))
                     return BadRequest(new { success = false, message = "لم يتم تعيين محافظة لك" });
 
-                var validUserIds = new List<string>();
-                foreach (var userId in request.UserIds.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct())
-                {
-                    if (await IsUserInAdminGovernorateAsync(userId))
-                    {
-                        validUserIds.Add(userId);
-                    }
-                }
+                var allowedUserIds = (await GetUserIdsInAdminGovernorateAsync()).ToHashSet();
+                var validUserIds = request.UserIds
+                    .Where(id => !string.IsNullOrWhiteSpace(id))
+                    .Distinct()
+                    .Where(id => allowedUserIds.Contains(id))
+                    .ToList();
 
                 if (!validUserIds.Any())
                     return BadRequest(new { success = false, message = "لا يوجد مستخدمون ضمن صلاحياتك لتصديرهم" });
@@ -2764,13 +2759,12 @@ namespace WebApplication2.Controllers
                 }
 
                 var userIdsInGovernorate = await GetUserIdsInAdminGovernorateAsync();
-                var allIdentifies = await _context.Identifies.ToListAsync();
-                var memberUserIds = allIdentifies
+                var memberUserIds = await _context.Identifies.AsNoTracking()
                     .Where(i => userIdsInGovernorate.Contains(i.UserId) &&
                                 !string.IsNullOrWhiteSpace(i.Education) &&
                                 (i.AccountType == "فرد" || i.IsPromoted == true))
                     .Select(i => i.UserId)
-                    .ToList();
+                    .ToListAsync();
 
                 var users = await _userManager.Users
                     .Where(u => memberUserIds.Contains(u.Id))
@@ -2803,13 +2797,16 @@ namespace WebApplication2.Controllers
                 }
 
                 var userIdsInGovernorate = await GetUserIdsInAdminGovernorateAsync();
-                var allIdentifies = await _context.Identifies.ToListAsync();
-
-                var requests = allIdentifies
+                var requests = await _context.Identifies.AsNoTracking()
                     .Where(i => userIdsInGovernorate.Contains(i.UserId) &&
                                i.RequestedPromotion && !i.IsPromoted)
                     .OrderByDescending(i => i.RequestedPromotionDate)
-                    .ToList();
+                    .ToListAsync();
+
+                var requestUserIds = requests.Select(i => i.UserId).ToList();
+                var usersById = await GetUsersByIdsAsync(requestUserIds);
+                var addressesByUserId = await GetAddressesByUserIdsAsync(requestUserIds);
+                var voterCardsByUserId = await GetVoterCardsByUserIdsAsync(requestUserIds);
 
                 var data = new List<object[]>();
                 data.Add(new object[] { "رقم", "البريد الإلكتروني", "الاسم الرباعي", "رقم الهاتف", "المحافظة", "رقم البطاقة", "تاريخ الطلب", "نسبة الإكمال", "تاريخ التسجيل" });
@@ -2817,9 +2814,9 @@ namespace WebApplication2.Controllers
                 int counter = 1;
                 foreach (var request in requests)
                 {
-                    var user = await _userManager.FindByIdAsync(request.UserId);
-                    var address = await GetUserAddressAsync(request.UserId);
-                    var voterCard = await GetUserVoterCardAsync(request.UserId);
+                    usersById.TryGetValue(request.UserId, out var user);
+                    addressesByUserId.TryGetValue(request.UserId, out var address);
+                    voterCardsByUserId.TryGetValue(request.UserId, out var voterCard);
 
                     data.Add(new object[] {
                         counter++,
@@ -2860,17 +2857,14 @@ namespace WebApplication2.Controllers
                 }
 
                 var userIdsInGovernorate = await GetUserIdsInAdminGovernorateAsync();
-                var allIdentifies = await _context.Identifies.ToListAsync();
-
-                // تصفية الطلاب الجامعيين
-                var studentUserIds = allIdentifies
+                var studentUserIds = await _context.Identifies.AsNoTracking()
                     .Where(i => userIdsInGovernorate.Contains(i.UserId) &&
                                (i.Education == "طالب جامعي" ||
                                 (!string.IsNullOrEmpty(i.StudyStage) && i.StudyStage != "---") ||
                                 i.StudyType == "انتظام" ||
                                 i.StudyType == "مسائي"))
                     .Select(i => i.UserId)
-                    .ToList();
+                    .ToListAsync();
 
                 var users = await _userManager.Users
                     .Where(u => studentUserIds.Contains(u.Id))

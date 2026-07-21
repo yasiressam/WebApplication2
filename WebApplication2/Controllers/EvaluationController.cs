@@ -86,24 +86,45 @@ namespace WebApplication2.Controllers
             var isSuperAdmin = await IsSuperAdmin();
             var adminGovernorate = await GetCurrentAdminGovernorate();
 
-            var query = _context.Identifies.Where(i => i.IsPromoted == true);
+            var query = _context.Identifies
+                .AsNoTracking()
+                .Include(i => i.WorkLocation)
+                .Where(i => i.IsPromoted == true);
 
             if (!isSuperAdmin && !string.IsNullOrEmpty(adminGovernorate))
             {
-                var allAddresses = await _context.Addresses.ToListAsync();
-                var allProfiles = await _context.Identifies.ToListAsync();
-                var userIdsInGovernorate = allAddresses
-                    .Where(a =>
-                    {
-                        var profile = allProfiles.FirstOrDefault(i => i.UserId == a.UserId);
-                        return IsGovernorateInManagedScope(GetEffectiveGovernorate(profile, a), adminGovernorate);
-                    })
-                    .Select(a => a.UserId)
+                var promotedUsers = await query.ToListAsync();
+                return promotedUsers
+                    .Where(profile => IsGovernorateInManagedScope(GetEffectiveGovernorate(profile, null), adminGovernorate))
+                    .OrderBy(i => i.FullName)
                     .ToList();
-                query = query.Where(i => userIdsInGovernorate.Contains(i.UserId));
             }
 
             return await query.OrderBy(i => i.FullName).ToListAsync();
+        }
+
+        private async Task<Dictionary<string, string>> BuildGovernorateLookupAsync(IEnumerable<Identify> users)
+        {
+            var profiles = users.ToList();
+            var profileIds = profiles.Select(p => p.Id).ToList();
+
+            var workLocationsByProfileId = await _context.WorkLocations
+                .AsNoTracking()
+                .Where(w => profileIds.Contains(w.IdentifyId))
+                .GroupBy(w => w.IdentifyId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+
+            return profiles.ToDictionary(
+                profile => profile.UserId,
+                profile =>
+                {
+                    workLocationsByProfileId.TryGetValue(profile.Id, out var workLocation);
+                    return !string.IsNullOrWhiteSpace(workLocation?.Governorate)
+                        ? workLocation.Governorate
+                        : !string.IsNullOrWhiteSpace(profile.WorkGovernorate)
+                            ? profile.WorkGovernorate
+                            : "غير محدد";
+                });
         }
 
         private (List<Identify> Users, int CurrentPage, int TotalPages, int TotalUsers, int PageSize) PaginateEvaluationUsers(List<Identify> users, int page)
@@ -147,6 +168,7 @@ namespace WebApplication2.Controllers
             var evaluations = await _context.CommunicationEvaluations
                 .Where(e => e.Month == currentMonth && e.Year == currentYear)
                 .ToDictionaryAsync(e => e.UserId, e => e.Score);
+            var governorateLookup = await BuildGovernorateLookupAsync(paged.Users);
 
             var model = new EvaluationFactorViewModel
             {
@@ -164,7 +186,7 @@ namespace WebApplication2.Controllers
                     UserId = u.UserId,
                     FullName = u.FullName,
                     PhoneNumber = u.PhoneNumber,
-                    Governorate = GetUserGovernorate(u.UserId).Result,
+                    Governorate = governorateLookup.GetValueOrDefault(u.UserId, "غير محدد"),
                     CurrentScore = evaluations.ContainsKey(u.UserId) ? evaluations[u.UserId] : 6,
                     MaxScore = 12
                 }).ToList()
@@ -221,6 +243,7 @@ namespace WebApplication2.Controllers
             var evaluations = await _context.MediaActivityEvaluations
                 .Where(e => e.Month == currentMonth && e.Year == currentYear)
                 .ToDictionaryAsync(e => e.UserId, e => e.Score);
+            var governorateLookup = await BuildGovernorateLookupAsync(paged.Users);
 
             var model = new EvaluationFactorViewModel
             {
@@ -238,7 +261,7 @@ namespace WebApplication2.Controllers
                     UserId = u.UserId,
                     FullName = u.FullName,
                     PhoneNumber = u.PhoneNumber,
-                    Governorate = GetUserGovernorate(u.UserId).Result,
+                    Governorate = governorateLookup.GetValueOrDefault(u.UserId, "غير محدد"),
                     CurrentScore = evaluations.ContainsKey(u.UserId) ? evaluations[u.UserId] : 6,
                     MaxScore = 12
                 }).ToList()
@@ -289,6 +312,7 @@ namespace WebApplication2.Controllers
             var evaluations = await _context.MovementActivityEvaluations
                 .Where(e => e.Month == currentMonth && e.Year == currentYear)
                 .ToDictionaryAsync(e => e.UserId, e => e.Score);
+            var governorateLookup = await BuildGovernorateLookupAsync(paged.Users);
 
             var model = new EvaluationFactorViewModel
             {
@@ -306,7 +330,7 @@ namespace WebApplication2.Controllers
                     UserId = u.UserId,
                     FullName = u.FullName,
                     PhoneNumber = u.PhoneNumber,
-                    Governorate = GetUserGovernorate(u.UserId).Result,
+                    Governorate = governorateLookup.GetValueOrDefault(u.UserId, "غير محدد"),
                     CurrentScore = evaluations.ContainsKey(u.UserId) ? evaluations[u.UserId] : 6,
                     MaxScore = 12
                 }).ToList()
@@ -357,6 +381,7 @@ namespace WebApplication2.Controllers
             var evaluations = await _context.PolarizationEvaluations
                 .Where(e => e.Month == currentMonth && e.Year == currentYear)
                 .ToDictionaryAsync(e => e.UserId, e => e.Score);
+            var governorateLookup = await BuildGovernorateLookupAsync(paged.Users);
 
             var model = new EvaluationFactorViewModel
             {
@@ -374,7 +399,7 @@ namespace WebApplication2.Controllers
                     UserId = u.UserId,
                     FullName = u.FullName,
                     PhoneNumber = u.PhoneNumber,
-                    Governorate = GetUserGovernorate(u.UserId).Result,
+                    Governorate = governorateLookup.GetValueOrDefault(u.UserId, "غير محدد"),
                     CurrentScore = evaluations.ContainsKey(u.UserId) ? evaluations[u.UserId] : 6,
                     MaxScore = 12
                 }).ToList()
@@ -425,6 +450,7 @@ namespace WebApplication2.Controllers
             var evaluations = await _context.SocialMediaEvaluations
                 .Where(e => e.Month == currentMonth && e.Year == currentYear)
                 .ToDictionaryAsync(e => e.UserId, e => e.Score);
+            var governorateLookup = await BuildGovernorateLookupAsync(paged.Users);
 
             var model = new EvaluationFactorViewModel
             {
@@ -442,7 +468,7 @@ namespace WebApplication2.Controllers
                     UserId = u.UserId,
                     FullName = u.FullName,
                     PhoneNumber = u.PhoneNumber,
-                    Governorate = GetUserGovernorate(u.UserId).Result,
+                    Governorate = governorateLookup.GetValueOrDefault(u.UserId, "غير محدد"),
                     CurrentScore = evaluations.ContainsKey(u.UserId) ? evaluations[u.UserId] : 6,
                     MaxScore = 12
                 }).ToList()
@@ -493,6 +519,7 @@ namespace WebApplication2.Controllers
             var evaluations = await _context.SupervisorOpinionEvaluations
                 .Where(e => e.Month == currentMonth && e.Year == currentYear)
                 .ToDictionaryAsync(e => e.UserId, e => e.Score);
+            var governorateLookup = await BuildGovernorateLookupAsync(paged.Users);
 
             var model = new EvaluationFactorViewModel
             {
@@ -510,7 +537,7 @@ namespace WebApplication2.Controllers
                     UserId = u.UserId,
                     FullName = u.FullName,
                     PhoneNumber = u.PhoneNumber,
-                    Governorate = GetUserGovernorate(u.UserId).Result,
+                    Governorate = governorateLookup.GetValueOrDefault(u.UserId, "غير محدد"),
                     CurrentScore = evaluations.ContainsKey(u.UserId) ? evaluations[u.UserId] : 8,
                     MaxScore = 16
                 }).ToList()

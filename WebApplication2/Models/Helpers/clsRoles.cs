@@ -2,7 +2,9 @@
 {
     public class clsRoles
     {
+        public const string SystemManager = "SystemManager";
         public const string SuperAdmin = "SuperAdmin";
+        public const string SuperAdminOrSystemManager = SystemManager + "," + SuperAdmin;
         public const string Admin = "Admin";
         public const string DistrictAdmin = "DistrictAdmin";
         public const string User = "User";

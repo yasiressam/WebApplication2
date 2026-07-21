@@ -83,7 +83,7 @@ namespace WebApplication2.Controllers.Api
         }
 
         [HttpPost]
-        [Authorize(Roles = clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
+        [Authorize(Roles = clsRoles.SystemManager + "," + clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
         public async Task<IActionResult> Create([FromForm] News model, IFormFile? imageFile)
         {
             if (!ModelState.IsValid)
@@ -127,7 +127,7 @@ namespace WebApplication2.Controllers.Api
         }
 
         [HttpPut("{id:int}")]
-        [Authorize(Roles = clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
+        [Authorize(Roles = clsRoles.SystemManager + "," + clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
         public async Task<IActionResult> Update(int id, [FromForm] News model, IFormFile? imageFile, bool removeImage = false)
         {
             var news = await _context.News.FindAsync(id);
@@ -172,7 +172,7 @@ namespace WebApplication2.Controllers.Api
         }
 
         [HttpDelete("{id:int}")]
-        [Authorize(Roles = clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
+        [Authorize(Roles = clsRoles.SystemManager + "," + clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
         public async Task<IActionResult> Delete(int id)
         {
             var news = await _context.News.FindAsync(id);

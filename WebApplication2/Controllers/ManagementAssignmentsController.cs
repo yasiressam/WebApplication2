@@ -43,7 +43,7 @@ namespace WebApplication2.Controllers
             if (currentUser == null) return null;
 
             var roles = await _userManager.GetRolesAsync(currentUser);
-            if (roles.Contains(clsRoles.SuperAdmin)) return null;
+            if (roles.Contains(clsRoles.SystemManager) || roles.Contains(clsRoles.SuperAdmin)) return null;
 
             if (roles.Contains(clsRoles.Admin))
             {
@@ -62,7 +62,7 @@ namespace WebApplication2.Controllers
             if (currentUser == null) return false;
 
             var roles = await _userManager.GetRolesAsync(currentUser);
-            return roles.Contains(clsRoles.SuperAdmin);
+            return roles.Contains(clsRoles.SystemManager) || roles.Contains(clsRoles.SuperAdmin);
         }
 
         private string GetEffectiveGovernorate(Identify? identify, Address? address)
@@ -144,7 +144,7 @@ namespace WebApplication2.Controllers
         // =========================================
         // صفحة عرض الأفراد للسوبر أدمن
         // =========================================
-        [Authorize(Roles = clsRoles.SuperAdmin)]
+        [Authorize(Roles = clsRoles.SuperAdminOrSystemManager)]
         [HttpGet]
         public async Task<IActionResult> Individuals(
             string? search = null,
@@ -313,7 +313,7 @@ namespace WebApplication2.Controllers
         // =========================================
         // إرسال الاستمارة إلى المستخدم مباشرة
         // =========================================
-        [Authorize(Roles = clsRoles.SuperAdmin)]
+        [Authorize(Roles = clsRoles.SuperAdminOrSystemManager)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> SendRequest(string userId, string assignmentRole = "Manager", string selectedLevel = "Entity")
@@ -418,7 +418,7 @@ namespace WebApplication2.Controllers
         // =========================================
         // شاشة إرسال الاستمارة من السوبر أدمن
         // =========================================
-        [Authorize(Roles = clsRoles.SuperAdmin)]
+        [Authorize(Roles = clsRoles.SuperAdminOrSystemManager)]
         [HttpGet]
         public async Task<IActionResult> Assign(string userId, string assignmentRole = "Manager")
         {
@@ -524,7 +524,7 @@ namespace WebApplication2.Controllers
         // =========================================
         // تعيين مباشر من السوبر أدمن بدون استمارة
         // =========================================
-        [Authorize(Roles = clsRoles.SuperAdmin)]
+        [Authorize(Roles = clsRoles.SuperAdminOrSystemManager)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Assign(AssignManagerViewModel model)
@@ -981,7 +981,7 @@ namespace WebApplication2.Controllers
             return RedirectToAction("Index", "Home");
         }
 
-        [Authorize(Roles = clsRoles.SuperAdmin)]
+        [Authorize(Roles = clsRoles.SuperAdminOrSystemManager)]
         [HttpGet]
         public async Task<IActionResult> ReviewRequest(int id)
         {
@@ -1002,7 +1002,7 @@ namespace WebApplication2.Controllers
             return View(model);
         }
 
-        [Authorize(Roles = clsRoles.SuperAdmin)]
+        [Authorize(Roles = clsRoles.SuperAdminOrSystemManager)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ApproveRequest(int id, string? superAdminNotes)
@@ -1116,7 +1116,7 @@ namespace WebApplication2.Controllers
             return RedirectToUsersPage();
         }
 
-        [Authorize(Roles = clsRoles.SuperAdmin)]
+        [Authorize(Roles = clsRoles.SuperAdminOrSystemManager)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RejectRequest(int id, string? superAdminNotes)
@@ -1163,7 +1163,7 @@ namespace WebApplication2.Controllers
         // =========================================
         // إلغاء تكليف نهائي قائم
         // =========================================
-        [Authorize(Roles = clsRoles.SuperAdmin)]
+        [Authorize(Roles = clsRoles.SuperAdminOrSystemManager)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RemoveAssignment([FromBody] RemoveAssignmentRequest request)

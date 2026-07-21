@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using ClosedXML.Excel;
 using System.Text;
 using WebApplication2.Data;
@@ -9,13 +10,14 @@ using WebApplication2.Models;
 
 namespace WebApplication2.Controllers
 {
-    [Authorize(Roles = "SuperAdmin,Admin,DistrictAdmin,MapViewer,Manager,AssistantManager")]
+    [Authorize(Roles = clsRoles.SystemManager + ",SuperAdmin,Admin,DistrictAdmin,MapViewer,Manager,AssistantManager")]
     public class MapDashboardController : Controller
     {
         private readonly UserManager<IdentityUser> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly ILogger<MapDashboardController> _logger;
         private readonly ApplicationDbContext _context;
+        private readonly IMemoryCache _cache;
 
         private class MapAccessScope
         {
@@ -42,12 +44,14 @@ namespace WebApplication2.Controllers
             UserManager<IdentityUser> userManager,
             RoleManager<IdentityRole> roleManager,
             ILogger<MapDashboardController> logger,
-            ApplicationDbContext context)
+            ApplicationDbContext context,
+            IMemoryCache cache)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _logger = logger;
             _context = context;
+            _cache = cache;
         }
 
         // ===== دالة مساعدة لجلب المحافظة المدارة للمستخدم الحالي =====
@@ -59,7 +63,7 @@ namespace WebApplication2.Controllers
 
             var roles = await _userManager.GetRolesAsync(currentUser);
 
-            if (roles.Contains("SuperAdmin"))
+            if (roles.Contains(clsRoles.SystemManager) || roles.Contains("SuperAdmin"))
                 return null;
 
             if (roles.Contains("Admin") || roles.Contains("DistrictAdmin") || roles.Contains("MapViewer"))
@@ -98,7 +102,7 @@ namespace WebApplication2.Controllers
                 return false;
 
             var roles = await _userManager.GetRolesAsync(currentUser);
-            return roles.Contains("SuperAdmin");
+            return roles.Contains(clsRoles.SystemManager) || roles.Contains("SuperAdmin");
         }
 
         private async Task<MapAccessScope> GetCurrentMapAccessScopeAsync()
@@ -111,7 +115,7 @@ namespace WebApplication2.Controllers
             }
 
             var roles = await _userManager.GetRolesAsync(currentUser);
-            scope.IsSuperAdmin = roles.Contains("SuperAdmin");
+            scope.IsSuperAdmin = roles.Contains(clsRoles.SystemManager) || roles.Contains("SuperAdmin");
             scope.HasLocationScopeRole = roles.Contains("Admin") || roles.Contains("DistrictAdmin") || roles.Contains("MapViewer");
             scope.HasManagerScopeRole = roles.Contains("Manager") || roles.Contains("AssistantManager");
 
@@ -180,41 +184,80 @@ namespace WebApplication2.Controllers
             IEnumerable<string>? allowedGovernorates = null,
             string? exactGovernorate = null)
         {
-            var allIdentifies = await _context.Identifies
-                .AsNoTracking()
-                .Include(i => i.WorkLocation)
-                .ToListAsync();
-            var allAddresses = await _context.Addresses
-                .AsNoTracking()
-                .ToListAsync();
-            var addressLookup = BuildAddressLookup(allAddresses);
-            var allAffiliations = await _context.AffiliationInfos
-                .AsNoTracking()
-                .Include(a => a.AffiliationEntity)
-                .Include(a => a.Division)
-                .Include(a => a.Section)
-                .Include(a => a.Group)
-                .ToListAsync();
-            var affiliationLookup = allAffiliations
-                .Where(a => !string.IsNullOrWhiteSpace(a.UserId))
-                .GroupBy(a => a.UserId)
-                .ToDictionary(g => g.Key, g => g.First());
-
-            var filteredIdentifies = FilterUsersByScope(
-                allIdentifies,
-                addressLookup,
-                affiliationLookup,
-                accessScope,
-                allowedGovernorates,
-                exactGovernorate);
-
-            return new ScopedMapUsersData
+            var cacheKey = BuildScopedUsersCacheKey(accessScope, allowedGovernorates, exactGovernorate);
+            var cachedResult = await _cache.GetOrCreateAsync(cacheKey, async entry =>
             {
-                FilteredIdentifies = filteredIdentifies,
-                AddressLookup = addressLookup,
-                AffiliationLookup = affiliationLookup,
-                FilteredUserIds = filteredIdentifies.Select(i => i.UserId).ToHashSet()
-            };
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(45);
+                entry.SlidingExpiration = TimeSpan.FromSeconds(20);
+
+                var allIdentifies = await _context.Identifies
+                    .AsNoTracking()
+                    .Include(i => i.WorkLocation)
+                    .ToListAsync();
+                var allAddresses = await _context.Addresses
+                    .AsNoTracking()
+                    .ToListAsync();
+                var addressLookup = BuildAddressLookup(allAddresses);
+                var allAffiliations = await _context.AffiliationInfos
+                    .AsNoTracking()
+                    .Include(a => a.AffiliationEntity)
+                    .Include(a => a.Division)
+                    .Include(a => a.Section)
+                    .Include(a => a.Group)
+                    .ToListAsync();
+                var affiliationLookup = allAffiliations
+                    .Where(a => !string.IsNullOrWhiteSpace(a.UserId))
+                    .GroupBy(a => a.UserId)
+                    .ToDictionary(g => g.Key, g => g.First());
+
+                var filteredIdentifies = FilterUsersByScope(
+                    allIdentifies,
+                    addressLookup,
+                    affiliationLookup,
+                    accessScope,
+                    allowedGovernorates,
+                    exactGovernorate);
+
+                return new ScopedMapUsersData
+                {
+                    FilteredIdentifies = filteredIdentifies,
+                    AddressLookup = addressLookup,
+                    AffiliationLookup = affiliationLookup,
+                    FilteredUserIds = filteredIdentifies.Select(i => i.UserId).ToHashSet()
+                };
+            });
+
+            return cachedResult!;
+        }
+
+        private static string BuildScopedUsersCacheKey(
+            MapAccessScope scope,
+            IEnumerable<string>? allowedGovernorates,
+            string? exactGovernorate)
+        {
+            var allowedGovernoratesPart = allowedGovernorates == null
+                ? "all"
+                : string.Join("|", allowedGovernorates.OrderBy(x => x, StringComparer.OrdinalIgnoreCase));
+
+            var assignmentsPart = scope.Assignments.Count == 0
+                ? "none"
+                : string.Join("|", scope.Assignments
+                    .OrderBy(a => a.UserId)
+                    .ThenBy(a => a.AssignmentRole)
+                    .ThenBy(a => a.ManagementLevel)
+                    .ThenBy(a => a.Governorate)
+                    .Select(a => $"{a.UserId}:{a.AssignmentRole}:{a.ManagementLevel}:{a.Governorate}:{a.BaghdadScope}:{a.AffiliationEntityId}:{a.DivisionId}:{a.SectionId}:{a.GroupId}"));
+
+            return string.Join("::",
+                "MapScopedUsers",
+                scope.IsSuperAdmin,
+                scope.HasLocationScopeRole,
+                scope.HasManagerScopeRole,
+                scope.ManagedGovernorate ?? string.Empty,
+                scope.ManagedDistrict ?? string.Empty,
+                allowedGovernoratesPart,
+                exactGovernorate ?? string.Empty,
+                assignmentsPart);
         }
 
         private static bool IsGovernorateInManagedScope(string? governorate, string? managedGovernorate)

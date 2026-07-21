@@ -17,7 +17,9 @@ public class HomeController : Controller
     {
         // جلب الأخبار الأخيرة لتظهر للعامة
         var news = await _context.News
+            .AsNoTracking()
             .OrderByDescending(n => n.CreatedAt)
+            .Take(20)
             .ToListAsync();
         return View(news);
     }

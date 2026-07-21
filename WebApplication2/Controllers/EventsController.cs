@@ -7,7 +7,7 @@ using WebApplication2.Models;
 
 namespace WebApplication2.Controllers
 {
-    [Authorize(Roles = clsRoles.SuperAdmin + "," + clsRoles.Admin)]
+    [Authorize(Roles = clsRoles.SystemManager + "," + clsRoles.SuperAdmin + "," + clsRoles.Admin)]
     public class EventsController : Controller
     {
         private readonly ApplicationDbContext _context;

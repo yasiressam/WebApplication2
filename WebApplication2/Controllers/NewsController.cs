@@ -35,7 +35,7 @@ namespace WebApplication2.Controllers
 
         // =============== إدارة الأخبار (للسوبر أدمن و NewsEditor) ===============
 
-        [Authorize(Roles = clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
+        [Authorize(Roles = clsRoles.SystemManager + "," + clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
         public async Task<IActionResult> Index()
         {
             var news = await _context.News
@@ -45,13 +45,13 @@ namespace WebApplication2.Controllers
             return View(news);
         }
 
-        [Authorize(Roles = clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
+        [Authorize(Roles = clsRoles.SystemManager + "," + clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
         public IActionResult Create()
         {
             return View();
         }
 
-        [Authorize(Roles = clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
+        [Authorize(Roles = clsRoles.SystemManager + "," + clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(News model, IFormFile? ImageFile)
@@ -106,7 +106,7 @@ namespace WebApplication2.Controllers
             return View(model);
         }
 
-        [Authorize(Roles = clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
+        [Authorize(Roles = clsRoles.SystemManager + "," + clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
@@ -124,7 +124,7 @@ namespace WebApplication2.Controllers
         }
 
         // =============== تعديل: Edit (GET) مع إضافة ViewBag ===============
-        [Authorize(Roles = clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
+        [Authorize(Roles = clsRoles.SystemManager + "," + clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
@@ -147,7 +147,7 @@ namespace WebApplication2.Controllers
         }
 
         // =============== تعديل: Edit (POST) مع Bind وتحسين معالجة الأخطاء ===============
-        [Authorize(Roles = clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
+        [Authorize(Roles = clsRoles.SystemManager + "," + clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("Title,Content")] News model, IFormFile? ImageFile, bool? RemoveImage)
@@ -231,7 +231,7 @@ namespace WebApplication2.Controllers
             return View(model);
         }
 
-        [Authorize(Roles = clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
+        [Authorize(Roles = clsRoles.SystemManager + "," + clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
@@ -248,7 +248,7 @@ namespace WebApplication2.Controllers
             return View(news);
         }
 
-        [Authorize(Roles = clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
+        [Authorize(Roles = clsRoles.SystemManager + "," + clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
@@ -349,7 +349,7 @@ namespace WebApplication2.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
+        [Authorize(Roles = clsRoles.SystemManager + "," + clsRoles.SuperAdmin + "," + clsRoles.NewsEditor)]
         public async Task<IActionResult> UploadImage(IFormFile image)
         {
             if (image == null || image.Length == 0)

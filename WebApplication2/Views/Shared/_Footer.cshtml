@@ -1,23 +1,35 @@
 ﻿@using Microsoft.EntityFrameworkCore
 @using WebApplication2.Data
+@using Microsoft.Extensions.Caching.Memory
+@inject IMemoryCache MemoryCache
 @inject Microsoft.Extensions.DependencyInjection.IServiceScopeFactory ServiceScopeFactory
 
 @{
     // الحصول على إعدادات الموقع مباشرة من قاعدة البيانات
     WebApplication2.Models.SiteSettings siteSettings;
+    const string footerSettingsCacheKey = "Shared.Footer.SiteSettings";
 
     try
     {
-        using var scope = ServiceScopeFactory.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        siteSettings = await context.SiteSettings.FirstOrDefaultAsync();
-
-        if (siteSettings == null)
+        siteSettings = await MemoryCache.GetOrCreateAsync(footerSettingsCacheKey, async entry =>
         {
-            siteSettings = new WebApplication2.Models.SiteSettings();
-            context.SiteSettings.Add(siteSettings);
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
+            entry.SlidingExpiration = TimeSpan.FromMinutes(2);
+
+            using var scope = ServiceScopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var settings = await context.SiteSettings.AsNoTracking().FirstOrDefaultAsync();
+
+            if (settings != null)
+            {
+                return settings;
+            }
+
+            settings = new WebApplication2.Models.SiteSettings();
+            context.SiteSettings.Add(settings);
             await context.SaveChangesAsync();
-        }
+            return settings;
+        }) ?? new WebApplication2.Models.SiteSettings();
     }
     catch
     {

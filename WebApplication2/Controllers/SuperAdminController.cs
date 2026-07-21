@@ -21,7 +21,7 @@ using WebApplication2.Services;
 
 namespace WebApplication2.Controllers
 {
-    [Authorize(Roles = clsRoles.SuperAdmin)]
+    [Authorize(Roles = clsRoles.SuperAdminOrSystemManager)]
     public class SuperAdminController : Controller
     {
         private const string SqlBackupDirectoryFallback = @"C:\Program Files\Microsoft SQL Server\MSSQL17.MSSQLSERVER\MSSQL\Backup";
@@ -56,6 +56,16 @@ namespace WebApplication2.Controllers
             _logger = logger;
             _configuration = configuration;
             _auditTrailService = auditTrailService;
+        }
+
+        private bool IsCurrentUserSystemManager()
+        {
+            return User.IsInRole(clsRoles.SystemManager);
+        }
+
+        private bool CanCurrentUserManageSystemManager()
+        {
+            return IsCurrentUserSystemManager();
         }
 
         private async Task<bool> IsCurrentUserPasswordResetAllowedAsync()
@@ -285,15 +295,25 @@ namespace WebApplication2.Controllers
         // ========== الصفحة الرئيسية ==========
         public async Task<IActionResult> Index()
         {
-            var allIdentifies = await _context.Identifies.ToListAsync();
-            var identifiesList = allIdentifies.ToList();
-
             ViewBag.TotalUsers = await _userManager.Users.CountAsync();
-            ViewBag.TotalMembers = identifiesList.Count(i =>
+            ViewBag.TotalMembers = await _context.Identifies.AsNoTracking().CountAsync(i =>
                 !string.IsNullOrWhiteSpace(i.Education) &&
                 (i.AccountType == "فرد" || i.IsPromoted));
-            ViewBag.PendingRequests = identifiesList.Count(i => i.RequestedPromotion);
-            ViewBag.NewThisWeek = identifiesList.Count(i => i.CreatedAt > DateTime.UtcNow.AddDays(-7));
+            ViewBag.PendingRequests = await _context.Identifies.AsNoTracking().CountAsync(i => i.RequestedPromotion);
+            ViewBag.NewThisWeek = await _context.Identifies.AsNoTracking().CountAsync(i => i.CreatedAt > DateTime.UtcNow.AddDays(-7));
+            ViewBag.ActiveUsers = ViewBag.TotalUsers;
+            ViewBag.Admins = await _context.UserRoles
+                .Join(_context.Roles,
+                    userRole => userRole.RoleId,
+                    role => role.Id,
+                    (userRole, role) => new { role.Name })
+                .CountAsync(x => x.Name == clsRoles.Admin);
+            ViewBag.SuperAdmins = await _context.UserRoles
+                .Join(_context.Roles,
+                    userRole => userRole.RoleId,
+                    role => role.Id,
+                    (userRole, role) => new { role.Name })
+                .CountAsync(x => x.Name == clsRoles.SuperAdmin);
 
             return View();
         }
@@ -1297,7 +1317,7 @@ ORDER BY file_id;";
                 ? list.Count(u => u.IsActive)
                 : await _userManager.Users.CountAsync(u => u.EmailConfirmed);
             ViewBag.Admins = administrativeOnly
-                ? list.Count(u => u.Roles != null && u.Roles.Contains(clsRoles.Admin) && !u.Roles.Contains(clsRoles.SuperAdmin))
+                ? list.Count(u => u.Roles != null && u.Roles.Contains(clsRoles.Admin) && !u.Roles.Contains(clsRoles.SuperAdmin) && !u.Roles.Contains(clsRoles.SystemManager))
                 : await _context.UserRoles
                     .Join(_context.Roles, userRole => userRole.RoleId, role => role.Id, (userRole, role) => role.Name)
                     .CountAsync(roleName => roleName == clsRoles.Admin);
@@ -1346,6 +1366,7 @@ ORDER BY file_id;";
             string? profileStage,
             int pageSize)
         {
+            var canManageSystemManager = CanCurrentUserManageSystemManager();
             var roleMembershipQuery = _context.UserRoles
                 .AsNoTracking()
                 .Join(
@@ -1357,6 +1378,11 @@ ORDER BY file_id;";
                         userRole.UserId,
                         RoleName = roleRow.Name ?? string.Empty
                     });
+
+            var systemManagerUserIdsQuery = roleMembershipQuery
+                .Where(x => x.RoleName == clsRoles.SystemManager)
+                .Select(x => x.UserId)
+                .Distinct();
 
             var superAdminUserIdsQuery = roleMembershipQuery
                 .Where(x => x.RoleName == clsRoles.SuperAdmin)
@@ -1389,6 +1415,11 @@ ORDER BY file_id;";
                 .Distinct();
 
             var query = _context.Users.AsNoTracking().AsQueryable();
+
+            if (!canManageSystemManager)
+            {
+                query = query.Where(u => !systemManagerUserIdsQuery.Contains(u.Id));
+            }
 
             if (administrativeOnly)
             {
@@ -1536,7 +1567,8 @@ ORDER BY file_id;";
             page = Math.Min(page, totalPages);
 
             var users = await query
-                .OrderByDescending(u => superAdminUserIdsQuery.Contains(u.Id))
+                .OrderByDescending(u => canManageSystemManager && systemManagerUserIdsQuery.Contains(u.Id))
+                .ThenByDescending(u => superAdminUserIdsQuery.Contains(u.Id))
                 .ThenByDescending(u => adminUserIdsQuery.Contains(u.Id))
                 .ThenByDescending(u => districtAdminUserIdsQuery.Contains(u.Id))
                 .ThenByDescending(u =>
@@ -1606,7 +1638,9 @@ ORDER BY file_id;";
                 if (userProfile?.AccountType == "فرد" && !roles.Contains("فرد"))
                     roleDisplay = string.IsNullOrEmpty(roleDisplay) ? "فرد" : roleDisplay + ", فرد";
 
-                var governorateDisplay = roles.Contains(clsRoles.SuperAdmin)
+                var governorateDisplay = roles.Contains(clsRoles.SystemManager)
+                    ? "🛡️ مدير النظام - يدير الكل"
+                    : roles.Contains(clsRoles.SuperAdmin)
                     ? "👑 السوبر أدمن - يدير الكل"
                     : roles.Contains(clsRoles.Admin)
                         ? (!string.IsNullOrWhiteSpace(userProfile?.ManagedGovernorate) ? $"🔷 مدير محافظة: {userProfile.ManagedGovernorate}" : "🔷 أدمن (لم تحدد المحافظة)")
@@ -1666,6 +1700,7 @@ ORDER BY file_id;";
             ViewBag.ActiveUsers = await _context.Users.CountAsync(u => u.EmailConfirmed);
             ViewBag.Admins = await adminUserIdsQuery.CountAsync();
             ViewBag.SuperAdmins = await superAdminUserIdsQuery.CountAsync();
+            ViewBag.CanManageSystemManager = canManageSystemManager;
             ViewBag.DistrictAdmins = await districtAdminUserIdsQuery.CountAsync();
             ViewBag.AdministrativeManagers = await _context.ManagementAssignments.AsNoTracking().CountAsync(x => x.AssignmentRole == "Manager");
             ViewBag.AdministrativeAssistants = await _context.ManagementAssignments.AsNoTracking().CountAsync(x => x.AssignmentRole == "Assistant");
@@ -2417,8 +2452,9 @@ ORDER BY file_id;";
                 new { Value = "users", Label = "المستخدمون" },
                 new { Value = "admins", Label = "المسؤولون والإداريون" }
             };
-            ViewBag.NotificationRoles = new List<object>
+            var notificationRoles = new List<object>
             {
+                new { Value = clsRoles.SystemManager, Label = "مدير النظام" },
                 new { Value = clsRoles.SuperAdmin, Label = "سوبر أدمن" },
                 new { Value = clsRoles.Admin, Label = "أدمن" },
                 new { Value = clsRoles.DistrictAdmin, Label = "أدمن محافظة" },
@@ -2429,6 +2465,15 @@ ORDER BY file_id;";
                 new { Value = clsRoles.Member, Label = "فرد" },
                 new { Value = clsRoles.User, Label = "مستخدم" }
             };
+
+            if (!CanCurrentUserManageSystemManager())
+            {
+                notificationRoles = notificationRoles
+                    .Where(item => !string.Equals((string?)item.GetType().GetProperty("Value")?.GetValue(item), clsRoles.SystemManager, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
+            ViewBag.NotificationRoles = notificationRoles;
 
             if (!string.IsNullOrEmpty(userId))
             {
@@ -2665,7 +2710,8 @@ ORDER BY file_id;";
             if (string.IsNullOrWhiteSpace(role))
                 return false;
 
-            return string.Equals(role, clsRoles.SuperAdmin, StringComparison.OrdinalIgnoreCase) ||
+            return string.Equals(role, clsRoles.SystemManager, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(role, clsRoles.SuperAdmin, StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(role, clsRoles.Admin, StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(role, clsRoles.DistrictAdmin, StringComparison.OrdinalIgnoreCase) ||
                    string.Equals(role, clsRoles.Manager, StringComparison.OrdinalIgnoreCase) ||
@@ -2680,6 +2726,7 @@ ORDER BY file_id;";
         {
             try
             {
+                var canManageSystemManager = CanCurrentUserManageSystemManager();
                 if (string.IsNullOrEmpty(userId))
                     return Json(new { success = false, message = "معرف المستخدم مطلوب" });
 
@@ -2688,15 +2735,24 @@ ORDER BY file_id;";
                     return Json(new { success = false, message = "المستخدم غير موجود" });
 
                 var userRoles = await _userManager.GetRolesAsync(user);
+                if (!canManageSystemManager && userRoles.Contains(clsRoles.SystemManager))
+                    return Json(new { success = false, message = "المستخدم غير موجود" });
+
                 var allRoles = new List<string>
                 {
                     clsRoles.User,
                     clsRoles.Member,
                     clsRoles.Admin,
                     clsRoles.SuperAdmin,
+                    clsRoles.SystemManager,
                     clsRoles.NewsEditor,
                     clsRoles.MapViewer
                 };
+
+                if (!canManageSystemManager)
+                {
+                    allRoles.Remove(clsRoles.SystemManager);
+                }
 
                 return Json(new
                 {
@@ -2716,6 +2772,7 @@ ORDER BY file_id;";
         {
             try
             {
+                var canManageSystemManager = CanCurrentUserManageSystemManager();
                 if (request == null || string.IsNullOrEmpty(request.UserId))
                     return Json(new { success = false, message = "بيانات غير صالحة" });
 
@@ -2723,15 +2780,25 @@ ORDER BY file_id;";
                 if (user == null)
                     return Json(new { success = false, message = "المستخدم غير موجود" });
 
+                var currentRoles = await _userManager.GetRolesAsync(user);
+                if (!canManageSystemManager && currentRoles.Contains(clsRoles.SystemManager))
+                    return Json(new { success = false, message = "لا يمكنك تعديل مدير النظام" });
+
                 var allowedRoles = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                 {
                     clsRoles.User,
                     clsRoles.Member,
                     clsRoles.Admin,
                     clsRoles.SuperAdmin,
+                    clsRoles.SystemManager,
                     clsRoles.NewsEditor,
                     clsRoles.MapViewer
                 };
+
+                if (!canManageSystemManager)
+                {
+                    allowedRoles.Remove(clsRoles.SystemManager);
+                }
 
                 if (request.SelectedRoles != null)
                 {
@@ -2750,7 +2817,6 @@ ORDER BY file_id;";
                 if (!request.SelectedRoles.Any())
                     return Json(new { success = false, message = "الرجاء اختيار دور واحد على الأقل" });
 
-                var currentRoles = await _userManager.GetRolesAsync(user);
                 var rolesToRemove = currentRoles
                     .Where(role => role == clsRoles.User || allowedRoles.Contains(role))
                     .ToList();
@@ -2861,7 +2927,9 @@ ORDER BY file_id;";
 
                 if (userProfile != null && request.SelectedRoles != null)
                 {
-                    if (request.SelectedRoles.Contains("SuperAdmin"))
+                    if (request.SelectedRoles.Contains(clsRoles.SystemManager))
+                        userProfile.AccountType = "مدير النظام";
+                    else if (request.SelectedRoles.Contains("SuperAdmin"))
                         userProfile.AccountType = "سوبر أدمن";
                     else if (request.SelectedRoles.Contains("Admin"))
                         userProfile.AccountType = "أدمن";
@@ -2962,6 +3030,7 @@ ORDER BY file_id;";
         {
             try
             {
+                var canManageSystemManager = CanCurrentUserManageSystemManager();
                 if (string.IsNullOrEmpty(request.UserId))
                     return Json(new { success = false, message = "معرف المستخدم مطلوب" });
 
@@ -2970,6 +3039,8 @@ ORDER BY file_id;";
                     return Json(new { success = false, message = "المستخدم غير موجود" });
 
                 var roles = await _userManager.GetRolesAsync(user);
+                if (roles.Contains(clsRoles.SystemManager) && !canManageSystemManager)
+                    return Json(new { success = false, message = "لا يمكن حذف مدير النظام" });
                 if (roles.Contains(clsRoles.SuperAdmin))
                     return Json(new { success = false, message = "لا يمكن حذف حساب سوبر أدمن" });
 
@@ -3002,6 +3073,7 @@ ORDER BY file_id;";
         {
             try
             {
+                var canManageSystemManager = CanCurrentUserManageSystemManager();
                 if (request?.UserIds == null || !request.UserIds.Any())
                     return Json(new { success = false, message = "الرجاء تحديد مستخدمين للحذف" });
 
@@ -3014,6 +3086,7 @@ ORDER BY file_id;";
                         if (user == null) { failCount++; continue; }
 
                         var roles = await _userManager.GetRolesAsync(user);
+                        if (roles.Contains(clsRoles.SystemManager) && !canManageSystemManager) { failCount++; continue; }
                         if (roles.Contains(clsRoles.SuperAdmin)) { failCount++; continue; }
 
                         if (roles.Any())
@@ -4812,17 +4885,32 @@ ORDER BY file_id;";
         {
             try
             {
-                var allUsers = await _userManager.Users.ToListAsync();
-                var adminUsers = new List<IdentityUser>();
-
-                foreach (var user in allUsers)
+                var allowedRoles = new List<string> { clsRoles.Admin, clsRoles.SuperAdmin };
+                if (CanCurrentUserManageSystemManager())
                 {
-                    var roles = await _userManager.GetRolesAsync(user);
-                    if (roles.Contains(clsRoles.Admin) || roles.Contains(clsRoles.SuperAdmin))
-                    {
-                        adminUsers.Add(user);
-                    }
+                    allowedRoles.Add(clsRoles.SystemManager);
                 }
+
+                var adminUserIds = await _context.UserRoles
+                    .AsNoTracking()
+                    .Join(
+                        _context.Roles.AsNoTracking(),
+                        userRole => userRole.RoleId,
+                        roleRow => roleRow.Id,
+                        (userRole, roleRow) => new
+                        {
+                            userRole.UserId,
+                            RoleName = roleRow.Name ?? string.Empty
+                        })
+                    .Where(x => allowedRoles.Contains(x.RoleName))
+                    .Select(x => x.UserId)
+                    .Distinct()
+                    .ToListAsync();
+
+                var adminUsers = await _userManager.Users
+                    .Where(u => adminUserIds.Contains(u.Id))
+                    .OrderBy(u => u.Email)
+                    .ToListAsync();
 
                 var data = await BuildFullUsersExcelData(adminUsers);
                 byte[] fileContent = GenerateExcelFile(data);
@@ -5014,27 +5102,136 @@ ORDER BY file_id;";
         "القضاء المُدار"
             });
 
+            var userIds = users.Select(u => u.Id).ToList();
+            var profilesByUserId = await _context.Identifies
+                .AsNoTracking()
+                .Where(i => userIds.Contains(i.UserId))
+                .ToDictionaryAsync(i => i.UserId);
+            var profileIds = profilesByUserId.Values.Select(p => p.Id).ToList();
+
+            var rolesByUserId = await _context.UserRoles
+                .AsNoTracking()
+                .Where(ur => userIds.Contains(ur.UserId))
+                .Join(
+                    _context.Roles.AsNoTracking(),
+                    userRole => userRole.RoleId,
+                    roleRow => roleRow.Id,
+                    (userRole, roleRow) => new
+                    {
+                        userRole.UserId,
+                        RoleName = roleRow.Name ?? string.Empty
+                    })
+                .GroupBy(x => x.UserId)
+                .ToDictionaryAsync(g => g.Key, g => (IList<string>)g.Select(x => x.RoleName).ToList());
+
+            var addressesByUserId = await _context.Addresses
+                .AsNoTracking()
+                .Where(a => userIds.Contains(a.UserId))
+                .GroupBy(a => a.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+
+            var workLocationsByProfileId = await _context.WorkLocations
+                .AsNoTracking()
+                .Where(w => profileIds.Contains(w.IdentifyId))
+                .GroupBy(w => w.IdentifyId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+
+            var voterCardsByUserId = await _context.VoterCards
+                .AsNoTracking()
+                .Where(v => userIds.Contains(v.UserId))
+                .GroupBy(v => v.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+
+            var unionsByUserId = await _context.UnionMemberships
+                .AsNoTracking()
+                .Where(u => userIds.Contains(u.UserId))
+                .GroupBy(u => u.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+
+            var federationsByUserId = await _context.FederationMemberships
+                .AsNoTracking()
+                .Include(f => f.Federation)
+                .Include(f => f.FederationDivision)
+                .Include(f => f.FederationSection)
+                .Include(f => f.FederationGroup)
+                .Where(f => userIds.Contains(f.UserId))
+                .GroupBy(f => f.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+
+            var associationsByUserId = await _context.AssociationMemberships
+                .AsNoTracking()
+                .Where(a => userIds.Contains(a.UserId))
+                .GroupBy(a => a.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+
+            var ngosByUserId = await _context.NgoMemberships
+                .AsNoTracking()
+                .Where(n => userIds.Contains(n.UserId))
+                .GroupBy(n => n.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+
+            var affiliationInfosByUserId = await _context.AffiliationInfos
+                .AsNoTracking()
+                .Include(a => a.AffiliationEntity)
+                .Include(a => a.Division)
+                .Include(a => a.Section)
+                .Include(a => a.Group)
+                .Where(a => userIds.Contains(a.UserId))
+                .GroupBy(a => a.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.First());
+
+            var managementAssignmentsByUserId = await _context.ManagementAssignments
+                .AsNoTracking()
+                .Where(x => userIds.Contains(x.UserId))
+                .GroupBy(x => x.UserId)
+                .ToDictionaryAsync(g => g.Key, g => g.ToList());
+
+            var affiliationEntityNames = await _context.AffiliationEntities
+                .AsNoTracking()
+                .ToDictionaryAsync(e => e.Id, e => e.Name);
+            var divisionNames = await _context.Divisions
+                .AsNoTracking()
+                .ToDictionaryAsync(d => d.Id, d => d.Name);
+            var sectionNames = await _context.Sections
+                .AsNoTracking()
+                .ToDictionaryAsync(s => s.Id, s => s.Name);
+            var groupNames = await _context.Groups
+                .AsNoTracking()
+                .ToDictionaryAsync(g => g.Id, g => g.Name);
+
             int counter = 1;
             foreach (var user in users)
             {
-                var roles = await _userManager.GetRolesAsync(user);
-                var userProfile = await _context.Identifies.FirstOrDefaultAsync(i => i.UserId == user.Id);
-                var address = userProfile != null ? await GetUserAddressAsync(user.Id) : null;
-                var workLocation = userProfile != null
-                    ? await _context.WorkLocations.AsNoTracking().FirstOrDefaultAsync(w => w.IdentifyId == userProfile.Id)
+                var roles = rolesByUserId.TryGetValue(user.Id, out var roleList) ? roleList : new List<string>();
+                profilesByUserId.TryGetValue(user.Id, out var userProfile);
+                addressesByUserId.TryGetValue(user.Id, out var address);
+                var workLocation = userProfile != null && workLocationsByProfileId.TryGetValue(userProfile.Id, out var userWorkLocation)
+                    ? userWorkLocation
                     : null;
-                var voterCard = userProfile != null ? await GetUserVoterCardAsync(user.Id) : null;
-                var union = userProfile != null ? await GetUserUnionAsync(user.Id) : null;
-                var federation = userProfile != null ? await GetUserFederationAsync(user.Id) : null;
-                var association = userProfile != null ? await GetUserAssociationAsync(user.Id) : null;
-                var ngo = userProfile != null ? await GetUserNgoAsync(user.Id) : null;
-                var affiliationInfo = userProfile != null ? await GetUserAffiliationInfoAsync(user.Id) : null;
+                voterCardsByUserId.TryGetValue(user.Id, out var voterCard);
+                unionsByUserId.TryGetValue(user.Id, out var union);
+                federationsByUserId.TryGetValue(user.Id, out var federation);
+                associationsByUserId.TryGetValue(user.Id, out var association);
+                ngosByUserId.TryGetValue(user.Id, out var ngo);
+                affiliationInfosByUserId.TryGetValue(user.Id, out var affiliationInfo);
 
                 // أسماء الكيانات للانتساب
-                var affiliationEntityName = await GetAffiliationEntityNameAsync(affiliationInfo?.AffiliationEntityId);
-                var divisionName = await GetDivisionNameAsync(affiliationInfo?.DivisionId);
-                var sectionName = await GetSectionNameAsync(affiliationInfo?.SectionId);
-                var groupName = await GetGroupNameAsync(affiliationInfo?.GroupId);
+                var affiliationEntityName = affiliationInfo?.AffiliationEntityId.HasValue == true &&
+                    affiliationEntityNames.TryGetValue(affiliationInfo.AffiliationEntityId.Value, out var affiliationEntity)
+                        ? affiliationEntity
+                        : null;
+                var divisionName = affiliationInfo?.DivisionId.HasValue == true &&
+                    divisionNames.TryGetValue(affiliationInfo.DivisionId.Value, out var division)
+                        ? division
+                        : null;
+                var sectionName = affiliationInfo?.SectionId.HasValue == true &&
+                    sectionNames.TryGetValue(affiliationInfo.SectionId.Value, out var section)
+                        ? section
+                        : null;
+                var groupName = affiliationInfo?.GroupId.HasValue == true &&
+                    groupNames.TryGetValue(affiliationInfo.GroupId.Value, out var group)
+                        ? group
+                        : null;
 
                 // أسماء الاتحاد بشكل منفصل
                 string federationName = "";
@@ -5058,9 +5255,9 @@ ORDER BY file_id;";
                 }
 
                 // المسؤوليات الإدارية
-                var managementAssignments = await _context.ManagementAssignments
-                    .Where(x => x.UserId == user.Id)
-                    .ToListAsync();
+                var managementAssignments = managementAssignmentsByUserId.TryGetValue(user.Id, out var assignments)
+                    ? assignments
+                    : new List<ManagementAssignment>();
 
                 string managementDisplay = "";
                 string managedGovernorate = "";
@@ -5077,27 +5274,27 @@ ORDER BY file_id;";
 
                     if (assignment.ManagementLevel == "Entity" && assignment.AffiliationEntityId.HasValue)
                     {
-                        var entity = await _context.AffiliationEntities
-                            .FirstOrDefaultAsync(e => e.Id == assignment.AffiliationEntityId.Value);
-                        entityName = entity?.Name ?? "";
+                        entityName = affiliationEntityNames.TryGetValue(assignment.AffiliationEntityId.Value, out var entityNameValue)
+                            ? entityNameValue
+                            : "";
                     }
                     else if (assignment.ManagementLevel == "Division" && assignment.DivisionId.HasValue)
                     {
-                        var division = await _context.Divisions
-                            .FirstOrDefaultAsync(d => d.Id == assignment.DivisionId.Value);
-                        entityName = division?.Name ?? "";
+                        entityName = divisionNames.TryGetValue(assignment.DivisionId.Value, out var divisionNameValue)
+                            ? divisionNameValue
+                            : "";
                     }
                     else if (assignment.ManagementLevel == "Section" && assignment.SectionId.HasValue)
                     {
-                        var section = await _context.Sections
-                            .FirstOrDefaultAsync(s => s.Id == assignment.SectionId.Value);
-                        entityName = section?.Name ?? "";
+                        entityName = sectionNames.TryGetValue(assignment.SectionId.Value, out var sectionNameValue)
+                            ? sectionNameValue
+                            : "";
                     }
                     else if (assignment.ManagementLevel == "Group" && assignment.GroupId.HasValue)
                     {
-                        var group = await _context.Groups
-                            .FirstOrDefaultAsync(g => g.Id == assignment.GroupId.Value);
-                        entityName = group?.Name ?? "";
+                        entityName = groupNames.TryGetValue(assignment.GroupId.Value, out var groupNameValue)
+                            ? groupNameValue
+                            : "";
                     }
 
                     managementDisplay += $"{levelArabic}: {entityName}, ";
@@ -5301,6 +5498,7 @@ ORDER BY file_id;";
         {
             return role switch
             {
+                clsRoles.SystemManager => "مدير النظام",
                 clsRoles.SuperAdmin => "سوبر أدمن",
                 clsRoles.Admin => "أدمن",
                 clsRoles.DistrictAdmin => "أدمن قضاء",

@@ -7,7 +7,7 @@ using WebApplication2.Models;
 
 namespace WebApplication2.Controllers
 {
-    [Authorize(Roles = clsRoles.SuperAdmin)]
+    [Authorize(Roles = clsRoles.SuperAdminOrSystemManager)]
     public class NotificationTemplatesController : Controller
     {
         private readonly ApplicationDbContext _context;

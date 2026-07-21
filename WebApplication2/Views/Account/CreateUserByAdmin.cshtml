@@ -4,6 +4,8 @@
     
     Layout = "_Layout";
     var isSuperAdmin = User.IsInRole("SuperAdmin");
+    var isSystemManager = User.IsInRole("SystemManager");
+    var canCreatePrivilegedUsers = isSuperAdmin || isSystemManager;
     var managedGovernorates = ((IEnumerable<string>)ViewBag.Governorates)
         .SelectMany(governorate => governorate == "بغداد"
             ? new[] { "بغداد عامة", "بغداد - الكرخ", "بغداد - الرصافة" }
@@ -153,12 +155,16 @@
                             <label asp-for="Role" class="form-label fw-bold">
                                 <i class="fas fa-user-tag"></i> الدور
                             </label>
-                            @if (isSuperAdmin)
+                            @if (canCreatePrivilegedUsers)
                             {
                                 <select asp-for="Role" class="form-select" id="roleSelect">
                                     <option value="User">مستخدم عادي</option>
                                     <option value="Admin">أدمن (مدير محافظة)</option>
                                     <option value="SuperAdmin">سوبر أدمن</option>
+                                    @if (isSystemManager)
+                                    {
+                                        <option value="SystemManager">مدير النظام</option>
+                                    }
                                 </select>
                             }
                             else
@@ -171,7 +177,7 @@
                             }
                         </div>
 
-                        @if (isSuperAdmin)
+                        @if (canCreatePrivilegedUsers)
                         {
                             <div class="mb-3" id="governorateField" style="display: none;">
                                 <label asp-for="ManagedGovernorate" class="form-label fw-bold">
@@ -199,7 +205,7 @@
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-save"></i> إنشاء المستخدم
                             </button>
-                            <a href="@Url.Action("Users", isSuperAdmin ? "SuperAdmin" : "Admin")" class="btn btn-secondary">
+                            <a href="@Url.Action("Users", canCreatePrivilegedUsers ? "SuperAdmin" : "Admin")" class="btn btn-secondary">
                                 <i class="fas fa-arrow-right"></i> العودة للقائمة
                             </a>
                         </div>
@@ -215,7 +221,7 @@
 
     <script>
         $(document).ready(function() {
-            const isSuperAdmin = @isSuperAdmin.ToString().ToLower();
+            const canCreatePrivilegedUsers = @canCreatePrivilegedUsers.ToString().ToLower();
             const emailMethod = $('#registerByEmail');
             const whatsAppMethod = $('#registerByWhatsApp');
             const emailField = $('#emailField');
@@ -232,7 +238,7 @@
                 phoneInput.prop('required', useWhatsApp);
             }
 
-            if (isSuperAdmin) {
+            if (canCreatePrivilegedUsers) {
                 // إظهار/إخفاء حقل المحافظة عند تغيير الدور
                 $('#roleSelect').change(function() {
                     var selectedRole = $(this).val();

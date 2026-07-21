@@ -119,7 +119,7 @@
                                         </a>
                                     </li>
                                 }
-@if (SignInManager.IsSignedIn(User) && (User.IsInRole(clsRoles.Manager) || User.IsInRole(clsRoles.AssistantManager)) && !User.IsInRole(clsRoles.Admin) && !User.IsInRole(clsRoles.DistrictAdmin) && !User.IsInRole(clsRoles.SuperAdmin))
+@if (SignInManager.IsSignedIn(User) && (User.IsInRole(clsRoles.Manager) || User.IsInRole(clsRoles.AssistantManager)) && !User.IsInRole(clsRoles.Admin) && !User.IsInRole(clsRoles.DistrictAdmin) && !User.IsInRole(clsRoles.SuperAdmin) && !User.IsInRole(clsRoles.SystemManager))
 {
     <li><hr class="dropdown-divider"></li>
     <li class="dropdown-header">🗂️ لوحة المسؤول الإداري</li>
@@ -157,10 +157,10 @@
 }
 
                                 @* ===== لوحة السوبر أدمن ===== *@
-                                @if (SignInManager.IsSignedIn(User) && User.IsInRole(clsRoles.SuperAdmin))
+                                @if (SignInManager.IsSignedIn(User) && (User.IsInRole(clsRoles.SuperAdmin) || User.IsInRole(clsRoles.SystemManager)))
                                 {
                                     <li><hr class="dropdown-divider"></li>
-                                    <li class="dropdown-header">👑 لوحة السوبر أدمن</li>
+                                    <li class="dropdown-header">👑 لوحة الإدارة العليا</li>
                                     <li>
                                         <a class="dropdown-item" asp-controller="MapDashboard" asp-action="Index">
                                             <i class="bi bi-map me-2"></i> الإحصائيات
@@ -421,44 +421,52 @@
                                         if (currentUser != null)
                                         {
                                             var userRoles = await UserManager.GetRolesAsync(currentUser);
+                                            var userId = currentUser.Id;
                                             string accountType = "عادي";
-                                            try
-                                            {
-                                                var userId = UserManager.GetUserId(User);
-                                                var userProfile = await _context.Identifies
-                                                .Where(i => i.UserId == userId)
-                                                .Select(i => i.AccountType)
-                                                .FirstOrDefaultAsync();
-
-                                                if (!string.IsNullOrEmpty(userProfile))
-                                                {
-                                                    accountType = userProfile;
-                                                }
-                                            }
-                                            catch { }
+                                            string? managedGovernorate = null;
+                                            string? managedDistrict = null;
+                                            string? workGovernorate = null;
+                                            string? workDistrict = null;
 
                                             try
                                             {
-                                                var userId = UserManager.GetUserId(User);
-                                                var adminProfile = await _context.Identifies
+                                                var headerProfile = await _context.Identifies
+                                                    .AsNoTracking()
+                                                    .Include(i => i.WorkLocation)
                                                     .Where(i => i.UserId == userId)
-                                                    .Select(i => new { i.ManagedGovernorate, i.ManagedDistrict })
+                                                    .Select(i => new
+                                                    {
+                                                        i.AccountType,
+                                                        i.ManagedGovernorate,
+                                                        i.ManagedDistrict,
+                                                        WorkGovernorate = i.WorkLocation != null && !string.IsNullOrWhiteSpace(i.WorkLocation.Governorate)
+                                                            ? i.WorkLocation.Governorate
+                                                            : i.WorkGovernorate,
+                                                        WorkDistrict = i.WorkLocation != null && !string.IsNullOrWhiteSpace(i.WorkLocation.District)
+                                                            ? i.WorkLocation.District
+                                                            : i.WorkDistrict
+                                                    })
                                                     .FirstOrDefaultAsync();
 
-                                                if (adminProfile != null)
+                                                if (headerProfile != null)
                                                 {
-                                                    if ((userRoles.Contains("Admin") || userRoles.Contains("DistrictAdmin")) &&
-                                                             !string.IsNullOrWhiteSpace(adminProfile.ManagedGovernorate))
-                                                    {
-                                                        managedLocation = $"محافظة {adminProfile.ManagedGovernorate}";
-                                                    }
+                                                    accountType = string.IsNullOrWhiteSpace(headerProfile.AccountType) ? "عادي" : headerProfile.AccountType;
+                                                    managedGovernorate = headerProfile.ManagedGovernorate;
+                                                    managedDistrict = headerProfile.ManagedDistrict;
+                                                    workGovernorate = headerProfile.WorkGovernorate;
+                                                    workDistrict = headerProfile.WorkDistrict;
+                                                }
+
+                                                if ((userRoles.Contains("Admin") || userRoles.Contains("DistrictAdmin")) &&
+                                                    !string.IsNullOrWhiteSpace(managedGovernorate))
+                                                {
+                                                    managedLocation = $"محافظة {managedGovernorate}";
                                                 }
                                             }
                                             catch { }
 
                                             try
                                             {
-                                                var userId = UserManager.GetUserId(User);
                                                 var isAdministrativeManager =
                                                     (userRoles.Contains(clsRoles.Manager) || userRoles.Contains(clsRoles.AssistantManager)) &&
                                                     !userRoles.Contains(clsRoles.Admin) &&
@@ -527,22 +535,8 @@
                                                         ? $"{managerRoleName} {managerLevelName}"
                                                         : $"{managerRoleName} {managerLevelName} {managedUnitName}";
 
-                                                    var managerProfileLocation = await _context.Identifies
-                                                        .Include(i => i.WorkLocation)
-                                                        .Where(i => i.UserId == userId)
-                                                        .Select(i => new
-                                                        {
-                                                            WorkGovernorate = i.WorkLocation != null && !string.IsNullOrWhiteSpace(i.WorkLocation.Governorate)
-                                                                ? i.WorkLocation.Governorate
-                                                                : i.WorkGovernorate,
-                                                            WorkDistrict = i.WorkLocation != null && !string.IsNullOrWhiteSpace(i.WorkLocation.District)
-                                                                ? i.WorkLocation.District
-                                                                : i.WorkDistrict
-                                                        })
-                                                        .FirstOrDefaultAsync();
-
-                                                    var managerDistrict = managerProfileLocation?.WorkGovernorate == "بغداد"
-                                                        ? managerProfileLocation.WorkDistrict
+                                                    var managerDistrict = workGovernorate == "بغداد"
+                                                        ? workDistrict
                                                         : string.Empty;
 
                                                     managedLocation = managerAssignment.Governorate == "بغداد" && !string.IsNullOrWhiteSpace(managerDistrict)
@@ -552,7 +546,8 @@
                                             }
                                             catch { }
 
-                                         if (userRoles.Contains("SuperAdmin")) { displayRole = "سوبر أدمن"; }
+                                         if (userRoles.Contains(clsRoles.SystemManager)) { displayRole = "مدير النظام"; }
+else if (userRoles.Contains("SuperAdmin")) { displayRole = "سوبر أدمن"; }
 else if (userRoles.Contains("DistrictAdmin")) { displayRole = "أدمن"; }
 else if (userRoles.Contains("Admin")) { displayRole = "أدمن"; }
 else if (userRoles.Contains(clsRoles.Manager) || userRoles.Contains(clsRoles.AssistantManager))

@@ -5,7 +5,6 @@ namespace WebApplication2.Services
 {
     public class RequestCleanupService : BackgroundService
     {
-        private static readonly TimeSpan CleanupInterval = TimeSpan.FromHours(24);
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<RequestCleanupService> _logger;
         private readonly string _requestUploadPath;
@@ -21,8 +20,12 @@ namespace WebApplication2.Services
         {
             while (!stoppingToken.IsCancellationRequested)
             {
+                var delay = CleanupSchedule.GetDelayUntilNextRun(DateTimeOffset.Now);
+
                 try
                 {
+                    _logger.LogInformation("تمت جدولة تنظيف الطلبات بعد {Delay}.", delay);
+                    await Task.Delay(delay, stoppingToken);
                     await CleanupExpiredRequestsAsync(stoppingToken);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -31,85 +34,87 @@ namespace WebApplication2.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "خطأ أثناء حذف الطلبات القديمة");
-                }
-
-                try
-                {
-                    await Task.Delay(CleanupInterval, stoppingToken);
-                }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                {
-                    break;
+                    _logger.LogError(ex, "حدث خطأ أثناء حذف الطلبات القديمة.");
                 }
             }
         }
 
         private async Task CleanupExpiredRequestsAsync(CancellationToken cancellationToken)
         {
-            var cutoffDate = DateTime.UtcNow.AddDays(-30);
-
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var cutoffDate = DateTime.UtcNow.AddDays(-30);
+            var deletedCount = 0;
 
-            var expiredRequests = await context.Requests
-                .Where(r => r.CreatedAt < cutoffDate)
-                .Select(r => new
-                {
-                    r.Id,
-                    r.AttachmentPath
-                })
-                .ToListAsync(cancellationToken);
-
-            if (expiredRequests.Count == 0)
-                return;
-
-            var requestIds = expiredRequests.Select(r => r.Id).ToList();
-            var requestLinks = requestIds.Select(id => $"/Request/Details/{id}").ToList();
-
-            var recipients = await context.RequestRecipients
-                .Where(r => requestIds.Contains(r.RequestId))
-                .ToListAsync(cancellationToken);
-
-            var replies = await context.RequestReplies
-                .Where(r => requestIds.Contains(r.RequestId))
-                .ToListAsync(cancellationToken);
-
-            var notifications = await context.Notifications
-                .Where(n => n.ClickUrl != null && requestLinks.Contains(n.ClickUrl))
-                .ToListAsync(cancellationToken);
-
-            var requests = await context.Requests
-                .Where(r => requestIds.Contains(r.Id))
-                .ToListAsync(cancellationToken);
-
-            context.RequestRecipients.RemoveRange(recipients);
-            context.RequestReplies.RemoveRange(replies);
-            context.Notifications.RemoveRange(notifications);
-            context.Requests.RemoveRange(requests);
-
-            await context.SaveChangesAsync(cancellationToken);
-
-            foreach (var request in expiredRequests)
+            while (!cancellationToken.IsCancellationRequested)
             {
-                DeleteAttachmentFile(request.AttachmentPath);
+                var expiredRequests = await context.Requests
+                    .Where(r => r.CreatedAt < cutoffDate)
+                    .OrderBy(r => r.Id)
+                    .Select(r => new
+                    {
+                        r.Id,
+                        r.AttachmentPath
+                    })
+                    .Take(CleanupBatching.BatchSize)
+                    .ToListAsync(cancellationToken);
+
+                if (expiredRequests.Count == 0)
+                {
+                    break;
+                }
+
+                var requestIds = expiredRequests.Select(r => r.Id).ToList();
+                var requestLinks = requestIds.Select(id => $"/Request/Details/{id}").ToList();
+
+                await context.RequestRecipients
+                    .Where(r => requestIds.Contains(r.RequestId))
+                    .ExecuteDeleteAsync(cancellationToken);
+
+                await context.RequestReplies
+                    .Where(r => requestIds.Contains(r.RequestId))
+                    .ExecuteDeleteAsync(cancellationToken);
+
+                await context.Notifications
+                    .Where(n => n.ClickUrl != null && requestLinks.Contains(n.ClickUrl))
+                    .ExecuteDeleteAsync(cancellationToken);
+
+                await context.Requests
+                    .Where(r => requestIds.Contains(r.Id))
+                    .ExecuteDeleteAsync(cancellationToken);
+
+                foreach (var request in expiredRequests)
+                {
+                    DeleteAttachmentFile(request.AttachmentPath);
+                }
+
+                deletedCount += expiredRequests.Count;
             }
 
-            _logger.LogInformation("تم حذف {Count} طلب قديم تجاوز 30 يوم", expiredRequests.Count);
+            if (deletedCount > 0)
+            {
+                _logger.LogInformation("تم حذف {Count} طلب قديم تجاوز 30 يوماً.", deletedCount);
+            }
         }
 
         private void DeleteAttachmentFile(string? attachmentPath)
         {
             if (string.IsNullOrWhiteSpace(attachmentPath))
+            {
                 return;
+            }
 
             var fileName = Path.GetFileName(attachmentPath);
             if (string.IsNullOrWhiteSpace(fileName))
+            {
                 return;
+            }
 
             var filePath = Path.Combine(_requestUploadPath, fileName);
             if (!File.Exists(filePath))
+            {
                 return;
+            }
 
             try
             {

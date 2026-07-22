@@ -5,22 +5,35 @@ namespace WebApplication2.Services
 {
     public class AuditLogCleanupService : BackgroundService
     {
-        private static readonly TimeSpan CleanupInterval = TimeSpan.FromHours(24);
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly ILogger<AuditLogCleanupService> _logger;
 
-        public AuditLogCleanupService(IServiceScopeFactory scopeFactory)
+        public AuditLogCleanupService(IServiceScopeFactory scopeFactory, ILogger<AuditLogCleanupService> logger)
         {
             _scopeFactory = scopeFactory;
+            _logger = logger;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            await CleanupAsync(stoppingToken);
-
-            using var timer = new PeriodicTimer(CleanupInterval);
-            while (await timer.WaitForNextTickAsync(stoppingToken))
+            while (!stoppingToken.IsCancellationRequested)
             {
-                await CleanupAsync(stoppingToken);
+                var delay = CleanupSchedule.GetDelayUntilNextRun(DateTimeOffset.Now);
+
+                try
+                {
+                    _logger.LogInformation("تمت جدولة تنظيف سجل التدقيق بعد {Delay}.", delay);
+                    await Task.Delay(delay, stoppingToken);
+                    await CleanupAsync(stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "حدث خطأ أثناء حذف سجل التدقيق القديم.");
+                }
             }
         }
 
@@ -29,18 +42,28 @@ namespace WebApplication2.Services
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var cutoffDate = DateTime.UtcNow.AddDays(-3);
+            var deletedCount = 0;
 
-            var oldEntries = await context.AuditLogs
-                .Where(entry => entry.TimestampUtc < cutoffDate)
-                .ToListAsync(cancellationToken);
-
-            if (oldEntries.Count == 0)
+            while (!cancellationToken.IsCancellationRequested)
             {
-                return;
+                var deleted = await context.AuditLogs
+                    .Where(entry => entry.TimestampUtc < cutoffDate)
+                    .OrderBy(entry => entry.Id)
+                    .Take(CleanupBatching.BatchSize)
+                    .ExecuteDeleteAsync(cancellationToken);
+
+                if (deleted == 0)
+                {
+                    break;
+                }
+
+                deletedCount += deleted;
             }
 
-            context.AuditLogs.RemoveRange(oldEntries);
-            await context.SaveChangesAsync(cancellationToken);
+            if (deletedCount > 0)
+            {
+                _logger.LogInformation("تم حذف {Count} سجل تدقيق قديم.", deletedCount);
+            }
         }
     }
 }

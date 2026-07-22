@@ -97,22 +97,6 @@ builder.Services.AddControllersWithViews(options =>
 
 var app = builder.Build();
 
-try
-{
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await dbContext.Database.MigrateAsync();
-    var normalizedCount = await BaghdadWorkLocationNormalizer.NormalizeAsync(dbContext);
-    if (normalizedCount > 0)
-    {
-        Console.WriteLine($"✅ تم تحويل بيانات بغداد القديمة تلقائياً: {normalizedCount} سجل");
-    }
-}
-catch (Exception ex)
-{
-    Console.WriteLine($"⚠️ تعذر تحويل بيانات بغداد القديمة تلقائياً: {ex.Message}");
-}
-
 // ============================================================
 // ✅ ✅ ✅ إنشاء المجلدات تلقائياً ✅ ✅ ✅
 // ============================================================

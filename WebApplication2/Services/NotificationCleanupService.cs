@@ -5,7 +5,6 @@ namespace WebApplication2.Services
 {
     public class NotificationCleanupService : BackgroundService
     {
-        private static readonly TimeSpan CleanupInterval = TimeSpan.FromHours(24);
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<NotificationCleanupService> _logger;
 
@@ -19,8 +18,12 @@ namespace WebApplication2.Services
         {
             while (!stoppingToken.IsCancellationRequested)
             {
+                var delay = CleanupSchedule.GetDelayUntilNextRun(DateTimeOffset.Now);
+
                 try
                 {
+                    _logger.LogInformation("تمت جدولة تنظيف الإشعارات بعد {Delay}.", delay);
+                    await Task.Delay(delay, stoppingToken);
                     await CleanupExpiredNotificationsAsync(stoppingToken);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -29,38 +32,38 @@ namespace WebApplication2.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "خطأ أثناء حذف الإشعارات القديمة");
-                }
-
-                try
-                {
-                    await Task.Delay(CleanupInterval, stoppingToken);
-                }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                {
-                    break;
+                    _logger.LogError(ex, "حدث خطأ أثناء حذف الإشعارات القديمة.");
                 }
             }
         }
 
         private async Task CleanupExpiredNotificationsAsync(CancellationToken cancellationToken)
         {
-            var cutoffDate = DateTime.Now.AddDays(-7);
-
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var cutoffDate = DateTime.Now.AddDays(-7);
+            var deletedCount = 0;
 
-            var expiredNotifications = await context.Notifications
-                .Where(n => n.SentAt < cutoffDate)
-                .ToListAsync(cancellationToken);
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var deleted = await context.Notifications
+                    .Where(n => n.SentAt < cutoffDate)
+                    .OrderBy(n => n.Id)
+                    .Take(CleanupBatching.BatchSize)
+                    .ExecuteDeleteAsync(cancellationToken);
 
-            if (expiredNotifications.Count == 0)
-                return;
+                if (deleted == 0)
+                {
+                    break;
+                }
 
-            context.Notifications.RemoveRange(expiredNotifications);
-            await context.SaveChangesAsync(cancellationToken);
+                deletedCount += deleted;
+            }
 
-            _logger.LogInformation("تم حذف {Count} إشعار قديم تجاوز 7 أيام", expiredNotifications.Count);
+            if (deletedCount > 0)
+            {
+                _logger.LogInformation("تم حذف {Count} إشعار قديم تجاوز 7 أيام.", deletedCount);
+            }
         }
     }
 }

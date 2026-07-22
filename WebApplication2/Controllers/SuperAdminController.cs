@@ -868,485 +868,6 @@ ORDER BY file_id;";
 
             return await UsersPagedFromDatabaseAsync(administrativeOnly, viewName, page, search, role, residenceGovernorate, workGovernorate, gender, status, managerLevel, education, profileStage, pageSize);
 
-            var priorityRoles = new[]
-            {
-                clsRoles.SuperAdmin,
-                clsRoles.Admin,
-                clsRoles.DistrictAdmin,
-                clsRoles.Manager,
-                clsRoles.AssistantManager
-            };
-
-            var priorityRoleUsers = await _context.UserRoles
-                .Join(
-                    _context.Roles,
-                    userRole => userRole.RoleId,
-                    role => role.Id,
-                    (userRole, role) => new { userRole.UserId, RoleName = role.Name ?? string.Empty })
-                .Where(x => priorityRoles.Contains(x.RoleName))
-                .ToListAsync();
-
-            var superAdminUserIds = priorityRoleUsers
-                .Where(x => x.RoleName == clsRoles.SuperAdmin)
-                .Select(x => x.UserId)
-                .ToList();
-            var adminUserIds = priorityRoleUsers
-                .Where(x => x.RoleName == clsRoles.Admin)
-                .Select(x => x.UserId)
-                .ToList();
-            var districtAdminUserIds = priorityRoleUsers
-                .Where(x => x.RoleName == clsRoles.DistrictAdmin)
-                .Select(x => x.UserId)
-                .ToList();
-            var managerRoleUserIds = priorityRoleUsers
-                .Where(x => x.RoleName == clsRoles.Manager || x.RoleName == clsRoles.AssistantManager)
-                .Select(x => x.UserId)
-                .ToList();
-            var assignmentUserIds = await _context.ManagementAssignments
-                .AsNoTracking()
-                .Select(x => x.UserId)
-                .Distinct()
-                .ToListAsync();
-
-            var usersQuery = _userManager.Users
-                .OrderByDescending(u => superAdminUserIds.Contains(u.Id))
-                .ThenByDescending(u => adminUserIds.Contains(u.Id))
-                .ThenByDescending(u => districtAdminUserIds.Contains(u.Id))
-                .ThenByDescending(u => managerRoleUserIds.Contains(u.Id) || assignmentUserIds.Contains(u.Id))
-                .ThenBy(u => u.Email);
-            var users = await usersQuery.ToListAsync();
-
-            var userIds = users.Select(u => u.Id).ToHashSet();
-
-            var profilesByUserId = await _context.Identifies
-                .AsNoTracking()
-                .Where(i => userIds.Contains(i.UserId))
-                .ToDictionaryAsync(i => i.UserId, i => i);
-
-            var profileIds = profilesByUserId.Values.Select(p => p.Id).ToHashSet();
-
-            var addressesByUserId = await _context.Addresses
-                .AsNoTracking()
-                .Where(a => userIds.Contains(a.UserId))
-                .GroupBy(a => a.UserId)
-                .ToDictionaryAsync(g => g.Key, g => g.First());
-
-            var workLocationsByProfileId = await _context.WorkLocations
-                .AsNoTracking()
-                .Where(w => profileIds.Contains(w.IdentifyId))
-                .GroupBy(w => w.IdentifyId)
-                .ToDictionaryAsync(g => g.Key, g => g.First());
-
-            var assignmentsByUserId = await _context.ManagementAssignments
-                .AsNoTracking()
-                .Where(x => userIds.Contains(x.UserId))
-                .GroupBy(x => x.UserId)
-                .ToDictionaryAsync(g => g.Key, g => g.ToList());
-
-            var affiliationInfosByUserId = await _context.AffiliationInfos
-                .AsNoTracking()
-                .Where(x => userIds.Contains(x.UserId))
-                .GroupBy(x => x.UserId)
-                .ToDictionaryAsync(g => g.Key, g => g.First());
-
-            var rolesByUserId = await _context.UserRoles
-                .Where(ur => userIds.Contains(ur.UserId))
-                .Join(
-                    _context.Roles,
-                    userRole => userRole.RoleId,
-                    role => role.Id,
-                    (userRole, role) => new { userRole.UserId, RoleName = role.Name ?? string.Empty })
-                .GroupBy(x => x.UserId)
-                .ToDictionaryAsync(g => g.Key, g => (IList<string>)g.Select(x => x.RoleName).ToList());
-
-            var affiliationEntityNames = await _context.AffiliationEntities
-                .AsNoTracking()
-                .ToDictionaryAsync(e => e.Id, e => e.Name);
-            var divisionNames = await _context.Divisions
-                .AsNoTracking()
-                .ToDictionaryAsync(d => d.Id, d => d.Name);
-            var sectionNames = await _context.Sections
-                .AsNoTracking()
-                .ToDictionaryAsync(s => s.Id, s => s.Name);
-            var groupNames = await _context.Groups
-                .AsNoTracking()
-                .ToDictionaryAsync(g => g.Id, g => g.Name);
-
-            var list = new List<SuperAdminUserVM>();
-
-            string GetEffectiveGovernorateFast(Identify? profile)
-            {
-                var workLocation = profile != null && workLocationsByProfileId.TryGetValue(profile.Id, out var wl)
-                    ? wl
-                    : profile?.WorkLocation;
-
-                return !string.IsNullOrWhiteSpace(workLocation?.Governorate)
-                    ? workLocation.Governorate
-                    : !string.IsNullOrWhiteSpace(profile?.WorkGovernorate)
-                    ? profile.WorkGovernorate
-                    : string.Empty;
-            }
-
-            string GetEffectiveDistrictFast(Identify? profile)
-            {
-                var workLocation = profile != null && workLocationsByProfileId.TryGetValue(profile.Id, out var wl)
-                    ? wl
-                    : profile?.WorkLocation;
-
-                if (!string.IsNullOrWhiteSpace(workLocation?.Governorate) && workLocation.Governorate == "بغداد")
-                    return workLocation.District ?? string.Empty;
-
-                if (!string.IsNullOrWhiteSpace(profile?.WorkGovernorate) && profile.WorkGovernorate == "بغداد")
-                    return profile.WorkDistrict ?? string.Empty;
-
-                return string.Empty;
-            }
-
-            string GetManagedEntityDisplayName(ManagementAssignment assignment)
-            {
-                return assignment.ManagementLevel switch
-                {
-                    "Entity" when assignment.AffiliationEntityId.HasValue =>
-                        affiliationEntityNames.TryGetValue(assignment.AffiliationEntityId.Value, out var name) ? name : string.Empty,
-                    "Division" when assignment.DivisionId.HasValue =>
-                        divisionNames.TryGetValue(assignment.DivisionId.Value, out var name) ? name : string.Empty,
-                    "Section" when assignment.SectionId.HasValue =>
-                        sectionNames.TryGetValue(assignment.SectionId.Value, out var name) ? name : string.Empty,
-                    "Group" when assignment.GroupId.HasValue =>
-                        groupNames.TryGetValue(assignment.GroupId.Value, out var name) ? name : string.Empty,
-                    _ => string.Empty
-                };
-            }
-
-            static string NormalizeSearchText(string? value)
-            {
-                return (value ?? string.Empty).Trim().ToLowerInvariant();
-            }
-
-            static string NormalizeSearchDigits(string? value)
-            {
-                return new string((value ?? string.Empty).Where(char.IsDigit).ToArray());
-            }
-
-            string GetAffiliationSearchText(string userId)
-            {
-                if (!affiliationInfosByUserId.TryGetValue(userId, out var affiliationInfo))
-                    return string.Empty;
-
-                var parts = new List<string>();
-
-                if (affiliationInfo.AffiliationEntityId.HasValue &&
-                    affiliationEntityNames.TryGetValue(affiliationInfo.AffiliationEntityId.Value, out var entityName))
-                    parts.Add(entityName);
-
-                if (affiliationInfo.DivisionId.HasValue &&
-                    divisionNames.TryGetValue(affiliationInfo.DivisionId.Value, out var divisionName))
-                    parts.Add(divisionName);
-
-                if (affiliationInfo.SectionId.HasValue &&
-                    sectionNames.TryGetValue(affiliationInfo.SectionId.Value, out var sectionName))
-                    parts.Add(sectionName);
-
-                if (affiliationInfo.GroupId.HasValue &&
-                    groupNames.TryGetValue(affiliationInfo.GroupId.Value, out var groupName))
-                    parts.Add(groupName);
-
-                if (!string.IsNullOrWhiteSpace(affiliationInfo.BadgeNumber))
-                    parts.Add(affiliationInfo.BadgeNumber);
-
-                return string.Join(" ", parts);
-            }
-
-            string BuildUserSearchText(IdentityUser user, Identify? profile, IEnumerable<ManagementAssignment> assignments)
-            {
-                var assignmentText = string.Join(" ", assignments.Select(GetManagedEntityDisplayName));
-                return NormalizeSearchText(string.Join(" ", new[]
-                {
-                    profile?.FullName,
-                    user.Email,
-                    user.PhoneNumber,
-                    profile?.PhoneNumber,
-                    profile?.WhatsAppNumber,
-                    profile == null ? string.Empty : GetAffiliationSearchText(profile.UserId),
-                    assignmentText
-                }));
-            }
-
-            foreach (var user in users)
-            {
-                var roles = rolesByUserId.TryGetValue(user.Id, out var userRoles)
-                    ? userRoles
-                    : new List<string>();
-                profilesByUserId.TryGetValue(user.Id, out var userProfile);
-                addressesByUserId.TryGetValue(user.Id, out var userAddress);
-                affiliationInfosByUserId.TryGetValue(user.Id, out var affiliationInfo);
-                var managementAssignments = assignmentsByUserId.TryGetValue(user.Id, out var userAssignments)
-                    ? userAssignments
-                    : new List<ManagementAssignment>();
-
-                string managementLevel = "";
-                string managementLevelArabic = "";
-                string managedEntityName = "";
-                bool isManager = managementAssignments.Any();
-
-                var primaryAssignment = managementAssignments.FirstOrDefault();
-
-                if (primaryAssignment != null)
-                {
-                    managementLevel = primaryAssignment.ManagementLevel;
-                    managementLevelArabic = GetArabicLevelName(
-                        primaryAssignment.ManagementLevel,
-                        primaryAssignment.AssignmentRole
-                    );
-
-                    managedEntityName = GetManagedEntityDisplayName(primaryAssignment);
-                }
-            
-                
-
-                string governorate = "غير محدد";
-                string managedGovernorate = userProfile?.ManagedGovernorate;
-                string managedDistrict = userProfile?.ManagedDistrict;
-
-                string roleDisplay = string.Join(", ", roles);
-
-                if (userProfile?.AccountType == "فرد" && !roles.Contains("فرد"))
-                {
-                    if (string.IsNullOrEmpty(roleDisplay))
-                        roleDisplay = "فرد";
-                    else
-                        roleDisplay += ", فرد";
-                }
-
-                string fullName = userProfile?.FullName ?? "غير مكتمل";
-
-                string promotionStatus = "";
-                if (userProfile?.RequestedPromotion == true)
-                    promotionStatus = "⏳ قيد المراجعة";
-                else if (userProfile?.RejectionReason != null)
-                    promotionStatus = "❌ مرفوض";
-
-                if (roles.Contains(clsRoles.SuperAdmin))
-                {
-                    governorate = "👑 السوبر أدمن - يدير الكل";
-                }
-                else if (roles.Contains(clsRoles.Admin))
-                {
-                    if (!string.IsNullOrEmpty(managedGovernorate) && !string.IsNullOrEmpty(managedDistrict))
-                    {
-                        governorate = $"🔷 مدير محافظة: {managedGovernorate} - القضاء: {managedDistrict}";
-                    }
-                    else if (!string.IsNullOrEmpty(managedGovernorate))
-                    {
-                        governorate = $"🔷 مدير محافظة: {managedGovernorate}";
-                    }
-                    else
-                    {
-                        governorate = "🔷 أدمن (لم تحدد المحافظة)";
-                    }
-                }
-                else if (roles.Contains(clsRoles.MapViewer))
-                {
-                    if (string.IsNullOrEmpty(managedGovernorate))
-                    {
-                        governorate = "🗺️ مشاهد خريطة مركزي";
-                    }
-                    else if (managedGovernorate == "بغداد" && !string.IsNullOrEmpty(managedDistrict))
-                    {
-                        governorate = $"🗺️ مشاهد خريطة: بغداد - {managedDistrict}";
-                    }
-                    else
-                    {
-                        governorate = $"🗺️ مشاهد خريطة: {managedGovernorate}";
-                    }
-                }
-                else
-                {
-                    governorate = GetEffectiveGovernorateFast(userProfile) ?? "غير محدد";
-                }
-
-                list.Add(new SuperAdminUserVM
-                {
-                    Id = user.Id,
-                    Email = user.Email,
-                    Roles = roleDisplay,
-                    ResidenceGovernorate = userAddress?.Governorate ?? "غير محدد",
-                    WorkGovernorate = !string.IsNullOrWhiteSpace(managedGovernorate)
-                        ? managedGovernorate
-                        : GetEffectiveGovernorateFast(userProfile),
-                    WorkDistrict = !string.IsNullOrWhiteSpace(userProfile?.ManagedDistrict)
-                        ? userProfile.ManagedDistrict
-                        : GetEffectiveDistrictFast(userProfile),
-                    Gender = userProfile?.Gender ?? "غير محدد",
-                    Governorate = governorate,
-                    ManagedGovernorate = managedGovernorate,
-                    ManagedDistrict = userProfile?.ManagedDistrict,
-                    IsActive = user.EmailConfirmed,
-                    FullName = fullName,
-                    CoverImage = userProfile?.CoverImage,
-                    PromotionStatus = promotionStatus,
-                    IsBasicInfoApproved = userProfile?.IsBasicInfoApproved ?? false,
-                    RequestedPromotion = userProfile?.RequestedPromotion ?? false,
-                    RejectionReason = userProfile?.RejectionReason,
-                    HasCompleteProfile = IsProfileComplete(userProfile, userAddress, null, null),
-                    CompletionPercentage = CalculateCompletionPercentage(userProfile, userAddress, null),
-                    AccountType = userProfile?.AccountType ?? "عادي",
-                    ProfileId = userProfile?.Id,
-                    IsManager = isManager,
-                    ManagementLevel = managementLevel,
-                    ManagementLevelArabic = managementLevelArabic,
-                    AssignmentRole = primaryAssignment?.AssignmentRole ?? "",
-                    AdministrativeResponsibilityDisplay = managementLevelArabic,
-                    ManagedEntityName = managedEntityName,
-                    SearchText = BuildUserSearchText(user, userProfile, managementAssignments),
-                    IsPromoted = userProfile?.IsPromoted ?? false,
-                    BadgeNumber = affiliationInfo?.BadgeNumber ?? "",
-                    Education = userProfile?.Education ?? "---",
-                    StudyStage = userProfile?.StudyStage ?? "---"
-                });
-            }
-
-            list = list.OrderByDescending(u => u.RequestedPromotion)
-                       .ThenByDescending(u => u.Roles.Contains("SuperAdmin"))
-                       .ThenByDescending(u => u.Roles.Contains("Admin"))
-                       .ThenByDescending(u => u.IsManager)
-                       .ThenBy(u => u.Email)
-                       .ToList();
-
-            var unfilteredUsersCount = list.Count;
-
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var normalizedSearch = NormalizeSearchText(search);
-                var normalizedSearchDigits = NormalizeSearchDigits(search);
-                list = list
-                    .Where(u =>
-                        (u.SearchText ?? string.Empty).Contains(normalizedSearch) ||
-                        (!string.IsNullOrWhiteSpace(normalizedSearchDigits) &&
-                         NormalizeSearchDigits(u.SearchText).Contains(normalizedSearchDigits)))
-                    .ToList();
-            }
-
-            if (!string.IsNullOrWhiteSpace(role))
-            {
-                var normalizedRole = role.Trim().ToLower();
-                list = list
-                    .Where(u =>
-                    {
-                        var roles = (u.Roles ?? string.Empty)
-                            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-                        return normalizedRole == "member"
-                            ? ((u.AccountType == "فرد") || roles.Contains("فرد"))
-                            : roles.Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase));
-                    })
-                    .ToList();
-            }
-
-            if (!string.IsNullOrWhiteSpace(residenceGovernorate))
-                list = list.Where(u => string.Equals(u.ResidenceGovernorate, residenceGovernorate, StringComparison.OrdinalIgnoreCase)).ToList();
-
-            if (!string.IsNullOrWhiteSpace(workGovernorate))
-                list = list.Where(u => string.Equals(u.WorkGovernorate, workGovernorate, StringComparison.OrdinalIgnoreCase)).ToList();
-
-            if (!string.IsNullOrWhiteSpace(gender))
-                list = list.Where(u => string.Equals(u.Gender, gender, StringComparison.OrdinalIgnoreCase)).ToList();
-
-            if (status == "active")
-                list = list.Where(u => u.IsActive).ToList();
-            else if (status == "inactive")
-                list = list.Where(u => !u.IsActive).ToList();
-
-            if (!string.IsNullOrWhiteSpace(managerLevel))
-            {
-                var parts = managerLevel.Split('-', 2);
-                if (parts.Length == 2)
-                {
-                    list = list
-                        .Where(u =>
-                            string.Equals(u.AssignmentRole, parts[0], StringComparison.OrdinalIgnoreCase) &&
-                            string.Equals(u.ManagementLevel, parts[1], StringComparison.OrdinalIgnoreCase))
-                        .ToList();
-                }
-            }
-
-            if (!string.IsNullOrWhiteSpace(education))
-                list = list.Where(u => string.Equals(u.Education, education, StringComparison.OrdinalIgnoreCase)).ToList();
-
-            if (administrativeOnly)
-            {
-                list = list
-                    .Where(u =>
-                        string.Equals(u.AssignmentRole, "Manager", StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(u.AssignmentRole, "Assistant", StringComparison.OrdinalIgnoreCase) ||
-                        u.Roles.Contains(clsRoles.Manager, StringComparison.OrdinalIgnoreCase) ||
-                        u.Roles.Contains(clsRoles.AssistantManager, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-            }
-
-            var totalUsersCount = list.Count;
-            var totalPages = Math.Max(1, (int)Math.Ceiling(totalUsersCount / (double)pageSize));
-
-            if (!administrativeOnly)
-            {
-                page = Math.Min(page, totalPages);
-                list = list
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToList();
-            }
-
-            ViewBag.AdministrativeOnly = administrativeOnly;
-            ViewBag.CurrentPage = administrativeOnly ? 1 : page;
-            ViewBag.PageSize = administrativeOnly ? Math.Max(list.Count, 1) : pageSize;
-            ViewBag.TotalPages = administrativeOnly ? 1 : totalPages;
-            ViewBag.TotalUsers = administrativeOnly ? unfilteredUsersCount : unfilteredUsersCount;
-            ViewBag.FilteredUsers = administrativeOnly ? totalUsersCount : totalUsersCount;
-            ViewBag.Search = search;
-            ViewBag.RoleFilter = role;
-            ViewBag.ResidenceGovernorateFilter = residenceGovernorate;
-            ViewBag.WorkGovernorateFilter = workGovernorate;
-            ViewBag.GenderFilter = gender;
-            ViewBag.StatusFilter = status;
-            ViewBag.ManagerLevelFilter = managerLevel;
-            ViewBag.EducationFilter = education;
-            ViewBag.ProfileStageFilter = profileStage;
-            ViewBag.ActiveUsers = administrativeOnly
-                ? list.Count(u => u.IsActive)
-                : await _userManager.Users.CountAsync(u => u.EmailConfirmed);
-            ViewBag.Admins = administrativeOnly
-                ? list.Count(u => u.Roles != null && u.Roles.Contains(clsRoles.Admin) && !u.Roles.Contains(clsRoles.SuperAdmin) && !u.Roles.Contains(clsRoles.SystemManager))
-                : await _context.UserRoles
-                    .Join(_context.Roles, userRole => userRole.RoleId, role => role.Id, (userRole, role) => role.Name)
-                    .CountAsync(roleName => roleName == clsRoles.Admin);
-            ViewBag.SuperAdmins = administrativeOnly
-                ? list.Count(u => u.Roles != null && u.Roles.Contains(clsRoles.SuperAdmin))
-                : await _context.UserRoles
-                    .Join(_context.Roles, userRole => userRole.RoleId, role => role.Id, (userRole, role) => role.Name)
-                    .CountAsync(roleName => roleName == clsRoles.SuperAdmin);
-            ViewBag.DistrictAdmins = administrativeOnly
-                ? list.Count(u => u.Roles != null && u.Roles.Contains(clsRoles.DistrictAdmin))
-                : await _context.UserRoles
-                    .Join(_context.Roles, userRole => userRole.RoleId, role => role.Id, (userRole, role) => role.Name)
-                    .CountAsync(roleName => roleName == clsRoles.DistrictAdmin);
-            ViewBag.AdministrativeManagers = administrativeOnly
-                ? list.Count(u => u.IsManager && u.AssignmentRole == "Manager")
-                : await _context.ManagementAssignments.AsNoTracking().CountAsync(x => x.AssignmentRole == "Manager");
-            ViewBag.AdministrativeAssistants = administrativeOnly
-                ? list.Count(u => u.IsManager && u.AssignmentRole == "Assistant")
-                : await _context.ManagementAssignments.AsNoTracking().CountAsync(x => x.AssignmentRole == "Assistant");
-            ViewBag.TotalIndividuals = administrativeOnly
-                ? list.Count(u =>
-                    !string.IsNullOrWhiteSpace(u.Education) &&
-                    u.Education != "---" &&
-                    ((u.AccountType != null && u.AccountType == "فرد") ||
-                     (u.Roles != null && u.Roles.Contains("فرد"))))
-                : await _context.Identifies.AsNoTracking().CountAsync(i =>
-                    !string.IsNullOrWhiteSpace(i.Education) &&
-                    (i.AccountType == "فرد" || i.IsPromoted));
-
-            viewName = viewName == "AdministrativeManagers" ? viewName : "Users";
-            return View(viewName, list);
         }
 
         private async Task<IActionResult> UsersPagedFromDatabaseAsync(
@@ -1412,6 +933,26 @@ ORDER BY file_id;";
                 .Select(a => a.UserId)
                 .Distinct();
 
+            var completeProfileUserIdsQuery = _context.Identifies
+                .AsNoTracking()
+                .Where(i =>
+                    !string.IsNullOrWhiteSpace(i.FullName) &&
+                    !string.IsNullOrWhiteSpace(i.MotherName) &&
+                    i.Date != DateTime.MinValue &&
+                    !string.IsNullOrWhiteSpace(i.Gender) &&
+                    !string.IsNullOrWhiteSpace(i.PhoneNumber) &&
+                    !string.IsNullOrWhiteSpace(i.IdentityCardN) &&
+                    i.IdentityCardN.Length == 12 &&
+                    (
+                        !string.IsNullOrWhiteSpace(i.WorkGovernorate) ||
+                        _context.WorkLocations.Any(w =>
+                            w.IdentifyId == i.Id &&
+                            !string.IsNullOrWhiteSpace(w.Governorate) &&
+                            (w.Governorate != "بغداد" || !string.IsNullOrWhiteSpace(w.District)))
+                    ))
+                .Select(i => i.UserId)
+                .Distinct();
+
             var query = _context.Users.AsNoTracking().AsQueryable();
 
             if (!canManageSystemManager)
@@ -1431,27 +972,85 @@ ORDER BY file_id;";
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var term = search.Trim();
+                var affiliationEntityMatchUserIdsQuery = _context.AffiliationInfos
+                    .AsNoTracking()
+                    .Join(_context.AffiliationEntities.AsNoTracking().Where(e => e.Name.Contains(term)),
+                        a => a.AffiliationEntityId,
+                        e => e.Id,
+                        (a, _) => a.UserId);
+                var divisionMatchUserIdsQuery = _context.AffiliationInfos
+                    .AsNoTracking()
+                    .Join(_context.Divisions.AsNoTracking().Where(d => d.Name.Contains(term)),
+                        a => a.DivisionId,
+                        d => d.Id,
+                        (a, _) => a.UserId);
+                var sectionMatchUserIdsQuery = _context.AffiliationInfos
+                    .AsNoTracking()
+                    .Join(_context.Sections.AsNoTracking().Where(s => s.Name.Contains(term)),
+                        a => a.SectionId,
+                        s => s.Id,
+                        (a, _) => a.UserId);
+                var groupMatchUserIdsQuery = _context.AffiliationInfos
+                    .AsNoTracking()
+                    .Join(_context.Groups.AsNoTracking().Where(g => g.Name.Contains(term)),
+                        a => a.GroupId,
+                        g => g.Id,
+                        (a, _) => a.UserId);
+                var affiliationMatchUserIdsQuery = _context.AffiliationInfos
+                    .AsNoTracking()
+                    .Where(a => a.BadgeNumber != null && a.BadgeNumber.Contains(term))
+                    .Select(a => a.UserId)
+                    .Union(affiliationEntityMatchUserIdsQuery)
+                    .Union(divisionMatchUserIdsQuery)
+                    .Union(sectionMatchUserIdsQuery)
+                    .Union(groupMatchUserIdsQuery)
+                    .Distinct();
+
+                var managementEntityMatchUserIdsQuery = _context.ManagementAssignments
+                    .AsNoTracking()
+                    .Join(_context.AffiliationEntities.AsNoTracking().Where(e => e.Name.Contains(term)),
+                        a => a.AffiliationEntityId,
+                        e => e.Id,
+                        (a, _) => a.UserId);
+                var managementDivisionMatchUserIdsQuery = _context.ManagementAssignments
+                    .AsNoTracking()
+                    .Join(_context.Divisions.AsNoTracking().Where(d => d.Name.Contains(term)),
+                        a => a.DivisionId,
+                        d => d.Id,
+                        (a, _) => a.UserId);
+                var managementSectionMatchUserIdsQuery = _context.ManagementAssignments
+                    .AsNoTracking()
+                    .Join(_context.Sections.AsNoTracking().Where(s => s.Name.Contains(term)),
+                        a => a.SectionId,
+                        s => s.Id,
+                        (a, _) => a.UserId);
+                var managementGroupMatchUserIdsQuery = _context.ManagementAssignments
+                    .AsNoTracking()
+                    .Join(_context.Groups.AsNoTracking().Where(g => g.Name.Contains(term)),
+                        a => a.GroupId,
+                        g => g.Id,
+                        (a, _) => a.UserId);
+                var managementMatchUserIdsQuery = managementEntityMatchUserIdsQuery
+                    .Union(managementDivisionMatchUserIdsQuery)
+                    .Union(managementSectionMatchUserIdsQuery)
+                    .Union(managementGroupMatchUserIdsQuery)
+                    .Distinct();
+
+                var identifyMatchUserIdsQuery = _context.Identifies
+                    .AsNoTracking()
+                    .Where(i =>
+                        (i.FullName != null && i.FullName.Contains(term)) ||
+                        (i.PhoneNumber != null && i.PhoneNumber.Contains(term)) ||
+                        (i.WhatsAppNumber != null && i.WhatsAppNumber.Contains(term)))
+                    .Select(i => i.UserId)
+                    .Distinct();
+
                 query = query.Where(u =>
                     (u.Email != null && u.Email.Contains(term)) ||
                     (u.PhoneNumber != null && u.PhoneNumber.Contains(term)) ||
-                    _context.Identifies.Any(i =>
-                        i.UserId == u.Id &&
-                        ((i.FullName != null && i.FullName.Contains(term)) ||
-                         (i.PhoneNumber != null && i.PhoneNumber.Contains(term)) ||
-                         (i.WhatsAppNumber != null && i.WhatsAppNumber.Contains(term)))) ||
-                    _context.AffiliationInfos.Any(a =>
-                        a.UserId == u.Id &&
-                        ((a.BadgeNumber != null && a.BadgeNumber.Contains(term)) ||
-                         _context.AffiliationEntities.Any(e => a.AffiliationEntityId == e.Id && e.Name.Contains(term)) ||
-                         _context.Divisions.Any(d => a.DivisionId == d.Id && d.Name.Contains(term)) ||
-                         _context.Sections.Any(s => a.SectionId == s.Id && s.Name.Contains(term)) ||
-                         _context.Groups.Any(g => a.GroupId == g.Id && g.Name.Contains(term)))) ||
-                    _context.ManagementAssignments.Any(a =>
-                        a.UserId == u.Id &&
-                        (_context.AffiliationEntities.Any(e => a.AffiliationEntityId == e.Id && e.Name.Contains(term)) ||
-                         _context.Divisions.Any(d => a.DivisionId == d.Id && d.Name.Contains(term)) ||
-                         _context.Sections.Any(s => a.SectionId == s.Id && s.Name.Contains(term)) ||
-                         _context.Groups.Any(g => a.GroupId == g.Id && g.Name.Contains(term)))));
+                    identifyMatchUserIdsQuery.Contains(u.Id) ||
+                    affiliationMatchUserIdsQuery.Contains(u.Id) ||
+                    managementMatchUserIdsQuery.Contains(u.Id));
             }
 
             if (!string.IsNullOrWhiteSpace(role))
@@ -1471,11 +1070,22 @@ ORDER BY file_id;";
                 query = query.Where(u => _context.Addresses.Any(a => a.UserId == u.Id && a.Governorate == residenceGovernorate));
 
             if (!string.IsNullOrWhiteSpace(workGovernorate))
-                query = query.Where(u => _context.Identifies.Any(i =>
-                    i.UserId == u.Id &&
-                    (i.ManagedGovernorate == workGovernorate ||
-                     i.WorkGovernorate == workGovernorate ||
-                     _context.WorkLocations.Any(w => w.IdentifyId == i.Id && w.Governorate == workGovernorate))));
+            {
+                var workGovernorateUserIdsQuery = _context.Identifies
+                    .AsNoTracking()
+                    .Where(i => i.ManagedGovernorate == workGovernorate || i.WorkGovernorate == workGovernorate)
+                    .Select(i => i.UserId)
+                    .Union(
+                        _context.Identifies
+                            .AsNoTracking()
+                            .Join(_context.WorkLocations.AsNoTracking().Where(w => w.Governorate == workGovernorate),
+                                i => i.Id,
+                                w => w.IdentifyId,
+                                (i, _) => i.UserId))
+                    .Distinct();
+
+                query = query.Where(u => workGovernorateUserIdsQuery.Contains(u.Id));
+            }
 
             if (!string.IsNullOrWhiteSpace(gender))
                 query = query.Where(u => _context.Identifies.Any(i => i.UserId == u.Id && i.Gender == gender));
@@ -1507,38 +1117,9 @@ ORDER BY file_id;";
                 var normalizedProfileStage = profileStage.Trim().ToLowerInvariant();
                 query = normalizedProfileStage switch
                 {
-                    "incomplete" => query.Where(u => !_context.Identifies.Any(i =>
+                    "incomplete" => query.Where(u => !completeProfileUserIdsQuery.Contains(u.Id)),
+                    "basic-pending" => query.Where(u => completeProfileUserIdsQuery.Contains(u.Id) && _context.Identifies.Any(i =>
                         i.UserId == u.Id &&
-                        !string.IsNullOrWhiteSpace(i.FullName) &&
-                        !string.IsNullOrWhiteSpace(i.MotherName) &&
-                        i.Date != DateTime.MinValue &&
-                        !string.IsNullOrWhiteSpace(i.Gender) &&
-                        !string.IsNullOrWhiteSpace(i.PhoneNumber) &&
-                        !string.IsNullOrWhiteSpace(i.IdentityCardN) &&
-                        i.IdentityCardN.Length == 12 &&
-                        (
-                            !string.IsNullOrWhiteSpace(i.WorkGovernorate) ||
-                            _context.WorkLocations.Any(w =>
-                                w.IdentifyId == i.Id &&
-                                !string.IsNullOrWhiteSpace(w.Governorate) &&
-                                (w.Governorate != "بغداد" || !string.IsNullOrWhiteSpace(w.District)))
-                        ))),
-                    "basic-pending" => query.Where(u => _context.Identifies.Any(i =>
-                        i.UserId == u.Id &&
-                        !string.IsNullOrWhiteSpace(i.FullName) &&
-                        !string.IsNullOrWhiteSpace(i.MotherName) &&
-                        i.Date != DateTime.MinValue &&
-                        !string.IsNullOrWhiteSpace(i.Gender) &&
-                        !string.IsNullOrWhiteSpace(i.PhoneNumber) &&
-                        !string.IsNullOrWhiteSpace(i.IdentityCardN) &&
-                        i.IdentityCardN.Length == 12 &&
-                        (
-                            !string.IsNullOrWhiteSpace(i.WorkGovernorate) ||
-                            _context.WorkLocations.Any(w =>
-                                w.IdentifyId == i.Id &&
-                                !string.IsNullOrWhiteSpace(w.Governorate) &&
-                                (w.Governorate != "بغداد" || !string.IsNullOrWhiteSpace(w.District)))
-                        ) &&
                         !i.IsBasicInfoApproved)),
                     "needs-additional" => query.Where(u => _context.Identifies.Any(i =>
                         i.UserId == u.Id &&
@@ -1575,6 +1156,12 @@ ORDER BY file_id;";
                 .ThenBy(u => u.Email)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
+                .Select(u => new
+                {
+                    u.Id,
+                    u.Email,
+                    u.EmailConfirmed
+                })
                 .ToListAsync();
 
             var userIds = users.Select(u => u.Id).ToHashSet();
@@ -1591,10 +1178,43 @@ ORDER BY file_id;";
                 .GroupBy(x => x.UserId)
                 .ToDictionaryAsync(g => g.Key, g => (IList<string>)g.Select(x => x.RoleName).ToList());
 
-            var affiliationEntityNames = await _context.AffiliationEntities.AsNoTracking().ToDictionaryAsync(e => e.Id, e => e.Name);
-            var divisionNames = await _context.Divisions.AsNoTracking().ToDictionaryAsync(d => d.Id, d => d.Name);
-            var sectionNames = await _context.Sections.AsNoTracking().ToDictionaryAsync(s => s.Id, s => s.Name);
-            var groupNames = await _context.Groups.AsNoTracking().ToDictionaryAsync(g => g.Id, g => g.Name);
+            var assignmentEntityIds = assignmentsByUserId.Values
+                .SelectMany(x => x)
+                .Where(x => x.AffiliationEntityId.HasValue)
+                .Select(x => x.AffiliationEntityId!.Value)
+                .Distinct()
+                .ToList();
+            var assignmentDivisionIds = assignmentsByUserId.Values
+                .SelectMany(x => x)
+                .Where(x => x.DivisionId.HasValue)
+                .Select(x => x.DivisionId!.Value)
+                .Distinct()
+                .ToList();
+            var assignmentSectionIds = assignmentsByUserId.Values
+                .SelectMany(x => x)
+                .Where(x => x.SectionId.HasValue)
+                .Select(x => x.SectionId!.Value)
+                .Distinct()
+                .ToList();
+            var assignmentGroupIds = assignmentsByUserId.Values
+                .SelectMany(x => x)
+                .Where(x => x.GroupId.HasValue)
+                .Select(x => x.GroupId!.Value)
+                .Distinct()
+                .ToList();
+
+            var affiliationEntityNames = await _context.AffiliationEntities.AsNoTracking()
+                .Where(e => assignmentEntityIds.Contains(e.Id))
+                .ToDictionaryAsync(e => e.Id, e => e.Name);
+            var divisionNames = await _context.Divisions.AsNoTracking()
+                .Where(d => assignmentDivisionIds.Contains(d.Id))
+                .ToDictionaryAsync(d => d.Id, d => d.Name);
+            var sectionNames = await _context.Sections.AsNoTracking()
+                .Where(s => assignmentSectionIds.Contains(s.Id))
+                .ToDictionaryAsync(s => s.Id, s => s.Name);
+            var groupNames = await _context.Groups.AsNoTracking()
+                .Where(g => assignmentGroupIds.Contains(g.Id))
+                .ToDictionaryAsync(g => g.Id, g => g.Name);
 
             string GetEffectiveGovernorateFast(Identify? profile)
             {

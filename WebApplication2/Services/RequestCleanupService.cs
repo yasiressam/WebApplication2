@@ -45,6 +45,7 @@ namespace WebApplication2.Services
         {
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            context.Database.SetCommandTimeout(30);
             var cutoffDate = DateTime.UtcNow.AddDays(-30);
             var deletedCount = 0;
 
@@ -91,6 +92,11 @@ namespace WebApplication2.Services
                 }
 
                 deletedCount += expiredRequests.Count;
+
+                // تخفيف الضغط على قاعدة البيانات بين دفعات الحذف
+                await Task.Delay(
+                    TimeSpan.FromMilliseconds(500),
+                    cancellationToken);
             }
 
             if (deletedCount > 0)

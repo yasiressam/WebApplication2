@@ -1,0 +1,31 @@
+@model WebApplication2.Models.ErrorViewModel
+
+@{
+    ViewData["Title"] = "حدث خطأ";
+}
+
+<div class="container py-5" dir="rtl">
+    <div class="alert alert-danger">
+        <h4 class="alert-heading">حدث خطأ غير متوقع</h4>
+
+        <p>
+            تعذر إكمال الطلب حاليًا. يرجى المحاولة مرة أخرى بعد قليل.
+        </p>
+
+        @if (Model.ShowRequestId)
+        {
+            <hr />
+
+            <p class="mb-0">
+                رقم تتبع الخطأ:
+                <code>@Model.RequestId</code>
+            </p>
+        }
+    </div>
+
+    <a asp-controller="Home"
+       asp-action="Index"
+       class="btn btn-primary">
+        العودة إلى الصفحة الرئيسية
+    </a>
+</div>

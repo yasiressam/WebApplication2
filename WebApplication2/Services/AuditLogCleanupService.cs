@@ -42,7 +42,10 @@ namespace WebApplication2.Services
         private async Task CleanupAsync(CancellationToken cancellationToken)
         {
             using var scope = _scopeFactory.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var context = scope.ServiceProvider
+                .GetRequiredService<ApplicationDbContext>();
+
+            context.Database.SetCommandTimeout(30);
             var cutoffDate = DateTime.UtcNow.AddDays(-3);
             var deletedCount = 0;
 
@@ -60,6 +63,11 @@ namespace WebApplication2.Services
                 }
 
                 deletedCount += deleted;
+
+                // استراحة قصيرة بين الدفعات لتقليل الضغط على SQL Server
+                await Task.Delay(
+                    TimeSpan.FromMilliseconds(500),
+                    cancellationToken);
             }
 
             if (deletedCount > 0)

@@ -42,7 +42,10 @@ namespace WebApplication2.Services
         private async Task CleanupExpiredNotificationsAsync(CancellationToken cancellationToken)
         {
             using var scope = _scopeFactory.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var context = scope.ServiceProvider
+                .GetRequiredService<ApplicationDbContext>();
+
+            context.Database.SetCommandTimeout(30);
             var cutoffDate = IraqTime.Now().AddDays(-7);
             var deletedCount = 0;
 
@@ -60,6 +63,11 @@ namespace WebApplication2.Services
                 }
 
                 deletedCount += deleted;
+
+                // تخفيف الضغط على SQL Server بين دفعات الحذف
+                await Task.Delay(
+                    TimeSpan.FromMilliseconds(500),
+                    cancellationToken);
             }
 
             if (deletedCount > 0)

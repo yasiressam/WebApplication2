@@ -2,6 +2,7 @@
 using WebApplication2.Data;
 using WebApplication2.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 
 public class HomeController : Controller
 {
@@ -28,5 +29,19 @@ public class HomeController : Controller
     public IActionResult Privacy()
     {
         return View();
+    }
+
+    [ResponseCache(
+        Duration = 0,
+        Location = ResponseCacheLocation.None,
+        NoStore = true)]
+    public IActionResult Error()
+    {
+        var model = new ErrorViewModel
+        {
+            RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier
+        };
+
+        return View(model);
     }
 }

@@ -64,6 +64,23 @@
         font-size: 0.95rem;
     }
 
+    .audit-item-details {
+        display: block;
+        margin-top: 8px;
+        padding: 12px 14px;
+        background: #f8fafc;
+        border: 1px solid rgba(226, 232, 240, 0.95);
+        border-radius: 14px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        direction: ltr;
+        text-align: left;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 0.9rem;
+        line-height: 1.7;
+        color: #0f172a;
+    }
+
     .audit-actions {
         display: flex;
         gap: 12px;
@@ -123,8 +140,7 @@
                         <span>IP: @(entry.IpAddress ?? "-")</span>
                         @if (!string.IsNullOrWhiteSpace(entry.Details))
                         {
-                            <br />
-                            <span>التفاصيل: @entry.Details</span>
+                            <div class="audit-item-details">@entry.Details</div>
                         }
                     </div>
                 </article>

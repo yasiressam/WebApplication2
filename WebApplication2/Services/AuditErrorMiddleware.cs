@@ -32,7 +32,7 @@ namespace WebApplication2.Services
                     IpAddress = context.Connection.RemoteIpAddress?.ToString(),
                     Path = context.Request.Path,
                     HttpMethod = context.Request.Method,
-                    Details = AuditTrailDisplayFormatter.BuildShortDetails(ex)
+                    Details = ex.ToString()
                 });
 
                 throw;

@@ -1,8 +1,7 @@
-﻿@model WebApplication2.Models.RegisterViewModel
+@model WebApplication2.Models.RegisterViewModel
 
 <div class="row justify-content-center mt-4">
     <div class="col-md-6 col-lg-5">
-        <!-- استخدم custom-card بدلاً من card -->
         <div class="custom-card">
             <div class="custom-card-header">
                 <h4 class="mb-0">📝 إنشاء حساب جديد</h4>
@@ -20,28 +19,6 @@
                     @Html.AntiForgeryToken()
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">طريقة التسجيل</label>
-                        <div class="d-flex gap-3">
-                            <label class="form-check">
-                                <input class="form-check-input" type="radio" asp-for="RegisterMethod" value="WhatsApp" />
-                                <span class="form-check-label">واتساب</span>
-                            </label>
-                            <label class="form-check">
-                                <input class="form-check-input" type="radio" asp-for="RegisterMethod" value="Email" />
-                                <span class="form-check-label">البريد الإلكتروني</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="mb-3" id="phoneRegisterBox">
-                        <label asp-for="PhoneNumber" class="form-label">
-                            <i class="fab fa-whatsapp me-1"></i> رقم الواتساب
-                        </label>
-                        <input asp-for="PhoneNumber" class="form-control" placeholder="07XXXXXXXXX" autocomplete="off" />
-                        <span asp-validation-for="PhoneNumber" class="text-danger"></span>
-                    </div>
-
-                    <div class="mb-3">
                         <label asp-for="Email" class="form-label">
                             <i class="fas fa-envelope me-1"></i> البريد الإلكتروني
                         </label>
@@ -53,40 +30,18 @@
                         <label asp-for="Password" class="form-label">
                             <i class="fas fa-lock me-1"></i> كلمة المرور
                         </label>
-
-                        <input asp-for="Password"
-                               type="password"
-                               class="form-control"
-                               id="PasswordInput"
-                               autocomplete="new-password" />
-
+                        <input asp-for="Password" type="password" class="form-control" id="PasswordInput" autocomplete="new-password" />
                         <span asp-validation-for="Password" class="text-danger"></span>
 
-                        <!-- كارد الشروط -->
                         <div id="passwordRulesBox" class="password-rules-card mt-2" style="display:none;">
                             <div class="fw-bold mb-2">
                                 <i class="fas fa-shield-alt me-1"></i> شروط كلمة المرور
                             </div>
-
                             <ul class="mb-0 pe-3 list-unstyled">
-                                <li id="ruleLength" class="text-danger">
-                                    <i class="fas fa-times-circle me-1"></i>
-                                    6 أحرف أو أكثر
-                                </li>
-
-                                <li id="ruleUpper" class="text-danger">
-                                    <i class="fas fa-times-circle me-1"></i>
-                                    حرف كبير واحد على الأقل
-                                </li>
-
-                                <li id="ruleLower" class="text-danger">
-                                    <i class="fas fa-times-circle me-1"></i>
-                                    حرف صغير واحد على الأقل
-                                </li>
-                                <li id="ruleSymbol" class="text-danger">
-        <i class="fas fa-times-circle me-1"></i>
-        رمز خاص واحد على الأقل (!@@#$%^&*)
-    </li>
+                                <li id="ruleLength" class="text-danger"><i class="fas fa-times-circle me-1"></i>6 أحرف أو أكثر</li>
+                                <li id="ruleUpper" class="text-danger"><i class="fas fa-times-circle me-1"></i>حرف كبير واحد على الأقل</li>
+                                <li id="ruleLower" class="text-danger"><i class="fas fa-times-circle me-1"></i>حرف صغير واحد على الأقل</li>
+                                <li id="ruleSymbol" class="text-danger"><i class="fas fa-times-circle me-1"></i>رمز خاص واحد على الأقل</li>
                             </ul>
                         </div>
                     </div>
@@ -117,16 +72,16 @@
     </div>
 </div>
 <style>
-.password-rules-card{
-    background:#f8f9fa;
-    border-right:4px solid #198754;
-    padding:12px 15px;
-    border-radius:10px;
-    font-size:.9rem;
+.password-rules-card {
+    background: #f8f9fa;
+    border-right: 4px solid #198754;
+    padding: 12px 15px;
+    border-radius: 10px;
+    font-size: .9rem;
 }
-.rule-ok{
-    color:#0d6efd !important;
 
+.rule-ok {
+    color: #0d6efd !important;
 }
 </style>
 
@@ -142,41 +97,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const password = document.getElementById("PasswordInput");
     const rulesBox = document.getElementById("passwordRulesBox");
-    const methodInputs = document.querySelectorAll('input[name="RegisterMethod"]');
-    const emailBox = document.querySelector('[name="Email"]')?.closest('.mb-3');
-    const phoneBox = document.getElementById("phoneRegisterBox");
-    const emailInput = document.querySelector('[name="Email"]');
-    const phoneInput = document.querySelector('[name="PhoneNumber"]');
-
-    function syncRegisterMethod() {
-        const selected = document.querySelector('input[name="RegisterMethod"]:checked')?.value || "WhatsApp";
-        const byWhatsApp = selected === "WhatsApp";
-        if (emailBox) emailBox.style.display = byWhatsApp ? "none" : "block";
-        if (phoneBox) phoneBox.style.display = byWhatsApp ? "block" : "none";
-        if (emailInput) emailInput.disabled = byWhatsApp;
-        if (phoneInput) phoneInput.disabled = !byWhatsApp;
-    }
-
-    methodInputs.forEach(input => input.addEventListener("change", syncRegisterMethod));
-    syncRegisterMethod();
 
     if (!password || !rulesBox) return;
+
     password.addEventListener("focus", function () {
-    rulesBox.style.display = "block";
-});
+        rulesBox.style.display = "block";
+    });
 
     password.addEventListener("input", function () {
-
         const value = password.value;
-
-       updateRule("ruleLength", value.length >= 6);
-updateRule("ruleUpper", /[A-Z]/.test(value));
-updateRule("ruleLower", /[a-z]/.test(value));
-updateRule("ruleSymbol", /[!@@#$%^&*(),.?":{}|<>_\-+=~`[\]\\\/]/.test(value));
+        updateRule("ruleLength", value.length >= 6);
+        updateRule("ruleUpper", /[A-Z]/.test(value));
+        updateRule("ruleLower", /[a-z]/.test(value));
+        updateRule("ruleSymbol", /[!@@#$%^&*(),.?":{}|<>_\-+=~`[\]\\\/]/.test(value));
     });
 
     function updateRule(id, valid) {
-
         const item = document.getElementById(id);
         const icon = item.querySelector("i");
 
@@ -190,6 +126,5 @@ updateRule("ruleSymbol", /[!@@#$%^&*(),.?":{}|<>_\-+=~`[\]\\\/]/.test(value));
             icon.className = "fas fa-times-circle me-1";
         }
     }
-
 });
 </script>

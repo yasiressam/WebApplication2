@@ -1,7 +1,6 @@
-﻿@model WebApplication2.Models.RegisterViewModel
+@model WebApplication2.Models.RegisterViewModel
 
 @{
-    
     Layout = "_Layout";
     var isSuperAdmin = User.IsInRole("SuperAdmin");
     var isSystemManager = User.IsInRole("SystemManager");
@@ -37,12 +36,6 @@
         border-radius: 12px;
         border: 1px solid #d9e2f2;
         padding: 0.75rem 0.9rem;
-    }
-
-    .create-user-card .form-control:focus,
-    .create-user-card .form-select:focus {
-        border-color: #2a5a9c;
-        box-shadow: 0 0 0 0.2rem rgba(42, 90, 156, 0.18);
     }
 
     .create-user-card .btn-primary {
@@ -98,41 +91,12 @@
                         @Html.AntiForgeryToken()
                         <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
-                        <div class="mb-4">
-                            <label asp-for="RegisterMethod" class="form-label fw-bold d-block mb-2">
-                                <i class="fas fa-user-check"></i> طريقة إنشاء الحساب
-                            </label>
-                            <div class="btn-group w-100" role="group" aria-label="طريقة إنشاء الحساب">
-                                <input type="radio" class="btn-check" asp-for="RegisterMethod" id="registerByWhatsApp" value="WhatsApp" />
-                                <label class="btn btn-outline-success" for="registerByWhatsApp">
-                                    <i class="fab fa-whatsapp"></i> الواتساب
-                                </label>
-
-                                <input type="radio" class="btn-check" asp-for="RegisterMethod" id="registerByEmail" value="Email" />
-                                <label class="btn btn-outline-primary" for="registerByEmail">
-                                    <i class="fas fa-envelope"></i> البريد الإلكتروني
-                                </label>
-                            </div>
-                            <span asp-validation-for="RegisterMethod" class="text-danger"></span>
-                        </div>
-
                         <div class="mb-3" id="emailField">
                             <label asp-for="Email" class="form-label fw-bold">
                                 <i class="fas fa-envelope"></i> البريد الإلكتروني
                             </label>
                             <input asp-for="Email" class="form-control" placeholder="example@domain.com" />
                             <span asp-validation-for="Email" class="text-danger"></span>
-                        </div>
-
-                        <div class="mb-3" id="whatsAppField" style="display: none;">
-                            <label asp-for="PhoneNumber" class="form-label fw-bold">
-                                <i class="fab fa-whatsapp"></i> رقم الواتساب
-                            </label>
-                            <input asp-for="PhoneNumber" class="form-control" placeholder="07XXXXXXXXX" dir="ltr" />
-                            <span asp-validation-for="PhoneNumber" class="text-danger"></span>
-                            <small class="form-text text-muted">
-                                عند اختيار الواتساب سيتم إنشاء الحساب وتفعيله مباشرة الآن بدون كود، مع حفظ الرقم كمربوط ومؤكد داخل النظام.
-                            </small>
                         </div>
 
                         <div class="mb-3">
@@ -218,28 +182,11 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-
     <script>
         $(document).ready(function() {
             const canCreatePrivilegedUsers = @canCreatePrivilegedUsers.ToString().ToLower();
-            const emailMethod = $('#registerByEmail');
-            const whatsAppMethod = $('#registerByWhatsApp');
-            const emailField = $('#emailField');
-            const whatsAppField = $('#whatsAppField');
-            const emailInput = $('#Email');
-            const phoneInput = $('#PhoneNumber');
-
-            function updateRegisterMethodFields() {
-                const useWhatsApp = whatsAppMethod.is(':checked');
-
-                emailField.toggle(!useWhatsApp);
-                whatsAppField.toggle(useWhatsApp);
-                emailInput.prop('required', !useWhatsApp);
-                phoneInput.prop('required', useWhatsApp);
-            }
 
             if (canCreatePrivilegedUsers) {
-                // إظهار/إخفاء حقل المحافظة عند تغيير الدور
                 $('#roleSelect').change(function() {
                     var selectedRole = $(this).val();
 
@@ -254,14 +201,12 @@
                     }
                 });
 
-                // التحقق من الدور عند تحميل الصفحة
                 if ($('#roleSelect').val() === 'Admin') {
                     $('#governorateField').show();
                     $('#adminInfo').show();
                     $('#ManagedGovernorate').prop('required', true);
                 }
 
-                // منع إرسال النموذج إذا كان الدور أدمن ولم يتم اختيار محافظة
                 $('form').submit(function(e) {
                     var role = $('#roleSelect').val();
                     var governorate = $('#ManagedGovernorate').val();
@@ -272,10 +217,6 @@
                     }
                 });
             }
-
-            emailMethod.on('change', updateRegisterMethodFields);
-            whatsAppMethod.on('change', updateRegisterMethodFields);
-            updateRegisterMethodFields();
         });
     </script>
 }

@@ -2,19 +2,18 @@ namespace WebApplication2.Services
 {
     internal static class CleanupSchedule
     {
-        private static readonly TimeSpan ScheduledTime = TimeSpan.FromHours(3);
         private static readonly TimeSpan Interval = TimeSpan.FromDays(7);
 
-        public static TimeSpan GetDelayUntilNextRun(DateTimeOffset now)
+        public static TimeSpan GetDelayUntilNextRun(DateTime now, TimeSpan scheduledTime)
         {
-            var nextRun = new DateTimeOffset(
+            var nextRun = new DateTime(
                 now.Year,
                 now.Month,
                 now.Day,
-                ScheduledTime.Hours,
-                ScheduledTime.Minutes,
-                ScheduledTime.Seconds,
-                now.Offset);
+                scheduledTime.Hours,
+                scheduledTime.Minutes,
+                scheduledTime.Seconds,
+                now.Kind);
 
             if (now >= nextRun)
             {

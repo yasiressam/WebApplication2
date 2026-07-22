@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using WebApplication2.Data;
+using WebApplication2.Models.Helpers;
 
 namespace WebApplication2.Services
 {
     public class NotificationCleanupService : BackgroundService
     {
+        private static readonly TimeSpan ScheduledTime = new(3, 15, 0);
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<NotificationCleanupService> _logger;
 
@@ -18,7 +20,7 @@ namespace WebApplication2.Services
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                var delay = CleanupSchedule.GetDelayUntilNextRun(DateTimeOffset.Now);
+                var delay = CleanupSchedule.GetDelayUntilNextRun(IraqTime.Now(), ScheduledTime);
 
                 try
                 {
@@ -41,7 +43,7 @@ namespace WebApplication2.Services
         {
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var cutoffDate = DateTime.Now.AddDays(-7);
+            var cutoffDate = IraqTime.Now().AddDays(-7);
             var deletedCount = 0;
 
             while (!cancellationToken.IsCancellationRequested)

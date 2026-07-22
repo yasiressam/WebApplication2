@@ -31,9 +31,6 @@ namespace WebApplication2.Models
         [Url(ErrorMessage = "الرجاء إدخال رابط صحيح")]
         public string? InstagramUrl { get; set; } = "";
 
-        [Display(Name = "رقم واتساب")]
-        [RegularExpression(@"^\+?[0-9\s\-\(\)]+$", ErrorMessage = "الرجاء إدخال رقم واتساب صحيح")]
-        public string? WhatsAppNumber { get; set; } = "";
 
         [Display(Name = "عنوان إشعار قبول الترقية")]
         public string PromotionApprovedTitle { get; set; } = "🎉 تهانينا! تمت الموافقة على طلب الترقية";

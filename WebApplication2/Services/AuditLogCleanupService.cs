@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using WebApplication2.Data;
+using WebApplication2.Models.Helpers;
 
 namespace WebApplication2.Services
 {
     public class AuditLogCleanupService : BackgroundService
     {
+        private static readonly TimeSpan ScheduledTime = new(3, 30, 0);
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<AuditLogCleanupService> _logger;
 
@@ -18,7 +20,7 @@ namespace WebApplication2.Services
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                var delay = CleanupSchedule.GetDelayUntilNextRun(DateTimeOffset.Now);
+                var delay = CleanupSchedule.GetDelayUntilNextRun(IraqTime.Now(), ScheduledTime);
 
                 try
                 {

@@ -13,23 +13,17 @@ namespace WebApplication2.Services
         private readonly IConfiguration _configuration;
         private readonly ILogger<NotificationService> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
-        private readonly IWhatsAppService _whatsAppService;
-        private readonly IHttpContextAccessor _httpContextAccessor;
 
         public NotificationService(
             ApplicationDbContext context,
             IConfiguration configuration,
             ILogger<NotificationService> logger,
-            IHttpClientFactory httpClientFactory,
-            IWhatsAppService whatsAppService,
-            IHttpContextAccessor httpContextAccessor)
+            IHttpClientFactory httpClientFactory)
         {
             _context = context;
             _configuration = configuration;
             _logger = logger;
             _httpClientFactory = httpClientFactory;
-            _whatsAppService = whatsAppService;
-            _httpContextAccessor = httpContextAccessor;
         }
 
         public async Task<Notification> CreateNotification(string title, string message, string? targetUserId = null, string? icon = null, string? clickUrl = null)
@@ -48,11 +42,6 @@ namespace WebApplication2.Services
 
             _context.Notifications.Add(notification);
             await _context.SaveChangesAsync();
-
-            if (ShouldSendWhatsAppNotification())
-            {
-                await TrySendWhatsAppNotification(title, message, targetUserId);
-            }
 
             await TrySendOneSignalNotification(notification);
 
@@ -101,45 +90,6 @@ namespace WebApplication2.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error while sending OneSignal notification {NotificationId}.", notification.Id);
-            }
-        }
-
-        private bool ShouldSendWhatsAppNotification()
-        {
-            return _httpContextAccessor.HttpContext?.User?.IsInRole(clsRoles.SuperAdmin) == true;
-        }
-
-        private async Task TrySendWhatsAppNotification(string title, string message, string? targetUserId)
-        {
-            if (string.IsNullOrWhiteSpace(targetUserId))
-                return;
-
-            try
-            {
-                var userProfile = await _context.Identifies
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(user => user.UserId == targetUserId);
-
-                if (userProfile == null ||
-                    !userProfile.IsWhatsAppVerified ||
-                    string.IsNullOrWhiteSpace(userProfile.WhatsAppNumber))
-                {
-                    return;
-                }
-
-                var whatsAppMessage = string.IsNullOrWhiteSpace(title)
-                    ? message
-                    : $"{title}{Environment.NewLine}{message}";
-
-                var sent = await _whatsAppService.SendMessageAsync(userProfile.WhatsAppNumber, whatsAppMessage);
-                if (!sent)
-                {
-                    _logger.LogWarning("WhatsApp notification was not sent for user {UserId}.", targetUserId);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error while sending WhatsApp notification for user {UserId}.", targetUserId);
             }
         }
 
@@ -275,8 +225,10 @@ namespace WebApplication2.Services
 
         private object MergeObjects(object obj1, object obj2)
         {
-            var dict1 = JsonConvert.DeserializeObject<Dictionary<string, object>>(JsonConvert.SerializeObject(obj1));
-            var dict2 = JsonConvert.DeserializeObject<Dictionary<string, object>>(JsonConvert.SerializeObject(obj2));
+            var dict1 = JsonConvert.DeserializeObject<Dictionary<string, object>>(JsonConvert.SerializeObject(obj1))
+                ?? new Dictionary<string, object>();
+            var dict2 = JsonConvert.DeserializeObject<Dictionary<string, object>>(JsonConvert.SerializeObject(obj2))
+                ?? new Dictionary<string, object>();
 
             foreach (var kvp in dict2)
             {

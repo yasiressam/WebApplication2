@@ -111,7 +111,7 @@ namespace WebApplication2.Controllers.Api
         {
             try
             {
-                if (!User.Identity.IsAuthenticated)
+                if (User.Identity?.IsAuthenticated != true)
                     return Ok(new { message = "مستخدم غير مسجل" });
 
                 var userId = _userManager.GetUserId(User);

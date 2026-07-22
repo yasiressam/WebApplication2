@@ -25,9 +25,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IAuditTrailService, DbAuditTrailService>();
 builder.Services.AddScoped<AuditActivityFilter>();
-builder.Services.Configure<WhatsAppApiSettings>(builder.Configuration.GetSection("WhatsAppApi"));
 builder.Services.Configure<OtpApiSettings>(builder.Configuration.GetSection("OtpApi"));
-builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();
 builder.Services.AddHostedService<RequestCleanupService>();
 builder.Services.AddHostedService<NotificationCleanupService>();
 builder.Services.AddHostedService<AuditLogCleanupService>();
@@ -47,7 +45,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.IdleTimeout = TimeSpan.FromMinutes(15);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });

@@ -23,22 +23,19 @@ namespace WebApplication2.Controllers.Api
         private readonly ApplicationDbContext _context;
         private readonly ILogger<RegisterApiController> _logger;
         private readonly IOtpService _otpService;
-        private readonly IWhatsAppService _whatsAppService;
 
         public RegisterApiController(
             UserManager<IdentityUser> userManager,
             IEmailSender emailSender,
             ApplicationDbContext context,
             ILogger<RegisterApiController> logger,
-            IOtpService otpService,
-            IWhatsAppService whatsAppService)
+            IOtpService otpService)
         {
             _userManager = userManager;
             _emailSender = emailSender;
             _context = context;
             _logger = logger;
             _otpService = otpService;
-            _whatsAppService = whatsAppService;
         }
 
         [HttpGet("options")]
@@ -79,220 +76,7 @@ namespace WebApplication2.Controllers.Api
                 return BadRequest(new { success = false, message = "كلمة المرور وتأكيدها غير متطابقين" });
             }
 
-            var registerMethod = string.Equals(model.RegisterMethod, "WhatsApp", StringComparison.OrdinalIgnoreCase)
-                ? "WhatsApp"
-                : "Email";
-
-            return registerMethod == "WhatsApp"
-                ? await RegisterWithWhatsAppAsync(model)
-                : await RegisterWithEmailAsync(model);
-        }
-
-        [HttpGet("whatsapp/verify-info")]
-        [AllowAnonymous]
-        public IActionResult VerifyWhatsAppInfo([FromQuery] string userId, [FromQuery] string phoneNumber)
-        {
-            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(phoneNumber))
-            {
-                return BadRequest(new { success = false, message = "بيانات تأكيد الواتساب غير مكتملة" });
-            }
-
-            return Ok(new
-            {
-                success = true,
-                data = new { userId, phoneNumber = NormalizeIraqPhoneNumber(phoneNumber) }
-            });
-        }
-
-        [HttpPost("whatsapp/verify")]
-        [AllowAnonymous]
-        public async Task<IActionResult> VerifyWhatsApp([FromBody] WhatsAppVerificationViewModel model)
-        {
-            if (string.IsNullOrWhiteSpace(model.UserId) ||
-                string.IsNullOrWhiteSpace(model.PhoneNumber) ||
-                string.IsNullOrWhiteSpace(model.Code))
-            {
-                return BadRequest(new { success = false, message = "بيانات التحقق غير مكتملة" });
-            }
-
-            var user = await _userManager.FindByIdAsync(model.UserId);
-            if (user == null)
-            {
-                return NotFound(new { success = false, message = "لم يتم العثور على الحساب" });
-            }
-
-            var identify = await _context.Identifies.FirstOrDefaultAsync(i => i.UserId == user.Id);
-            var normalizedPhone = NormalizeIraqPhoneNumber(model.PhoneNumber);
-            if (identify == null ||
-                (NormalizeIraqPhoneNumber(identify.WhatsAppNumber ?? string.Empty) != normalizedPhone &&
-                 NormalizeIraqPhoneNumber(identify.PhoneNumber ?? string.Empty) != normalizedPhone))
-            {
-                return BadRequest(new { success = false, message = "رقم الواتساب لا يطابق بيانات الحساب" });
-            }
-
-            var verifyResult = await _otpService.ValidateOtpAsync(normalizedPhone, model.Code);
-            if (!verifyResult.Success)
-            {
-                return BadRequest(new { success = false, message = verifyResult.Message });
-            }
-
-            user.PhoneNumberConfirmed = true;
-            user.EmailConfirmed = true;
-            user.PhoneNumber = ToLocalIraqPhoneNumber(normalizedPhone);
-            await _userManager.UpdateAsync(user);
-
-            identify.PhoneNumber = ToLocalIraqPhoneNumber(normalizedPhone);
-            identify.WhatsAppNumber = normalizedPhone;
-            identify.IsWhatsAppVerified = true;
-            identify.WhatsAppVerifiedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                success = true,
-                message = "تم تأكيد رقم الواتساب بنجاح",
-                nextStep = "login"
-            });
-        }
-
-        [HttpPost("whatsapp/resend-code")]
-        [AllowAnonymous]
-        public async Task<IActionResult> ResendWhatsAppCode([FromBody] RegisterWhatsAppCodeRequest request)
-        {
-            if (string.IsNullOrWhiteSpace(request.UserId) || string.IsNullOrWhiteSpace(request.PhoneNumber))
-            {
-                return BadRequest(new { success = false, message = "تعذر إعادة إرسال الكود" });
-            }
-
-            var user = await _userManager.FindByIdAsync(request.UserId);
-            if (user == null)
-            {
-                return NotFound(new { success = false, message = "لم يتم العثور على الحساب" });
-            }
-
-            var identify = await _context.Identifies.FirstOrDefaultAsync(i => i.UserId == user.Id);
-            var normalizedPhone = NormalizeIraqPhoneNumber(request.PhoneNumber);
-            if (identify == null ||
-                (NormalizeIraqPhoneNumber(identify.WhatsAppNumber ?? string.Empty) != normalizedPhone &&
-                 NormalizeIraqPhoneNumber(identify.PhoneNumber ?? string.Empty) != normalizedPhone))
-            {
-                return BadRequest(new { success = false, message = "رقم الواتساب لا يطابق بيانات الحساب" });
-            }
-
-            var sent = await SendWhatsAppVerificationCodeAsync(normalizedPhone);
-            if (!sent)
-            {
-                return BadRequest(new { success = false, message = "تعذر إرسال كود واتساب. تحقق من الرقم أو إعدادات الخدمة" });
-            }
-
-            return Ok(new
-            {
-                success = true,
-                message = "تم إرسال كود جديد إلى واتساب",
-                data = new { userId = user.Id, phoneNumber = normalizedPhone }
-            });
-        }
-
-        [HttpPost("profile/whatsapp/send-code")]
-        [Authorize]
-        public async Task<IActionResult> SendProfileWhatsAppCode([FromBody] RegisterPhoneRequest request)
-        {
-            var userId = _userManager.GetUserId(User);
-            if (string.IsNullOrWhiteSpace(userId))
-            {
-                return Unauthorized(new { success = false, message = "يجب تسجيل الدخول" });
-            }
-
-            var normalizedPhone = NormalizeIraqPhoneNumber(request.PhoneNumber ?? string.Empty);
-            if (string.IsNullOrWhiteSpace(normalizedPhone) || normalizedPhone.Length < 10)
-            {
-                return BadRequest(new { success = false, message = "رقم الواتساب غير صحيح" });
-            }
-
-            var profile = await _context.Identifies.FirstOrDefaultAsync(i => i.UserId == userId);
-            if (profile == null)
-            {
-                return NotFound(new { success = false, message = "تعذر العثور على ملفك الشخصي" });
-            }
-
-            if (profile.IsWhatsAppVerified)
-            {
-                return Ok(new { success = true, message = "حسابك مربوط بالواتساب مسبقاً" });
-            }
-
-            var phoneAlreadyLinked = await _context.Identifies
-                .AnyAsync(i => i.UserId != userId && i.WhatsAppNumber == normalizedPhone);
-
-            if (phoneAlreadyLinked)
-            {
-                return Conflict(new { success = false, message = "رقم الواتساب مستخدم في حساب آخر" });
-            }
-
-            var sent = await SendWhatsAppVerificationCodeAsync(normalizedPhone);
-            if (!sent)
-            {
-                return BadRequest(new { success = false, message = "تعذر إرسال كود واتساب. تحقق من الرقم أو إعدادات الخدمة" });
-            }
-
-            return Ok(new
-            {
-                success = true,
-                message = "تم إرسال كود التحقق إلى واتساب",
-                phoneNumber = normalizedPhone,
-                displayPhoneNumber = ToLocalIraqPhoneNumber(normalizedPhone)
-            });
-        }
-
-        [HttpPost("profile/whatsapp/confirm")]
-        [Authorize]
-        public async Task<IActionResult> ConfirmProfileWhatsAppCode([FromBody] ConfirmProfileWhatsAppRequest request)
-        {
-            var userId = _userManager.GetUserId(User);
-            if (string.IsNullOrWhiteSpace(userId))
-            {
-                return Unauthorized(new { success = false, message = "يجب تسجيل الدخول" });
-            }
-
-            var normalizedPhone = NormalizeIraqPhoneNumber(request.PhoneNumber ?? string.Empty);
-            if (string.IsNullOrWhiteSpace(normalizedPhone) || string.IsNullOrWhiteSpace(request.Code))
-            {
-                return BadRequest(new { success = false, message = "رقم الواتساب أو كود التحقق غير مكتمل" });
-            }
-
-            var verifyResult = await _otpService.ValidateOtpAsync(normalizedPhone, request.Code);
-            if (!verifyResult.Success)
-            {
-                return BadRequest(new { success = false, message = verifyResult.Message });
-            }
-
-            var profile = await _context.Identifies.FirstOrDefaultAsync(i => i.UserId == userId);
-            if (profile == null)
-            {
-                return NotFound(new { success = false, message = "تعذر العثور على ملفك الشخصي" });
-            }
-
-            var phoneAlreadyLinked = await _context.Identifies
-                .AnyAsync(i => i.UserId != userId && i.WhatsAppNumber == normalizedPhone);
-
-            if (phoneAlreadyLinked)
-            {
-                return Conflict(new { success = false, message = "رقم الواتساب مستخدم في حساب آخر" });
-            }
-
-            profile.WhatsAppNumber = normalizedPhone;
-            profile.IsWhatsAppVerified = true;
-            profile.WhatsAppVerifiedAt = DateTime.UtcNow;
-
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user != null)
-            {
-                user.PhoneNumberConfirmed = true;
-                await _userManager.UpdateAsync(user);
-            }
-
-            await _context.SaveChangesAsync();
-
-            return Ok(new { success = true, message = "تم ربط حسابك بالواتساب بنجاح" });
+            return await RegisterWithEmailAsync(model);
         }
 
         [HttpGet("basic-info")]

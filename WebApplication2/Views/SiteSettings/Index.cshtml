@@ -463,22 +463,6 @@
                                     </div>
                                 </div>
 
-                                <div class="col-md-4 mb-3">
-                                    <div class="card h-100 border-success">
-                                        <div class="card-body">
-                                            <label asp-for="WhatsAppNumber" class="form-label fw-bold">
-                                                <i class="bi bi-whatsapp text-success me-1"></i>واتساب
-                                            </label>
-                                            <input asp-for="WhatsAppNumber" type="tel" class="form-control phone-ltr"
-                                                   dir="ltr" inputmode="tel" placeholder="+964XXXXXXXXX">
-                                            <span asp-validation-for="WhatsAppNumber" class="text-danger small"></span>
-                                            <small class="text-muted mt-2 d-block">
-                                                <i class="bi bi-info-circle me-1"></i>
-                                                مثال: +9647701234567
-                                            </small>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
 
@@ -559,18 +543,6 @@
                 $(this).val(value);
             });
 
-            // تنسيق رقم واتساب
-            $('#WhatsAppNumber').on('input', function() {
-                var value = $(this).val().replace(/\D/g, '');
-                if (value.length > 0) {
-                    if (!value.startsWith('964')) {
-                        value = '+964' + value;
-                    } else if (!value.startsWith('+')) {
-                        value = '+' + value;
-                    }
-                }
-                $(this).val(value);
-            });
         });
     </script>
 }

@@ -53,7 +53,6 @@ namespace WebApplication2.Controllers
                         // وسائل التواصل الاجتماعي (الثلاثة فقط)
                         existing.FacebookUrl = model.FacebookUrl ?? "";
                         existing.InstagramUrl = model.InstagramUrl ?? "";
-                        existing.WhatsAppNumber = model.WhatsAppNumber ?? "";
 
                         existing.LastUpdated = DateTime.Now;
 
@@ -95,7 +94,6 @@ namespace WebApplication2.Controllers
                 settings.SiteDescription = "منصة إلكترونية متكاملة تهدف إلى توفير خدمات إلكترونية للمواطنين العراقيين بأسلوب عصري وسهل.";
                 settings.FacebookUrl = "";
                 settings.InstagramUrl = "";
-                settings.WhatsAppNumber = "";
                 settings.LastUpdated = DateTime.Now;
 
                 _context.SiteSettings.Update(settings);

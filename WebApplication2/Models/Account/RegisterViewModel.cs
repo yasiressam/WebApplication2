@@ -8,11 +8,8 @@ namespace WebApplication2.Models
         [Display(Name = "البريد الإلكتروني")]
         public string Email { get; set; } = string.Empty;
 
-        [Display(Name = "رقم الواتساب")]
+        [Display(Name = "رقم الهاتف")]
         public string PhoneNumber { get; set; } = string.Empty;
-
-        [Display(Name = "طريقة التسجيل")]
-        public string RegisterMethod { get; set; } = "WhatsApp";
 
         [Required]
         [DataType(DataType.Password)]
@@ -42,19 +39,6 @@ namespace WebApplication2.Models
 
         // هل الحساب تم إنشاؤه من قبل أدمن؟
         public bool IsCreatedByAdmin { get; set; } = false;
-    }
-
-    public class WhatsAppVerificationViewModel
-    {
-        [Required]
-        public string UserId { get; set; } = string.Empty;
-
-        [Required]
-        public string PhoneNumber { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "كود التحقق مطلوب")]
-        [Display(Name = "كود التحقق")]
-        public string Code { get; set; } = string.Empty;
     }
 
     // إضافة Validator مخصص

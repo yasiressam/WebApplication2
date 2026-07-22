@@ -25,7 +25,7 @@ namespace WebApplication2.Controllers
     public class SuperAdminController : Controller
     {
         private const string SqlBackupDirectoryFallback = @"C:\Program Files\Microsoft SQL Server\MSSQL17.MSSQLSERVER\MSSQL\Backup";
-        private const string ReportNotificationRecipientsSessionKey = "SuperAdmin.ReportNotificationRecipients";
+        private const string ReportNotificationFiltersSessionKey = "SuperAdmin.ReportNotificationFilters";
         private readonly UserManager<IdentityUser> _userManager;
         private readonly INotificationService _notificationService;
         private readonly ILogger<SuperAdminController> _logger;
@@ -605,8 +605,6 @@ EXEC sp_executesql @sql;";
                 return RedirectToAction(nameof(BackupDatabase));
             }
 
-            TempData["ErrorMessage"] = "فشل إنشاء النسخة الاحتياطية بسبب خطأ غير متوقع.";
-            return RedirectToAction(nameof(BackupDatabase));
         }
 
         private static async Task<string> GetSqlBackupDirectoryAsync(SqlConnection connection)
@@ -2402,32 +2400,34 @@ ORDER BY file_id;";
             ViewBag.Users = new List<object>();
             var model = new SendNotificationViewModel();
 
-            var reportAudienceUserIds = string.Equals(audience, "reports", StringComparison.OrdinalIgnoreCase)
-                ? GetSavedReportNotificationRecipients()
-                : new List<string>();
+            var reportAudienceFilters = string.Equals(audience, "reports", StringComparison.OrdinalIgnoreCase)
+                ? GetSavedReportNotificationFilters()
+                : null;
 
-            if (reportAudienceUserIds.Any())
+            if (!string.IsNullOrWhiteSpace(reportAudienceFilters))
             {
+                var filters = DeserializeReportFilters(reportAudienceFilters);
+                var reportAudienceUserIds = await GetReportUserIdsAsync(filters);
                 var selectedUsers = await _userManager.Users
+                    .AsNoTracking()
                     .Where(u => reportAudienceUserIds.Contains(u.Id))
                     .OrderBy(u => u.Email)
+                    .Select(u => new { u.Id, u.Email, u.UserName })
                     .ToListAsync();
 
                 var selectedProfiles = await _context.Identifies
+                    .AsNoTracking()
                     .Where(i => reportAudienceUserIds.Contains(i.UserId))
                     .ToDictionaryAsync(i => i.UserId, i => i.FullName);
 
-                model.TargetUserIds = selectedUsers
-                    .Select(u => u.Id)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .ToList();
+                model.ReportFiltersJson = reportAudienceFilters;
 
                 ViewBag.IsReportAudience = true;
-                ViewBag.ReportAudienceCount = model.TargetUserIds.Count;
+                ViewBag.ReportAudienceCount = reportAudienceUserIds.Count;
                 ViewBag.ReportAudiencePreview = selectedUsers
                     .Take(10)
                     .Select(u => selectedProfiles.TryGetValue(u.Id, out var fullName) && !string.IsNullOrWhiteSpace(fullName)
-                        ? fullName
+                        ? fullName!
                         : (u.Email ?? u.UserName ?? u.Id))
                     .ToList();
 
@@ -2553,7 +2553,15 @@ ORDER BY file_id;";
         private async Task<List<NotificationRecipientItem>> BuildNotificationRecipientDirectoryAsync()
         {
             var users = await _userManager.Users
+                .AsNoTracking()
                 .OrderBy(u => u.Email)
+                .Select(u => new NotificationRecipientUserSnapshot
+                {
+                    Id = u.Id,
+                    Email = u.Email,
+                    UserName = u.UserName,
+                    PhoneNumber = u.PhoneNumber
+                })
                 .ToListAsync();
 
             var userIds = users
@@ -2562,7 +2570,19 @@ ORDER BY file_id;";
                 .ToList();
 
             var profiles = await _context.Identifies
+                .AsNoTracking()
                 .Where(i => userIds.Contains(i.UserId))
+                .Select(i => new NotificationRecipientProfileSnapshot
+                {
+                    UserId = i.UserId,
+                    FullName = i.FullName,
+                    PhoneNumber = i.PhoneNumber,
+                    WorkGovernorate = i.WorkGovernorate,
+                    ManagedGovernorate = i.ManagedGovernorate,
+                    WorkLocationGovernorate = i.WorkLocation != null ? i.WorkLocation.Governorate : null,
+                    IsPromoted = i.IsPromoted,
+                    AccountType = i.AccountType
+                })
                 .ToDictionaryAsync(i => i.UserId, i => i);
 
             var roleRows = await (from userRole in _context.UserRoles
@@ -2609,6 +2629,18 @@ ORDER BY file_id;";
 
         private async Task<NotificationRecipientResolution> ResolveNotificationRecipientsAsync(SendNotificationViewModel model)
         {
+            if (!string.IsNullOrWhiteSpace(model.ReportFiltersJson))
+            {
+                var filters = DeserializeReportFilters(model.ReportFiltersJson);
+                var reportUserIds = await GetReportUserIdsAsync(filters);
+
+                return new NotificationRecipientResolution
+                {
+                    Source = "reports",
+                    UserIds = reportUserIds.ToList()
+                };
+            }
+
             if (model.TargetUserIds.Any())
             {
                 return new NotificationRecipientResolution
@@ -2668,10 +2700,10 @@ ORDER BY file_id;";
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
         }
 
-        private static string ResolveRecipientGovernorate(Identify? profile)
+        private static string ResolveRecipientGovernorate(NotificationRecipientProfileSnapshot? profile)
         {
-            if (!string.IsNullOrWhiteSpace(profile?.WorkLocation?.Governorate))
-                return profile.WorkLocation.Governorate.Trim();
+            if (!string.IsNullOrWhiteSpace(profile?.WorkLocationGovernorate))
+                return profile.WorkLocationGovernorate.Trim();
 
             if (!string.IsNullOrWhiteSpace(profile?.WorkGovernorate))
                 return profile.WorkGovernorate.Trim();
@@ -2682,7 +2714,7 @@ ORDER BY file_id;";
             return string.Empty;
         }
 
-        private static string DetermineAudienceGroup(Identify? profile, IReadOnlyCollection<string> roles)
+        private static string DetermineAudienceGroup(NotificationRecipientProfileSnapshot? profile, IReadOnlyCollection<string> roles)
         {
             if (roles.Any(IsAdminLikeRole))
                 return "admins";
@@ -4206,9 +4238,7 @@ ORDER BY file_id;";
         {
             try
             {
-                var filters = JsonSerializer.Deserialize<List<ReportFilterSelection>>(
-                    string.IsNullOrWhiteSpace(selectedFilters) ? "[]" : selectedFilters,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<ReportFilterSelection>();
+                var filters = DeserializeReportFilters(selectedFilters);
 
                 var userIds = await GetReportUserIdsAsync(filters);
                 if (!userIds.Any())
@@ -4217,7 +4247,7 @@ ORDER BY file_id;";
                     return RedirectToAction(nameof(Reports));
                 }
 
-                SaveReportNotificationRecipients(userIds);
+                SaveReportNotificationFilters(selectedFilters);
                 return RedirectToAction(nameof(SendNotification), new { audience = "reports" });
             }
             catch (Exception ex)
@@ -4687,31 +4717,30 @@ ORDER BY file_id;";
                 .ToHashSet();
         }
 
-        private void SaveReportNotificationRecipients(IEnumerable<string> userIds)
+        private void SaveReportNotificationFilters(string? selectedFilters)
         {
-            var normalizedUserIds = userIds
-                .Where(id => !string.IsNullOrWhiteSpace(id))
-                .Select(id => id.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
+            var normalizedFilters = string.IsNullOrWhiteSpace(selectedFilters)
+                ? "[]"
+                : selectedFilters.Trim();
 
-            HttpContext.Session.SetString(
-                ReportNotificationRecipientsSessionKey,
-                JsonSerializer.Serialize(normalizedUserIds));
+            HttpContext.Session.SetString(ReportNotificationFiltersSessionKey, normalizedFilters);
         }
 
-        private List<string> GetSavedReportNotificationRecipients()
+        private string? GetSavedReportNotificationFilters()
         {
-            var json = HttpContext.Session.GetString(ReportNotificationRecipientsSessionKey);
-            if (string.IsNullOrWhiteSpace(json))
-                return new List<string>();
-
-            return JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+            return HttpContext.Session.GetString(ReportNotificationFiltersSessionKey);
         }
 
         private void ClearSavedReportNotificationRecipients()
         {
-            HttpContext.Session.Remove(ReportNotificationRecipientsSessionKey);
+            HttpContext.Session.Remove(ReportNotificationFiltersSessionKey);
+        }
+
+        private static List<ReportFilterSelection> DeserializeReportFilters(string? selectedFilters)
+        {
+            return JsonSerializer.Deserialize<List<ReportFilterSelection>>(
+                string.IsNullOrWhiteSpace(selectedFilters) ? "[]" : selectedFilters,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<ReportFilterSelection>();
         }
 
         private static bool IsDateReportKey(string key)
@@ -5697,6 +5726,25 @@ ORDER BY file_id;";
             public string? SelectedRolesCsv { get; set; }
             public string? SearchTerm { get; set; }
             public string? SelectedUserIdsCsv { get; set; }
+            public string? ReportFiltersJson { get; set; }
+        }
+        private sealed class NotificationRecipientUserSnapshot
+        {
+            public string Id { get; set; } = string.Empty;
+            public string? Email { get; set; }
+            public string? UserName { get; set; }
+            public string? PhoneNumber { get; set; }
+        }
+        private sealed class NotificationRecipientProfileSnapshot
+        {
+            public string UserId { get; set; } = string.Empty;
+            public string? FullName { get; set; }
+            public string? PhoneNumber { get; set; }
+            public string? WorkGovernorate { get; set; }
+            public string? ManagedGovernorate { get; set; }
+            public string? WorkLocationGovernorate { get; set; }
+            public bool IsPromoted { get; set; }
+            public string? AccountType { get; set; }
         }
         private sealed class NotificationRecipientItem
         {

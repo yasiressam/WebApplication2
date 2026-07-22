@@ -15,10 +15,8 @@ using WebApplication2.Models.Helpers;
 using WebApplication2.Models.Profile;
 using WebApplication2.Services;
 
-
 namespace WebApplication2.Controllers
 {
-    [AllowAnonymous]
     public class RegisterController : Controller
     {
         private readonly UserManager<IdentityUser> _userManager;
@@ -27,7 +25,6 @@ namespace WebApplication2.Controllers
         private readonly IWebHostEnvironment _webHostEnvironment;
         private readonly INotificationService _notificationService;
         private readonly IOtpService _otpService;
-        private readonly IWhatsAppService _whatsAppService;
 
         private readonly ApplicationDbContext _context;
         private readonly string _profileUploadPath;
@@ -39,8 +36,7 @@ namespace WebApplication2.Controllers
             ILogger<RegisterController> logger,
             IWebHostEnvironment webHostEnvironment,
             INotificationService notificationService,
-            IOtpService otpService,
-            IWhatsAppService whatsAppService)
+            IOtpService otpService)
         {
             _userManager = userManager;
             _emailSender = emailSender;
@@ -49,7 +45,6 @@ namespace WebApplication2.Controllers
             _webHostEnvironment = webHostEnvironment;
             _notificationService = notificationService;
             _otpService = otpService;
-            _whatsAppService = whatsAppService;
 
             _profileUploadPath = Path.Combine("C:\\Users", "Public", "MyApp_Uploads", "Profiles");
 
@@ -63,9 +58,10 @@ namespace WebApplication2.Controllers
 
         // GET: /Register
         [HttpGet]
+        [AllowAnonymous]
         public IActionResult Index()
         {
-            if (User.Identity.IsAuthenticated)
+            if (User.Identity?.IsAuthenticated == true)
             {
                 return RedirectToAction("Index", "Home");
             }
@@ -75,33 +71,18 @@ namespace WebApplication2.Controllers
         // POST: /Register
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [AllowAnonymous]
         public async Task<IActionResult> Index(RegisterViewModel model)
         {
-            var registerMethod = string.Equals(model.RegisterMethod, "WhatsApp", StringComparison.OrdinalIgnoreCase)
-                ? "WhatsApp"
-                : "Email";
-
-            if (registerMethod == "WhatsApp")
-            {
-                ModelState.Remove(nameof(RegisterViewModel.Email));
-                if (string.IsNullOrWhiteSpace(model.PhoneNumber))
-                    ModelState.AddModelError(nameof(RegisterViewModel.PhoneNumber), "رقم الواتساب مطلوب");
-            }
-            else
-            {
-                ModelState.Remove(nameof(RegisterViewModel.PhoneNumber));
-                if (string.IsNullOrWhiteSpace(model.Email))
-                    ModelState.AddModelError(nameof(RegisterViewModel.Email), "البريد الإلكتروني مطلوب");
-            }
+            ModelState.Remove(nameof(RegisterViewModel.PhoneNumber));
+            if (string.IsNullOrWhiteSpace(model.Email))
+                ModelState.AddModelError(nameof(RegisterViewModel.Email), "البريد الإلكتروني مطلوب");
 
             if (!ModelState.IsValid)
                 return View(model);
 
             try
             {
-                if (registerMethod == "WhatsApp")
-                    return await RegisterWithWhatsAppAsync(model);
-
                 var existingUser = await _userManager.FindByEmailAsync(model.Email);
                 if (existingUser != null)
                 {
@@ -166,215 +147,6 @@ namespace WebApplication2.Controllers
         }
 
         #endregion
-
-        [HttpGet]
-        public IActionResult VerifyWhatsApp(string userId, string phoneNumber)
-        {
-            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(phoneNumber))
-            {
-                TempData["ErrorMessage"] = "بيانات تأكيد الواتساب غير مكتملة.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            return View(new WhatsAppVerificationViewModel
-            {
-                UserId = userId,
-                PhoneNumber = phoneNumber
-            });
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> VerifyWhatsApp(WhatsAppVerificationViewModel model)
-        {
-            if (!ModelState.IsValid)
-                return View(model);
-
-            var user = await _userManager.FindByIdAsync(model.UserId);
-            if (user == null)
-            {
-                TempData["ErrorMessage"] = "لم يتم العثور على الحساب.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            var identify = await _context.Identifies.FirstOrDefaultAsync(i => i.UserId == user.Id);
-            var normalizedPhone = NormalizeIraqPhoneNumber(model.PhoneNumber);
-            if (identify == null ||
-                (NormalizeIraqPhoneNumber(identify.WhatsAppNumber ?? string.Empty) != normalizedPhone &&
-                 NormalizeIraqPhoneNumber(identify.PhoneNumber ?? string.Empty) != normalizedPhone))
-            {
-                TempData["ErrorMessage"] = "رقم الواتساب لا يطابق بيانات الحساب.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            var verifyResult = await _otpService.ValidateOtpAsync(normalizedPhone, model.Code);
-            if (!verifyResult.Success)
-            {
-                ModelState.AddModelError(nameof(model.Code), verifyResult.Message);
-                return View(model);
-            }
-
-            user.PhoneNumberConfirmed = true;
-            user.EmailConfirmed = true;
-            user.PhoneNumber = ToLocalIraqPhoneNumber(normalizedPhone);
-            await _userManager.UpdateAsync(user);
-
-            identify.PhoneNumber = ToLocalIraqPhoneNumber(normalizedPhone);
-            identify.WhatsAppNumber = normalizedPhone;
-            identify.IsWhatsAppVerified = true;
-            identify.WhatsAppVerifiedAt = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            TempData["SuccessMessage"] = "تم تأكيد رقم الواتساب بنجاح. يمكنك تسجيل الدخول الآن برقم الواتساب وكلمة المرور.";
-            return LocalRedirect("/Identity/Account/Login");
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ResendWhatsAppCode(string userId, string phoneNumber)
-        {
-            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(phoneNumber))
-            {
-                TempData["ErrorMessage"] = "تعذر إعادة إرسال الكود.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-            {
-                TempData["ErrorMessage"] = "لم يتم العثور على الحساب.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            var identify = await _context.Identifies.FirstOrDefaultAsync(i => i.UserId == user.Id);
-            var normalizedPhone = NormalizeIraqPhoneNumber(phoneNumber);
-            if (identify == null ||
-                (NormalizeIraqPhoneNumber(identify.WhatsAppNumber ?? string.Empty) != normalizedPhone &&
-                 NormalizeIraqPhoneNumber(identify.PhoneNumber ?? string.Empty) != normalizedPhone))
-            {
-                TempData["ErrorMessage"] = "رقم الواتساب لا يطابق بيانات الحساب.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            var sent = await SendWhatsAppVerificationCodeAsync(normalizedPhone);
-            TempData[sent ? "SuccessMessage" : "ErrorMessage"] = sent
-                ? "تم إرسال كود جديد إلى واتساب."
-                : "تعذر إرسال كود واتساب. تحقق من الرقم أو إعدادات الخدمة.";
-
-            return RedirectToAction(nameof(VerifyWhatsApp), new { userId, phoneNumber = normalizedPhone });
-        }
-
-        [HttpPost]
-        [Authorize]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> SendProfileWhatsAppCode(string phoneNumber)
-        {
-            var userId = _userManager.GetUserId(User);
-            if (string.IsNullOrWhiteSpace(userId))
-                return RedirectToAction("Login", "Account");
-
-            var normalizedPhone = NormalizeIraqPhoneNumber(phoneNumber);
-            if (string.IsNullOrWhiteSpace(normalizedPhone) || normalizedPhone.Length < 10)
-            {
-                TempData["ErrorMessage"] = "رقم الواتساب غير صحيح.";
-                return RedirectToAction(nameof(ProfileDetails));
-            }
-
-            var profile = await _context.Identifies.FirstOrDefaultAsync(i => i.UserId == userId);
-            if (profile == null)
-            {
-                TempData["ErrorMessage"] = "تعذر العثور على ملفك الشخصي.";
-                return RedirectToAction(nameof(ProfileDetails));
-            }
-
-            if (profile.IsWhatsAppVerified)
-            {
-                TempData["SuccessMessage"] = "حسابك مربوط بالواتساب مسبقاً.";
-                return RedirectToAction(nameof(ProfileDetails));
-            }
-
-            var phoneAlreadyLinked = await _context.Identifies
-                .AnyAsync(i =>
-                    i.UserId != userId &&
-                    i.WhatsAppNumber == normalizedPhone);
-
-            if (phoneAlreadyLinked)
-            {
-                TempData["ErrorMessage"] = "رقم الواتساب مستخدم في حساب آخر.";
-                return RedirectToAction(nameof(ProfileDetails));
-            }
-
-            var sent = await SendWhatsAppVerificationCodeAsync(normalizedPhone);
-            TempData[sent ? "SuccessMessage" : "ErrorMessage"] = sent
-                ? "تم إرسال كود التحقق إلى واتساب."
-                : "تعذر إرسال كود واتساب. تحقق من الرقم أو إعدادات الخدمة.";
-
-            TempData["LinkWhatsAppPhone"] = normalizedPhone;
-            TempData["LinkWhatsAppPhoneDisplay"] = ToLocalIraqPhoneNumber(normalizedPhone);
-            return RedirectToAction(nameof(ProfileDetails));
-        }
-
-        [HttpPost]
-        [Authorize]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ConfirmProfileWhatsAppCode(string phoneNumber, string code)
-        {
-            var userId = _userManager.GetUserId(User);
-            if (string.IsNullOrWhiteSpace(userId))
-                return RedirectToAction("Login", "Account");
-
-            var normalizedPhone = NormalizeIraqPhoneNumber(phoneNumber);
-            if (string.IsNullOrWhiteSpace(normalizedPhone) || string.IsNullOrWhiteSpace(code))
-            {
-                TempData["ErrorMessage"] = "رقم الواتساب أو كود التحقق غير مكتمل.";
-                TempData["LinkWhatsAppPhone"] = normalizedPhone;
-                TempData["LinkWhatsAppPhoneDisplay"] = ToLocalIraqPhoneNumber(normalizedPhone);
-                return RedirectToAction(nameof(ProfileDetails));
-            }
-
-            var verifyResult = await _otpService.ValidateOtpAsync(normalizedPhone, code);
-            if (!verifyResult.Success)
-            {
-                TempData["ErrorMessage"] = verifyResult.Message;
-                TempData["LinkWhatsAppPhone"] = normalizedPhone;
-                TempData["LinkWhatsAppPhoneDisplay"] = ToLocalIraqPhoneNumber(normalizedPhone);
-                return RedirectToAction(nameof(ProfileDetails));
-            }
-
-            var profile = await _context.Identifies.FirstOrDefaultAsync(i => i.UserId == userId);
-            if (profile == null)
-            {
-                TempData["ErrorMessage"] = "تعذر العثور على ملفك الشخصي.";
-                return RedirectToAction(nameof(ProfileDetails));
-            }
-
-            var phoneAlreadyLinked = await _context.Identifies
-                .AnyAsync(i =>
-                    i.UserId != userId &&
-                    i.WhatsAppNumber == normalizedPhone);
-
-            if (phoneAlreadyLinked)
-            {
-                TempData["ErrorMessage"] = "رقم الواتساب مستخدم في حساب آخر.";
-                return RedirectToAction(nameof(ProfileDetails));
-            }
-
-            profile.WhatsAppNumber = normalizedPhone;
-            profile.IsWhatsAppVerified = true;
-            profile.WhatsAppVerifiedAt = DateTime.UtcNow;
-
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user != null)
-            {
-                user.PhoneNumberConfirmed = true;
-                await _userManager.UpdateAsync(user);
-            }
-
-            await _context.SaveChangesAsync();
-
-            TempData["SuccessMessage"] = "تم ربط حسابك بالواتساب بنجاح. يمكنك الآن تسجيل الدخول برقم الواتساب وكلمة المرور.";
-            return RedirectToAction(nameof(ProfileDetails));
-        }
 
         #region ========== إدارة الملف الشخصي ==========
 
@@ -2476,7 +2248,7 @@ namespace WebApplication2.Controllers
 
             if (string.IsNullOrWhiteSpace(profile.FullName)) return false;
             if (string.IsNullOrWhiteSpace(profile.MotherName)) return false;
-            if (profile.Date == null || profile.Date == DateTime.MinValue) return false;
+            if (profile.Date == DateTime.MinValue) return false;
             if (string.IsNullOrWhiteSpace(profile.Gender)) return false;
             if (string.IsNullOrWhiteSpace(profile.PhoneNumber)) return false;
             if (string.IsNullOrWhiteSpace(profile.IdentityCardN)) return false;
@@ -2492,7 +2264,7 @@ namespace WebApplication2.Controllers
 
             if (string.IsNullOrWhiteSpace(profile.FullName)) return false;
             if (string.IsNullOrWhiteSpace(profile.MotherName)) return false;
-            if (profile.Date == null || profile.Date == DateTime.MinValue) return false;
+            if (profile.Date == DateTime.MinValue) return false;
             if (string.IsNullOrWhiteSpace(profile.Gender)) return false;
             if (string.IsNullOrWhiteSpace(profile.PhoneNumber)) return false;
             if (string.IsNullOrWhiteSpace(profile.IdentityCardN)) return false;
@@ -2616,103 +2388,6 @@ namespace WebApplication2.Controllers
             {
                 _logger.LogError(ex, $"❌ خطأ في إرسال بريد التأكيد إلى {user.Email}");
             }
-        }
-
-        private async Task<IActionResult> RegisterWithWhatsAppAsync(RegisterViewModel model)
-        {
-            var normalizedPhone = NormalizeIraqPhoneNumber(model.PhoneNumber);
-            if (string.IsNullOrWhiteSpace(normalizedPhone) || normalizedPhone.Length < 10)
-            {
-                ModelState.AddModelError(nameof(model.PhoneNumber), "رقم الواتساب غير صحيح");
-                return View(nameof(Index), model);
-            }
-
-            var existingPhoneNumbers = await _context.Identifies
-                .Where(i =>
-                    !string.IsNullOrWhiteSpace(i.WhatsAppNumber) ||
-                    !string.IsNullOrWhiteSpace(i.PhoneNumber))
-                .Select(i => new { i.WhatsAppNumber, i.PhoneNumber })
-                .ToListAsync();
-
-            var phoneAlreadyExists = existingPhoneNumbers.Any(i =>
-                NormalizeIraqPhoneNumber(i.WhatsAppNumber ?? string.Empty) == normalizedPhone ||
-                NormalizeIraqPhoneNumber(i.PhoneNumber ?? string.Empty) == normalizedPhone);
-
-            if (phoneAlreadyExists)
-            {
-                ModelState.AddModelError(nameof(model.PhoneNumber), "رقم الواتساب مسجل مسبقاً");
-                return View(nameof(Index), model);
-            }
-
-            var existingUser = await _userManager.FindByNameAsync(normalizedPhone);
-            if (existingUser != null)
-            {
-                ModelState.AddModelError(nameof(model.PhoneNumber), "رقم الواتساب مسجل مسبقاً");
-                return View(nameof(Index), model);
-            }
-
-            var syntheticEmail = $"{normalizedPhone}@whatsapp.local";
-            var localPhone = ToLocalIraqPhoneNumber(normalizedPhone);
-            var user = new IdentityUser
-            {
-                UserName = normalizedPhone,
-                Email = syntheticEmail,
-                PhoneNumber = localPhone,
-                EmailConfirmed = false,
-                PhoneNumberConfirmed = false
-            };
-
-            var result = await _userManager.CreateAsync(user, model.Password);
-            if (!result.Succeeded)
-            {
-                foreach (var error in result.Errors)
-                {
-                    ModelState.AddModelError("", error.Description);
-                    _logger.LogError("❌ خطأ في التسجيل عبر واتساب: {Error}", error.Description);
-                }
-
-                return View(nameof(Index), model);
-            }
-
-            await _userManager.AddToRoleAsync(user, clsRoles.User);
-
-            var identify = new Identify
-            {
-                UserId = user.Id,
-                CreatedAt = DateTime.UtcNow,
-                AccountType = "عادي",
-                IsPromoted = false,
-                FullName = "",
-                MotherName = "",
-                PhoneNumber = localPhone,
-                WhatsAppNumber = normalizedPhone,
-                IsWhatsAppVerified = false,
-                IdentityCardN = "",
-                Date = DateTime.Now,
-                IsBasicInfoApproved = false,
-                Email = ""
-            };
-
-            _context.Identifies.Add(identify);
-            await _context.SaveChangesAsync();
-
-            var sent = await SendWhatsAppVerificationCodeAsync(normalizedPhone);
-            if (!sent)
-            {
-                TempData["ErrorMessage"] = "تم إنشاء الحساب، لكن تعذر إرسال كود واتساب. يمكنك طلب إعادة الإرسال.";
-            }
-
-            return RedirectToAction(nameof(VerifyWhatsApp), new
-            {
-                userId = user.Id,
-                phoneNumber = normalizedPhone
-            });
-        }
-
-        private async Task<bool> SendWhatsAppVerificationCodeAsync(string phoneNumber)
-        {
-            var result = await _otpService.GenerateAndSendOtp(phoneNumber);
-            return result.Success;
         }
 
         private static string NormalizeIraqPhoneNumber(string phoneNumber)

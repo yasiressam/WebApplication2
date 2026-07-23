@@ -1844,8 +1844,8 @@ namespace WebApplication2.Controllers
             {
                 var governorate = searchGovernorate.Trim();
                 query = query.Where(i =>
-                    (i.WorkGovernorate != null && i.WorkGovernorate.Contains(governorate)) ||
-                    _context.WorkLocations.Any(w => w.IdentifyId == i.Id && w.Governorate != null && w.Governorate.Contains(governorate)));
+                    i.WorkGovernorate == governorate ||
+                    _context.WorkLocations.Any(w => w.IdentifyId == i.Id && w.Governorate == governorate));
             }
 
             if (!string.IsNullOrWhiteSpace(searchPhone))

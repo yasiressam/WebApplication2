@@ -1,8 +1,66 @@
-﻿@page
+@page
 @model ConfirmEmailModel
 @{
-    ViewData["Title"] = "Confirm email";
+    ViewData["Title"] = "تأكيد الحساب";
 }
 
-<h1>@ViewData["Title"]</h1>
-<partial name="_StatusMessage" model="Model.StatusMessage" />
+<style>
+    .otp-input {
+        text-align: center;
+        font-size: 1.35rem;
+        letter-spacing: 0.35rem;
+        font-weight: 700;
+        direction: ltr;
+    }
+
+    .otp-input::placeholder {
+        letter-spacing: 0.2rem;
+        text-align: center;
+    }
+</style>
+
+<div class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="card shadow p-4" style="max-width: 450px; width: 100%; border-radius: 15px;">
+        <div class="card-header text-center text-white" style="background: linear-gradient(135deg, #3498db, #2c3e50); border-radius: 15px 15px 0 0;">
+            <h2>@ViewData["Title"]</h2>
+        </div>
+
+        <div class="card-body">
+            <partial name="_StatusMessage" model="Model.StatusMessage" />
+
+            @if (Model.IsWhatsAppMode)
+            {
+                <p class="text-center text-muted mb-4">
+                    أدخل رمز التأكيد المرسل إلى رقم الواتساب لإكمال تفعيل الحساب.
+                </p>
+
+                <form method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger text-center mb-3" role="alert"></div>
+                    <input asp-for="Input.UserId" type="hidden" />
+                    <input asp-for="Input.PhoneNumber" type="hidden" />
+                    <input asp-for="Input.Mode" type="hidden" />
+
+                    <div class="mb-3">
+                        <label asp-for="Input.OtpCode" class="form-label fw-bold d-block text-center"></label>
+                        <input asp-for="Input.OtpCode" class="form-control otp-input" autocomplete="one-time-code" placeholder="123456" maxlength="6" />
+                        <span asp-validation-for="Input.OtpCode" class="text-danger d-block text-center mt-2"></span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100" style="background: linear-gradient(135deg, #3498db, #2c3e50); font-weight: 600;">
+                        تأكيد الرمز
+                    </button>
+                </form>
+            }
+            else
+            {
+                <div class="text-center">
+                    <h1 class="h4 mb-0">@ViewData["Title"]</h1>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

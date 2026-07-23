@@ -58,6 +58,12 @@
         color: #1e3c72;
         border-radius: 14px;
     }
+
+    .registration-method-toggle .btn {
+        border-radius: 12px !important;
+        font-weight: 700;
+        padding: 0.8rem 1rem;
+    }
 </style>
 
 <div class="container mt-4">
@@ -89,13 +95,29 @@
 
                     <form asp-action="CreateUserByAdmin" method="post">
                         @Html.AntiForgeryToken()
+                        <input asp-for="RegistrationMethod" type="hidden" id="RegistrationMethod" />
                         <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
 
-                        <div class="mb-3" id="emailField">
+                        <div class="mb-3 registration-method-toggle">
+                            <div class="btn-group w-100" role="group" aria-label="طريقة الإنشاء">
+                                <button type="button" class="btn btn-success active" id="whatsappMethodBtn">الواتساب</button>
+                                <button type="button" class="btn btn-outline-primary" id="emailMethodBtn">البريد الإلكتروني</button>
+                            </div>
+                        </div>
+
+                        <div class="mb-3" id="phoneField">
+                            <label asp-for="PhoneNumber" class="form-label fw-bold">
+                                <i class="fab fa-whatsapp"></i> رقم الواتساب
+                            </label>
+                            <input asp-for="PhoneNumber" class="form-control" placeholder="07XXXXXXXXX" dir="ltr" autocomplete="off" />
+                            <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-3" id="emailField" style="display:none;">
                             <label asp-for="Email" class="form-label fw-bold">
                                 <i class="fas fa-envelope"></i> البريد الإلكتروني
                             </label>
-                            <input asp-for="Email" class="form-control" placeholder="example@domain.com" />
+                            <input asp-for="Email" class="form-control" placeholder="example@domain.com" autocomplete="off" />
                             <span asp-validation-for="Email" class="text-danger"></span>
                         </div>
 
@@ -159,6 +181,7 @@
                                     سيتمكن هذا الأدمن من رؤية وإدارة المستخدمين في هذه المحافظة فقط.
                                 </small>
                             </div>
+
                             <div class="alert alert-info" id="adminInfo" style="display: none;">
                                 <i class="fas fa-info-circle"></i>
                                 <strong>تنبيه:</strong> عند إنشاء حساب أدمن، سيتمكن من رؤية المستخدمين في المحافظة المحددة فقط.
@@ -185,6 +208,38 @@
     <script>
         $(document).ready(function() {
             const canCreatePrivilegedUsers = @canCreatePrivilegedUsers.ToString().ToLower();
+            const registrationMethodInput = document.getElementById('RegistrationMethod');
+            const whatsappMethodBtn = document.getElementById('whatsappMethodBtn');
+            const emailMethodBtn = document.getElementById('emailMethodBtn');
+            const phoneField = document.getElementById('phoneField');
+            const emailField = document.getElementById('emailField');
+            const phoneInput = document.getElementById('PhoneNumber');
+            const emailInput = document.getElementById('Email');
+
+            function setCreationMethod(method) {
+                const isWhatsApp = method === 'whatsapp';
+                registrationMethodInput.value = isWhatsApp ? 'whatsapp' : 'email';
+                phoneField.style.display = isWhatsApp ? 'block' : 'none';
+                emailField.style.display = isWhatsApp ? 'none' : 'block';
+                phoneInput.disabled = !isWhatsApp;
+                emailInput.disabled = isWhatsApp;
+                whatsappMethodBtn.classList.toggle('active', isWhatsApp);
+                whatsappMethodBtn.classList.toggle('btn-success', isWhatsApp);
+                whatsappMethodBtn.classList.toggle('btn-outline-success', !isWhatsApp);
+                emailMethodBtn.classList.toggle('active', !isWhatsApp);
+                emailMethodBtn.classList.toggle('btn-primary', !isWhatsApp);
+                emailMethodBtn.classList.toggle('btn-outline-primary', isWhatsApp);
+            }
+
+            whatsappMethodBtn.addEventListener('click', function () {
+                setCreationMethod('whatsapp');
+            });
+
+            emailMethodBtn.addEventListener('click', function () {
+                setCreationMethod('email');
+            });
+
+            setCreationMethod(registrationMethodInput.value === 'email' ? 'email' : 'whatsapp');
 
             if (canCreatePrivilegedUsers) {
                 $('#roleSelect').change(function() {
@@ -213,7 +268,7 @@
 
                     if (role === 'Admin' && !governorate) {
                         e.preventDefault();
-                        alert('❌ يجب اختيار المحافظة للأدمن');
+                        alert('يجب اختيار المحافظة للأدمن');
                     }
                 });
             }

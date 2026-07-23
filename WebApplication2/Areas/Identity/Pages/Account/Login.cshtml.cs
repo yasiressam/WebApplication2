@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
+using WebApplication2.Data;
 using WebApplication2.Models.Audit;
 using WebApplication2.Services;
 
@@ -18,17 +20,20 @@ namespace WebApplication2.Areas.Identity.Pages.Account
         private readonly UserManager<IdentityUser> _userManager;
         private readonly ILogger<LoginModel> _logger;
         private readonly IAuditTrailService _auditTrailService;
+        private readonly ApplicationDbContext _context;
 
         public LoginModel(
             SignInManager<IdentityUser> signInManager,
             UserManager<IdentityUser> userManager,
             ILogger<LoginModel> logger,
-            IAuditTrailService auditTrailService)
+            IAuditTrailService auditTrailService,
+            ApplicationDbContext context)
         {
             _signInManager = signInManager;
             _userManager = userManager;
             _logger = logger;
             _auditTrailService = auditTrailService;
+            _context = context;
         }
 
         [BindProperty]
@@ -41,10 +46,13 @@ namespace WebApplication2.Areas.Identity.Pages.Account
         [TempData]
         public string ErrorMessage { get; set; }
 
+        [TempData]
+        public string SuccessMessage { get; set; }
+
         public class InputModel
         {
             [Required]
-            [Display(Name = "البريد الإلكتروني")]
+            [Display(Name = "البريد الإلكتروني أو رقم الواتساب")]
             public string Email { get; set; }
 
             [Required]
@@ -79,7 +87,7 @@ namespace WebApplication2.Areas.Identity.Pages.Account
             }
 
             var loginIdentifier = Input.Email.Trim();
-            var user = await _userManager.FindByEmailAsync(loginIdentifier);
+            var user = await FindUserForLoginAsync(loginIdentifier);
 
             if (user == null)
             {
@@ -114,6 +122,38 @@ namespace WebApplication2.Areas.Identity.Pages.Account
             return Page();
         }
 
+        private async Task<IdentityUser?> FindUserForLoginAsync(string loginIdentifier)
+        {
+            var user = await _userManager.FindByEmailAsync(loginIdentifier);
+            if (user != null)
+            {
+                return user;
+            }
+
+            var normalizedPhone = NormalizeIraqPhoneNumber(loginIdentifier);
+            if (string.IsNullOrWhiteSpace(normalizedPhone))
+            {
+                return null;
+            }
+
+            user = await _userManager.FindByNameAsync(normalizedPhone);
+            if (user != null)
+            {
+                return user;
+            }
+
+            var localPhone = ToLocalIraqPhoneNumber(normalizedPhone);
+            var profile = await _context.Identifies
+                .AsNoTracking()
+                .Where(i => i.WhatsAppNumber == normalizedPhone || i.PhoneNumber == localPhone)
+                .Select(i => new { i.UserId })
+                .FirstOrDefaultAsync();
+
+            return profile == null
+                ? null
+                : await _userManager.FindByIdAsync(profile.UserId);
+        }
+
         private async Task LogLoginAttemptAsync(string identifier, bool success, string message, IdentityUser? user = null)
         {
             await _auditTrailService.LogLoginAsync(new AuditLogEntry
@@ -130,6 +170,48 @@ namespace WebApplication2.Areas.Identity.Pages.Account
                 HttpMethod = HttpContext.Request.Method,
                 Details = $"تذكرني: {(Input.RememberMe ? "نعم" : "لا")}"
             });
+        }
+
+        private static string NormalizeIraqPhoneNumber(string phoneNumber)
+        {
+            var digits = new string((phoneNumber ?? string.Empty).Where(char.IsDigit).ToArray());
+            if (string.IsNullOrWhiteSpace(digits))
+            {
+                return string.Empty;
+            }
+
+            if (digits.StartsWith("00", StringComparison.Ordinal))
+            {
+                digits = digits[2..];
+            }
+
+            if (digits.StartsWith("964", StringComparison.Ordinal))
+            {
+                return digits;
+            }
+
+            if (digits.StartsWith("0", StringComparison.Ordinal))
+            {
+                return "964" + digits[1..];
+            }
+
+            if (digits.StartsWith("7", StringComparison.Ordinal))
+            {
+                return "964" + digits;
+            }
+
+            return digits;
+        }
+
+        private static string ToLocalIraqPhoneNumber(string phoneNumber)
+        {
+            var normalizedPhone = NormalizeIraqPhoneNumber(phoneNumber);
+            if (normalizedPhone.StartsWith("9647", StringComparison.Ordinal))
+            {
+                return "0" + normalizedPhone[3..];
+            }
+
+            return phoneNumber;
         }
     }
 }

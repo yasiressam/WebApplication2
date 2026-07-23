@@ -25,6 +25,7 @@ builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IAuditTrailService, DbAuditTrailService>();
 builder.Services.AddScoped<AuditActivityFilter>();
+builder.Services.AddSingleton<OnlineUsersTracker>();
 builder.Services.Configure<OtpApiSettings>(builder.Configuration.GetSection("OtpApi"));
 builder.Services.AddHostedService<RequestCleanupService>();
 builder.Services.AddHostedService<NotificationCleanupService>();

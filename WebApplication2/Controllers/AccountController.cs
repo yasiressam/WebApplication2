@@ -138,10 +138,25 @@ namespace WebApplication2.Controllers
         [Authorize(Roles = clsRoles.SystemManager + "," + clsRoles.SuperAdmin + "," + clsRoles.Admin + "," + clsRoles.DistrictAdmin)]
         public async Task<IActionResult> CreateUserByAdmin(RegisterViewModel model)
         {
-            ModelState.Remove(nameof(RegisterViewModel.PhoneNumber));
-            if (string.IsNullOrWhiteSpace(model.Email))
+            var registrationMethod = string.Equals(model.RegistrationMethod, "email", StringComparison.OrdinalIgnoreCase)
+                ? "email"
+                : "whatsapp";
+
+            if (registrationMethod == "whatsapp")
             {
-                ModelState.AddModelError(nameof(RegisterViewModel.Email), "البريد الإلكتروني مطلوب.");
+                ModelState.Remove(nameof(RegisterViewModel.Email));
+                if (string.IsNullOrWhiteSpace(model.PhoneNumber))
+                {
+                    ModelState.AddModelError(nameof(RegisterViewModel.PhoneNumber), "رقم الواتساب مطلوب.");
+                }
+            }
+            else
+            {
+                ModelState.Remove(nameof(RegisterViewModel.PhoneNumber));
+                if (string.IsNullOrWhiteSpace(model.Email))
+                {
+                    ModelState.AddModelError(nameof(RegisterViewModel.Email), "البريد الإلكتروني مطلوب.");
+                }
             }
 
             if (!ModelState.IsValid)
@@ -170,11 +185,66 @@ namespace WebApplication2.Controllers
                     return View(model);
                 }
 
-                var existingUser = await _userManager.FindByEmailAsync(model.Email);
+                IdentityUser? existingUser = null;
+                string identifierValue;
+                string identityEmail;
+                string identityUserName;
+                string? localPhone = null;
+                string? normalizedPhone = null;
+
+                if (registrationMethod == "whatsapp")
+                {
+                    normalizedPhone = NormalizeIraqPhoneNumber(model.PhoneNumber);
+                    if (string.IsNullOrWhiteSpace(normalizedPhone) || !normalizedPhone.StartsWith("9647", StringComparison.Ordinal))
+                    {
+                        ModelState.AddModelError(nameof(RegisterViewModel.PhoneNumber), "رقم الواتساب غير صحيح.");
+                        ViewBag.Governorates = GetGovernorates();
+                        ViewBag.BaghdadDistricts = new List<string> { "الكرخ", "الرصافة" };
+                        return View(model);
+                    }
+
+                    localPhone = ToLocalIraqPhoneNumber(normalizedPhone);
+                    identityEmail = $"{normalizedPhone}@whatsapp.local";
+                    identityUserName = normalizedPhone;
+                    identifierValue = localPhone;
+
+                    existingUser = await _userManager.FindByNameAsync(identityUserName);
+                    if (existingUser == null)
+                    {
+                        existingUser = await _userManager.FindByEmailAsync(identityEmail);
+                    }
+
+                    var existingPhoneNumbers = await _context.Identifies
+                        .AsNoTracking()
+                        .Where(i => !string.IsNullOrWhiteSpace(i.WhatsAppNumber) || !string.IsNullOrWhiteSpace(i.PhoneNumber))
+                        .Select(i => new { i.WhatsAppNumber, i.PhoneNumber })
+                        .ToListAsync();
+
+                    var phoneAlreadyExists = existingPhoneNumbers.Any(i =>
+                        NormalizeIraqPhoneNumber(i.WhatsAppNumber ?? string.Empty) == normalizedPhone ||
+                        NormalizeIraqPhoneNumber(i.PhoneNumber ?? string.Empty) == normalizedPhone);
+
+                    if (phoneAlreadyExists)
+                    {
+                        ModelState.AddModelError(nameof(RegisterViewModel.PhoneNumber), "رقم الواتساب مسجل مسبقاً.");
+                        ViewBag.Governorates = GetGovernorates();
+                        ViewBag.BaghdadDistricts = new List<string> { "الكرخ", "الرصافة" };
+                        return View(model);
+                    }
+                }
+                else
+                {
+                    identityEmail = model.Email.Trim();
+                    identityUserName = identityEmail;
+                    identifierValue = identityEmail;
+                    existingUser = await _userManager.FindByEmailAsync(identityEmail);
+                }
 
                 if (existingUser != null)
                 {
-                    ModelState.AddModelError("Email", "البريد الإلكتروني مسجل مسبقاً.");
+                    ModelState.AddModelError(
+                        registrationMethod == "whatsapp" ? nameof(RegisterViewModel.PhoneNumber) : nameof(RegisterViewModel.Email),
+                        registrationMethod == "whatsapp" ? "رقم الواتساب مسجل مسبقاً." : "البريد الإلكتروني مسجل مسبقاً.");
                     ViewBag.Governorates = GetGovernorates();
                     ViewBag.BaghdadDistricts = new List<string> { "الكرخ", "الرصافة" };
                     return View(model);
@@ -182,9 +252,11 @@ namespace WebApplication2.Controllers
 
                 var user = new IdentityUser
                 {
-                    UserName = model.Email,
-                    Email = model.Email,
-                    EmailConfirmed = true
+                    UserName = identityUserName,
+                    Email = identityEmail,
+                    EmailConfirmed = true,
+                    PhoneNumber = localPhone,
+                    PhoneNumberConfirmed = false
                 };
 
                 var result = await _userManager.CreateAsync(user, model.Password);
@@ -217,8 +289,8 @@ namespace WebApplication2.Controllers
                             ManagedDistrict = null,
                             Date = DateTime.Now,
                             Gender = "ذكر",
-                            PhoneNumber = "",
-                            WhatsAppNumber = "",
+                            PhoneNumber = localPhone ?? "",
+                            WhatsAppNumber = normalizedPhone ?? "",
                             IsWhatsAppVerified = false,
                             WhatsAppVerifiedAt = null,
                             IdentityCardN = "",
@@ -227,7 +299,7 @@ namespace WebApplication2.Controllers
                             BasicInfoRequestedAt = IraqTime.Now(),
                             AccountType = "عادي",
                             IsPromoted = false,
-                            Email = user.Email ?? "",
+                            Email = identityEmail,
                             IsBasicInfoApproved = false
                         };
                         _context.Identifies.Add(identify);
@@ -243,8 +315,8 @@ namespace WebApplication2.Controllers
                             FullName = "",
                             Date = DateTime.Now,
                             Gender = "",
-                            PhoneNumber = "",
-                            WhatsAppNumber = "",
+                            PhoneNumber = localPhone ?? "",
+                            WhatsAppNumber = normalizedPhone ?? "",
                             IsWhatsAppVerified = false,
                             WhatsAppVerifiedAt = null,
                             IdentityCardN = "",
@@ -253,7 +325,7 @@ namespace WebApplication2.Controllers
                             BasicInfoRequestedAt = IraqTime.Now(),
                             AccountType = "عادي",
                             IsPromoted = false,
-                            Email = user.Email ?? "",
+                            Email = identityEmail,
                             IsBasicInfoApproved = false,
                             WorkGovernorate = adminGovernorate,
                             WorkDistrict = null
@@ -264,7 +336,7 @@ namespace WebApplication2.Controllers
                         _logger.LogInformation($"✅ تم تعيين محافظة العمل التنظيمي للمستخدم {user.Email} إلى {adminGovernorate}");
                     }
 
-                    var createdIdentifier = model.Email;
+                    var createdIdentifier = identifierValue;
 
                     _logger.LogInformation($"✅ تم إنشاء مستخدم جديد من قبل الأدمن: {createdIdentifier} بدور {roleToAssign}");
 

@@ -166,7 +166,6 @@
                                             <i class="bi bi-map me-2"></i> الإحصائيات
                                         </a>
                                     </li>
-                                    
                                    @*  <li>
                                         <a class="dropdown-item" asp-controller="News" asp-action="Create">
                                             <i class="bi bi-plus-circle me-2"></i> إضافة خبر
@@ -177,6 +176,14 @@
                                             <i class="bi bi-people me-2"></i> إدارة المستخدمين
                                         </a>
                                     </li>
+                                    @if (User.IsInRole(clsRoles.SystemManager))
+                                    {
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="SuperAdmin" asp-action="OnlineUsers">
+                                                <i class="bi bi-broadcast-pin me-2"></i> المستخدمون المتصلون
+                                            </a>
+                                        </li>
+                                    }
                                     <li>
                                         <a class="dropdown-item" asp-controller="SuperAdmin" asp-action="AdministrativeManagers">
                                             <i class="bi bi-person-badge me-2"></i> المسؤولين والمعاونين

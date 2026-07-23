@@ -945,7 +945,7 @@ body {
             <div class="stat-card exportable-card" onclick="exportCardToExcel('admins')">
                 <div class="stat-icon"><i class="fas fa-user-tie"></i></div>
                 <h3>@Model.TotalAdmins.ToString("N0")</h3>
-                <p>أدمنية</p>
+                <p>مدير محافظة</p>
                 <small>@Model.TotalSuperAdmins سوبر أدمن</small>
             </div>
         }
@@ -1968,6 +1968,15 @@ body {
                     governoratesData.forEach(gov => { 
                         govMap[gov.name] = gov.individualCount || 0; 
                     });
+
+                    var baghdadAggregate = 0;
+                    ['بغداد', 'بغداد عامة', 'بغداد - الكرخ', 'بغداد - الرصافة'].forEach(function(name) {
+                        baghdadAggregate += govMap[name] || 0;
+                    });
+
+                    if (baghdadAggregate > 0) {
+                        govMap['بغداد'] = baghdadAggregate;
+                    }
                     
                     $('.cnt').each(function() {
                         var cntElement = $(this);

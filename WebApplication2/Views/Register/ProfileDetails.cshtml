@@ -1,7 +1,12 @@
 ﻿@model WebApplication2.Models.Profile.CompleteProfileViewModel
 @{
-
     Layout = "~/Views/Shared/_Layout.cshtml";
+    var isWhatsAppGeneratedEmail = !string.IsNullOrWhiteSpace(Model.Email) &&
+        Model.Email.EndsWith("@whatsapp.local", StringComparison.OrdinalIgnoreCase);
+    var accountDisplayValue = isWhatsAppGeneratedEmail
+        ? (!string.IsNullOrWhiteSpace(Model.WhatsAppNumber) ? Model.WhatsAppNumber : Model.PersonalInfo.PhoneNumber)
+        : Model.Email;
+    var accountDisplayIcon = isWhatsAppGeneratedEmail ? "bi-whatsapp" : "bi-envelope";
 }
 
 <style>
@@ -153,14 +158,128 @@
         border-right: 5px solid #25d366;
         border-radius: 12px;
         box-shadow: 0 5px 18px rgba(0,0,0,0.08);
-        padding: 18px;
-        margin-bottom: 20px;
+        padding: 12px 14px;
+        margin-bottom: 10px;
     }
 
     .whatsapp-link-card .form-control {
         background: white;
     }
-    
+
+    .whatsapp-link-card .status-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+
+    .whatsapp-link-card .status-chip.verified {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .whatsapp-link-card .status-chip.pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .whatsapp-link-card .form-label {
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    .whatsapp-link-card .inline-caption {
+        font-weight: 700;
+        color: #1f2937;
+        white-space: nowrap;
+    }
+
+    .whatsapp-link-card .helper-text {
+        color: #5f6c7b;
+        font-size: 0.88rem;
+        margin-bottom: 0;
+    }
+
+    .whatsapp-link-card .otp-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .whatsapp-link-card .btn-whatsapp {
+        background: #25d366;
+        color: white;
+        border: none;
+    }
+
+    .whatsapp-link-card .btn-whatsapp:hover {
+        background: #1fb65a;
+        color: white;
+    }
+
+    .whatsapp-link-card .verification-note {
+        background: #ffffff;
+        border: 1px dashed #25d366;
+        border-radius: 10px;
+        padding: 8px 12px;
+        font-size: 0.9rem;
+    }
+
+    .whatsapp-link-card .compact-title {
+        font-size: 0.98rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 2px;
+    }
+
+    .whatsapp-link-card .compact-row .form-control {
+        padding-top: 0.55rem;
+        padding-bottom: 0.55rem;
+    }
+
+    .whatsapp-link-card .btn {
+        padding-top: 0.5rem;
+        padding-bottom: 0.5rem;
+    }
+
+    .whatsapp-link-card .compact-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: end;
+    }
+
+    .whatsapp-link-card .otp-box {
+        display: none;
+    }
+
+    .whatsapp-link-card .phone-readonly {
+        background: #f8f9fa;
+    }
+
+    .whatsapp-link-card .single-line-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .whatsapp-link-card .single-line-row .phone-field {
+        flex: 1 1 240px;
+        min-width: 220px;
+    }
+
+    .whatsapp-link-card .single-line-row .phone-field .form-control {
+        margin-bottom: 0;
+    }
+
+    .whatsapp-link-card .single-line-row .btn {
+        white-space: nowrap;
+    }
+     
     .federation-level {
         background: #e8f4f8;
         padding: 5px 10px;
@@ -245,7 +364,7 @@
                 }
 
                 <h2 class="mb-1">@Model.PersonalInfo.FullName @Model.PersonalInfo.LastName</h2>
-                <p class="mb-2"><i class="bi bi-envelope"></i> @Model.Email</p>
+                <p class="mb-2" dir="ltr"><i class="bi @accountDisplayIcon"></i> @accountDisplayValue</p>
 
                 <div class="mt-2">
                     @if (Model.IsPromoted)
@@ -282,6 +401,69 @@
                 </div>
             </div>
         </div>
+
+        @if (!Model.IsWhatsAppVerified)
+        {
+            <div class="info-section">
+                <div class="whatsapp-link-card">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <div class="compact-title mb-0">
+                            <i class="bi bi-whatsapp"></i> تأكيد الواتساب
+                        </div>
+                        <span class="status-chip pending">
+                            <i class="bi bi-hourglass-split"></i> بانتظار التأكيد
+                        </span>
+                    </div>
+
+                    <form id="whatsappVerificationForm">
+                        @Html.AntiForgeryToken()
+                        <div class="single-line-row compact-row">
+                            <span class="inline-caption">رقم الواتساب</span>
+                            <div class="phone-field">
+                                <input
+                                    id="whatsappPhoneNumber"
+                                    name="phoneNumber"
+                                    type="text"
+                                    class="form-control @(!string.IsNullOrWhiteSpace(Model.PersonalInfo.PhoneNumber) || !string.IsNullOrWhiteSpace(Model.WhatsAppNumber) ? "phone-readonly" : string.Empty)"
+                                    dir="ltr"
+                                    value="@(!string.IsNullOrWhiteSpace(Model.WhatsAppNumber) ? Model.WhatsAppNumber : Model.PersonalInfo.PhoneNumber)"
+                                    placeholder="9647XXXXXXXX أو 07XXXXXXXXX"
+                                    readonly="@((!string.IsNullOrWhiteSpace(Model.PersonalInfo.PhoneNumber) || !string.IsNullOrWhiteSpace(Model.WhatsAppNumber)) ? "readonly" : null)" />
+                            </div>
+                            <button type="button" id="useAnotherWhatsAppBtn" class="btn btn-outline-secondary">
+                                <i class="bi bi-pencil-square"></i> إضافة رقم آخر
+                            </button>
+                            <button type="button" id="sendWhatsAppCodeBtn" class="btn btn-whatsapp">
+                                <i class="bi bi-send-fill"></i> تحقق
+                            </button>
+                        </div>
+
+                        <div id="whatsappOtpBox" class="otp-box mt-2">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-lg-4 col-md-6">
+                                    <label for="whatsappOtpCode" class="form-label">كود التحقق</label>
+                                    <input
+                                        id="whatsappOtpCode"
+                                        name="otpCode"
+                                        type="text"
+                                        class="form-control text-center"
+                                        dir="ltr"
+                                        maxlength="6"
+                                        placeholder="ادخل الكود المرسل" />
+                                </div>
+                                <div class="col-lg-3 col-md-6">
+                                    <button type="button" id="confirmWhatsAppCodeBtn" class="btn btn-primary w-100">
+                                        <i class="bi bi-check-circle-fill"></i> تأكيد
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="whatsappVerificationMessage" class="mt-3"></div>
+                    </form>
+                </div>
+            </div>
+        }
 
         @if (!string.IsNullOrEmpty(Model.WorkLocation.Governorate))
         {
@@ -659,6 +841,90 @@
             setTimeout(function () {
                 $('.alert-success.alert-dismissible').alert('close');
             }, 5000);
+
+            const $messageBox = $('#whatsappVerificationMessage');
+            const $phoneInput = $('#whatsappPhoneNumber');
+            const $otpInput = $('#whatsappOtpCode');
+            const $otpBox = $('#whatsappOtpBox');
+            const $useAnotherBtn = $('#useAnotherWhatsAppBtn');
+            const token = $('#whatsappVerificationForm input[name="__RequestVerificationToken"]').val();
+            let sentPhoneNumber = '';
+
+            function showMessage(type, text) {
+                $messageBox.html('<div class="alert alert-' + type + ' mb-0">' + text + '</div>');
+            }
+
+            function setBusy(isBusy) {
+                $('#sendWhatsAppCodeBtn, #confirmWhatsAppCodeBtn, #useAnotherWhatsAppBtn').prop('disabled', isBusy);
+            }
+
+            $useAnotherBtn.on('click', function () {
+                $phoneInput.prop('readonly', false).removeClass('phone-readonly').focus().select();
+            });
+
+            $('#sendWhatsAppCodeBtn').on('click', function () {
+                const phoneNumber = ($phoneInput.val() || '').trim();
+                if (!phoneNumber) {
+                    showMessage('warning', 'يرجى إدخال رقم الواتساب أولاً.');
+                    return;
+                }
+
+                setBusy(true);
+                $.ajax({
+                    url: '@Url.Action("SendProfileWhatsAppVerification", "Register")',
+                    type: 'POST',
+                    data: {
+                        __RequestVerificationToken: token,
+                        phoneNumber: phoneNumber
+                    }
+                }).done(function (response) {
+                    sentPhoneNumber = response.phoneNumber || phoneNumber;
+                    $otpBox.stop(true, true).slideDown(150);
+                    showMessage('success', response.message || 'تم إرسال كود التحقق بنجاح.');
+                }).fail(function (xhr) {
+                    const response = xhr.responseJSON || {};
+                    showMessage('danger', response.message || 'تعذر إرسال كود التحقق حالياً.');
+                }).always(function () {
+                    setBusy(false);
+                });
+            });
+
+            $('#confirmWhatsAppCodeBtn').on('click', function () {
+                const phoneNumber = sentPhoneNumber || ($phoneInput.val() || '').trim();
+                const otpCode = ($otpInput.val() || '').trim();
+
+                if (!phoneNumber) {
+                    showMessage('warning', 'يرجى إدخال رقم الواتساب.');
+                    return;
+                }
+
+                if (!otpCode) {
+                    showMessage('warning', 'يرجى إدخال كود التحقق.');
+                    return;
+                }
+
+                setBusy(true);
+                $.ajax({
+                    url: '@Url.Action("ConfirmProfileWhatsAppVerification", "Register")',
+                    type: 'POST',
+                    data: {
+                        __RequestVerificationToken: token,
+                        phoneNumber: phoneNumber,
+                        otpCode: otpCode
+                    }
+                }).done(function (response) {
+                    $otpInput.val('');
+                    showMessage('success', response.message || 'تم تأكيد رقم الواتساب بنجاح.');
+                    setTimeout(function () {
+                        window.location.reload();
+                    }, 1500);
+                }).fail(function (xhr) {
+                    const response = xhr.responseJSON || {};
+                    showMessage('danger', response.message || 'كود التحقق غير صحيح أو منتهي الصلاحية.');
+                }).always(function () {
+                    setBusy(false);
+                });
+            });
         });
     </script>
 }

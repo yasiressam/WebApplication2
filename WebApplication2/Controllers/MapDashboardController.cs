@@ -291,6 +291,9 @@ namespace WebApplication2.Controllers
             if (IsBaghdadGeneralScope(target))
                 return IsBaghdadGeneralScope(current);
 
+            if (string.Equals(target, "بغداد", StringComparison.OrdinalIgnoreCase))
+                return IsBaghdadGovernorateScope(current);
+
             return string.Equals(current, target, StringComparison.OrdinalIgnoreCase);
         }
 

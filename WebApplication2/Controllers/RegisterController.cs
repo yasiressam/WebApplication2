@@ -74,15 +74,33 @@ namespace WebApplication2.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Index(RegisterViewModel model)
         {
-            ModelState.Remove(nameof(RegisterViewModel.PhoneNumber));
-            if (string.IsNullOrWhiteSpace(model.Email))
-                ModelState.AddModelError(nameof(RegisterViewModel.Email), "البريد الإلكتروني مطلوب");
+            var registrationMethod = string.Equals(model.RegistrationMethod, "whatsapp", StringComparison.OrdinalIgnoreCase)
+                ? "whatsapp"
+                : "email";
+
+            if (registrationMethod == "whatsapp")
+            {
+                ModelState.Remove(nameof(RegisterViewModel.Email));
+                if (string.IsNullOrWhiteSpace(model.PhoneNumber))
+                    ModelState.AddModelError(nameof(RegisterViewModel.PhoneNumber), "رقم الواتساب مطلوب");
+            }
+            else
+            {
+                ModelState.Remove(nameof(RegisterViewModel.PhoneNumber));
+                if (string.IsNullOrWhiteSpace(model.Email))
+                    ModelState.AddModelError(nameof(RegisterViewModel.Email), "البريد الإلكتروني مطلوب");
+            }
 
             if (!ModelState.IsValid)
                 return View(model);
 
             try
             {
+                if (registrationMethod == "whatsapp")
+                {
+                    return await RegisterWithWhatsAppAsync(model);
+                }
+
                 var existingUser = await _userManager.FindByEmailAsync(model.Email);
                 if (existingUser != null)
                 {
@@ -144,6 +162,95 @@ namespace WebApplication2.Controllers
             }
 
             return View(model);
+        }
+
+        private async Task<IActionResult> RegisterWithWhatsAppAsync(RegisterViewModel model)
+        {
+            var normalizedPhone = NormalizeIraqPhoneNumber(model.PhoneNumber);
+            if (string.IsNullOrWhiteSpace(normalizedPhone) || normalizedPhone.Length < 10)
+            {
+                ModelState.AddModelError(nameof(RegisterViewModel.PhoneNumber), "رقم الواتساب غير صحيح");
+                return View("Index", model);
+            }
+
+            var existingPhoneNumbers = await _context.Identifies
+                .Where(i => !string.IsNullOrWhiteSpace(i.WhatsAppNumber) || !string.IsNullOrWhiteSpace(i.PhoneNumber))
+                .Select(i => new { i.WhatsAppNumber, i.PhoneNumber })
+                .ToListAsync();
+
+            var phoneAlreadyExists = existingPhoneNumbers.Any(i =>
+                NormalizeIraqPhoneNumber(i.WhatsAppNumber ?? string.Empty) == normalizedPhone ||
+                NormalizeIraqPhoneNumber(i.PhoneNumber ?? string.Empty) == normalizedPhone);
+
+            if (phoneAlreadyExists || await _userManager.FindByNameAsync(normalizedPhone) != null)
+            {
+                ModelState.AddModelError(nameof(RegisterViewModel.PhoneNumber), "رقم الواتساب مسجل مسبقاً");
+                return View("Index", model);
+            }
+
+            var localPhone = ToLocalIraqPhoneNumber(normalizedPhone);
+            var user = new IdentityUser
+            {
+                UserName = normalizedPhone,
+                Email = $"{normalizedPhone}@whatsapp.local",
+                PhoneNumber = localPhone,
+                EmailConfirmed = false,
+                PhoneNumberConfirmed = false
+            };
+
+            var result = await _userManager.CreateAsync(user, model.Password);
+            if (!result.Succeeded)
+            {
+                foreach (var error in result.Errors)
+                {
+                    ModelState.AddModelError("", error.Description);
+                }
+
+                return View("Index", model);
+            }
+
+            await _userManager.AddToRoleAsync(user, clsRoles.User);
+
+            _context.Identifies.Add(new Identify
+            {
+                UserId = user.Id,
+                CreatedAt = DateTime.UtcNow,
+                BasicInfoRequestedAt = IraqTime.Now(),
+                AccountType = "عادي",
+                IsPromoted = false,
+                FullName = "",
+                MotherName = "",
+                PhoneNumber = localPhone,
+                WhatsAppNumber = normalizedPhone,
+                IsWhatsAppVerified = false,
+                IdentityCardN = "",
+                Date = DateTime.Now,
+                IsBasicInfoApproved = false,
+                Email = ""
+            });
+
+            await _context.SaveChangesAsync();
+
+            try
+            {
+                await _otpService.GenerateAndSendOtp(normalizedPhone);
+                TempData["SuccessMessage"] = "✅ تم إنشاء الحساب عبر الواتساب وإرسال كود التحقق.";
+
+                return RedirectToPage("/Account/ConfirmEmail", new
+                {
+                    area = "Identity",
+                    userId = user.Id,
+                    phoneNumber = normalizedPhone,
+                    mode = "whatsapp"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ تعذر إرسال كود واتساب إلى {PhoneNumber}", normalizedPhone);
+                TempData["ErrorMessage"] = "تم إنشاء الحساب، لكن تعذر إرسال كود التحقق حالياً. حاول إعادة إرسال التأكيد.";
+            }
+
+            return RedirectToPage("/Account/ResendEmailConfirmation", new { area = "Identity" });
         }
 
         #endregion
@@ -1383,6 +1490,133 @@ namespace WebApplication2.Controllers
 
             var viewModel = await MapToCompleteProfileViewModelAsync(profile, user, roles.FirstOrDefault());
             return View(viewModel);
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SendProfileWhatsAppVerification([FromForm] string? phoneNumber)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Unauthorized(new { success = false, message = "يجب تسجيل الدخول أولاً." });
+            }
+
+            var profile = await _context.Identifies.FirstOrDefaultAsync(i => i.UserId == user.Id);
+            if (profile == null)
+            {
+                return NotFound(new { success = false, message = "لم يتم العثور على الملف الشخصي." });
+            }
+
+            var sourcePhone = string.IsNullOrWhiteSpace(phoneNumber)
+                ? (profile.WhatsAppNumber ?? profile.PhoneNumber)
+                : phoneNumber;
+
+            var normalizedPhone = NormalizeIraqPhoneNumber(sourcePhone ?? string.Empty);
+            if (string.IsNullOrWhiteSpace(normalizedPhone) || !normalizedPhone.StartsWith("9647", StringComparison.Ordinal))
+            {
+                return BadRequest(new { success = false, message = "رقم الواتساب غير صحيح." });
+            }
+
+            var localPhone = ToLocalIraqPhoneNumber(normalizedPhone);
+            var otherUsersPhones = await _context.Identifies
+                .AsNoTracking()
+                .Where(i => i.UserId != user.Id)
+                .Select(i => new { i.WhatsAppNumber, i.PhoneNumber })
+                .ToListAsync();
+
+            var phoneUsedByAnotherUser = otherUsersPhones.Any(i =>
+                NormalizeIraqPhoneNumber(i.WhatsAppNumber ?? string.Empty) == normalizedPhone ||
+                NormalizeIraqPhoneNumber(i.PhoneNumber ?? string.Empty) == normalizedPhone);
+
+            if (phoneUsedByAnotherUser)
+            {
+                return BadRequest(new { success = false, message = "رقم الواتساب مستخدم في حساب آخر." });
+            }
+
+            profile.WhatsAppNumber = normalizedPhone;
+            if (string.IsNullOrWhiteSpace(profile.PhoneNumber))
+            {
+                profile.PhoneNumber = localPhone;
+            }
+
+            _context.Identifies.Update(profile);
+            await _context.SaveChangesAsync();
+
+            var otpResult = await _otpService.GenerateAndSendOtp(normalizedPhone);
+            if (!otpResult.Success)
+            {
+                return BadRequest(new { success = false, message = otpResult.Message });
+            }
+
+            return Json(new
+            {
+                success = true,
+                message = "تم إرسال كود التحقق إلى رقم الواتساب.",
+                phoneNumber = normalizedPhone,
+                localPhone
+            });
+        }
+
+        [HttpPost]
+        [Authorize]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ConfirmProfileWhatsAppVerification([FromForm] string? phoneNumber, [FromForm] string? otpCode)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null)
+            {
+                return Unauthorized(new { success = false, message = "يجب تسجيل الدخول أولاً." });
+            }
+
+            var profile = await _context.Identifies.FirstOrDefaultAsync(i => i.UserId == user.Id);
+            if (profile == null)
+            {
+                return NotFound(new { success = false, message = "لم يتم العثور على الملف الشخصي." });
+            }
+
+            var normalizedPhone = NormalizeIraqPhoneNumber(phoneNumber ?? profile.WhatsAppNumber ?? profile.PhoneNumber);
+            if (string.IsNullOrWhiteSpace(normalizedPhone))
+            {
+                return BadRequest(new { success = false, message = "رقم الواتساب غير صالح." });
+            }
+
+            if (string.IsNullOrWhiteSpace(otpCode))
+            {
+                return BadRequest(new { success = false, message = "يرجى إدخال كود التحقق." });
+            }
+
+            var validateResult = await _otpService.ValidateOtpAsync(normalizedPhone, otpCode);
+            if (!validateResult.Success)
+            {
+                return BadRequest(new { success = false, message = validateResult.Message });
+            }
+
+            var localPhone = ToLocalIraqPhoneNumber(normalizedPhone);
+            profile.WhatsAppNumber = normalizedPhone;
+            profile.IsWhatsAppVerified = true;
+            profile.WhatsAppVerifiedAt = DateTime.UtcNow;
+            if (string.IsNullOrWhiteSpace(profile.PhoneNumber) || NormalizeIraqPhoneNumber(profile.PhoneNumber) != normalizedPhone)
+            {
+                profile.PhoneNumber = localPhone;
+            }
+
+            user.PhoneNumber = localPhone;
+            user.PhoneNumberConfirmed = true;
+
+            _context.Identifies.Update(profile);
+            await _userManager.UpdateAsync(user);
+            await _context.SaveChangesAsync();
+
+            return Json(new
+            {
+                success = true,
+                message = "تم تأكيد رقم الواتساب بنجاح. يمكنك الآن تسجيل الدخول بالإيميل أو رقم الواتساب.",
+                phoneNumber = normalizedPhone,
+                localPhone,
+                verifiedAt = profile.WhatsAppVerifiedAt?.ToString("yyyy-MM-dd HH:mm")
+            });
         }
 
         // GET: /Register/PromotionPending

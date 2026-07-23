@@ -32,6 +32,7 @@ namespace WebApplication2.Controllers
         private readonly ApplicationDbContext _context;
         private readonly IConfiguration _configuration;
         private readonly IAuditTrailService _auditTrailService;
+        private readonly OnlineUsersTracker _onlineUsersTracker;
         private static readonly string[] ReportIncludedRoleNames =
         {
             clsRoles.Member,
@@ -48,7 +49,8 @@ namespace WebApplication2.Controllers
             INotificationService notificationService,
             ILogger<SuperAdminController> logger,
             IConfiguration configuration,
-            IAuditTrailService auditTrailService)
+            IAuditTrailService auditTrailService,
+            OnlineUsersTracker onlineUsersTracker)
         {
             _userManager = userManager;
             _context = context;
@@ -56,6 +58,7 @@ namespace WebApplication2.Controllers
             _logger = logger;
             _configuration = configuration;
             _auditTrailService = auditTrailService;
+            _onlineUsersTracker = onlineUsersTracker;
         }
 
         private bool IsCurrentUserSystemManager()
@@ -314,6 +317,39 @@ namespace WebApplication2.Controllers
                     role => role.Id,
                     (userRole, role) => new { role.Name })
                 .CountAsync(x => x.Name == clsRoles.SuperAdmin);
+            ViewBag.OnlineUsersCount = 0;
+            ViewBag.OnlineUsers = new List<OnlineUserViewModel>();
+
+            if (IsCurrentUserSystemManager())
+            {
+                var onlineUserIds = _onlineUsersTracker.GetOnlineUserIds();
+                ViewBag.OnlineUsersCount = _onlineUsersTracker.OnlineUsersCount;
+
+                if (onlineUserIds.Count > 0)
+                {
+                    ViewBag.OnlineUsers = await _userManager.Users
+                        .AsNoTracking()
+                        .Where(u => onlineUserIds.Contains(u.Id))
+                        .GroupJoin(
+                            _context.Identifies.AsNoTracking(),
+                            user => user.Id,
+                            identify => identify.UserId,
+                            (user, identifies) => new { user, identify = identifies.FirstOrDefault() })
+                        .Select(x => new OnlineUserViewModel
+                        {
+                            UserId = x.user.Id,
+                            DisplayName = x.identify != null && !string.IsNullOrWhiteSpace(x.identify.FullName)
+                                ? x.identify.FullName
+                                : (!string.IsNullOrWhiteSpace(x.user.UserName) ? x.user.UserName : (x.user.Email ?? "مستخدم")),
+                            Email = x.user.Email ?? string.Empty,
+                            AccountType = x.identify != null && !string.IsNullOrWhiteSpace(x.identify.AccountType)
+                                ? x.identify.AccountType
+                                : "غير محدد"
+                        })
+                        .OrderBy(x => x.DisplayName)
+                        .ToListAsync();
+                }
+            }
 
             return View();
         }
@@ -870,6 +906,41 @@ ORDER BY file_id;";
 
         }
 
+        public async Task<IActionResult> OnlineUsers(
+            int page = 1,
+            string? search = null,
+            string? role = null,
+            string? residenceGovernorate = null,
+            string? workGovernorate = null,
+            string? gender = null,
+            string? status = null,
+            string? managerLevel = null,
+            string? education = null,
+            string? profileStage = null,
+            int pageSize = 10)
+        {
+            pageSize = NormalizeUserManagementPageSize(pageSize);
+            page = Math.Max(1, page);
+
+            return await UsersPagedFromDatabaseAsync(
+                administrativeOnly: false,
+                viewName: "Users",
+                page: page,
+                search: search,
+                role: role,
+                residenceGovernorate: residenceGovernorate,
+                workGovernorate: workGovernorate,
+                gender: gender,
+                status: status,
+                managerLevel: managerLevel,
+                education: education,
+                profileStage: profileStage,
+                pageSize: pageSize,
+                onlineOnly: true,
+                pageTitleOverride: "المستخدمون المتصلون",
+                listActionOverride: "OnlineUsers");
+        }
+
         private async Task<IActionResult> UsersPagedFromDatabaseAsync(
             bool administrativeOnly,
             string viewName,
@@ -883,7 +954,10 @@ ORDER BY file_id;";
             string? managerLevel,
             string? education,
             string? profileStage,
-            int pageSize)
+            int pageSize,
+            bool onlineOnly = false,
+            string? pageTitleOverride = null,
+            string? listActionOverride = null)
         {
             var canManageSystemManager = CanCurrentUserManageSystemManager();
             var roleMembershipQuery = _context.UserRoles
@@ -955,6 +1029,14 @@ ORDER BY file_id;";
 
             var query = _context.Users.AsNoTracking().AsQueryable();
 
+            if (onlineOnly)
+            {
+                var onlineUserIds = _onlineUsersTracker.GetOnlineUserIds();
+                query = onlineUserIds.Count == 0
+                    ? query.Where(_ => false)
+                    : query.Where(u => onlineUserIds.Contains(u.Id));
+            }
+
             if (!canManageSystemManager)
             {
                 query = query.Where(u => !systemManagerUserIdsQuery.Contains(u.Id));
@@ -972,85 +1054,101 @@ ORDER BY file_id;";
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var term = search.Trim();
-                var affiliationEntityMatchUserIdsQuery = _context.AffiliationInfos
-                    .AsNoTracking()
-                    .Join(_context.AffiliationEntities.AsNoTracking().Where(e => e.Name.Contains(term)),
-                        a => a.AffiliationEntityId,
-                        e => e.Id,
-                        (a, _) => a.UserId);
-                var divisionMatchUserIdsQuery = _context.AffiliationInfos
-                    .AsNoTracking()
-                    .Join(_context.Divisions.AsNoTracking().Where(d => d.Name.Contains(term)),
-                        a => a.DivisionId,
-                        d => d.Id,
-                        (a, _) => a.UserId);
-                var sectionMatchUserIdsQuery = _context.AffiliationInfos
-                    .AsNoTracking()
-                    .Join(_context.Sections.AsNoTracking().Where(s => s.Name.Contains(term)),
-                        a => a.SectionId,
-                        s => s.Id,
-                        (a, _) => a.UserId);
-                var groupMatchUserIdsQuery = _context.AffiliationInfos
-                    .AsNoTracking()
-                    .Join(_context.Groups.AsNoTracking().Where(g => g.Name.Contains(term)),
-                        a => a.GroupId,
-                        g => g.Id,
-                        (a, _) => a.UserId);
-                var affiliationMatchUserIdsQuery = _context.AffiliationInfos
-                    .AsNoTracking()
-                    .Where(a => a.BadgeNumber != null && a.BadgeNumber.Contains(term))
-                    .Select(a => a.UserId)
-                    .Union(affiliationEntityMatchUserIdsQuery)
-                    .Union(divisionMatchUserIdsQuery)
-                    .Union(sectionMatchUserIdsQuery)
-                    .Union(groupMatchUserIdsQuery)
-                    .Distinct();
-
-                var managementEntityMatchUserIdsQuery = _context.ManagementAssignments
-                    .AsNoTracking()
-                    .Join(_context.AffiliationEntities.AsNoTracking().Where(e => e.Name.Contains(term)),
-                        a => a.AffiliationEntityId,
-                        e => e.Id,
-                        (a, _) => a.UserId);
-                var managementDivisionMatchUserIdsQuery = _context.ManagementAssignments
-                    .AsNoTracking()
-                    .Join(_context.Divisions.AsNoTracking().Where(d => d.Name.Contains(term)),
-                        a => a.DivisionId,
-                        d => d.Id,
-                        (a, _) => a.UserId);
-                var managementSectionMatchUserIdsQuery = _context.ManagementAssignments
-                    .AsNoTracking()
-                    .Join(_context.Sections.AsNoTracking().Where(s => s.Name.Contains(term)),
-                        a => a.SectionId,
-                        s => s.Id,
-                        (a, _) => a.UserId);
-                var managementGroupMatchUserIdsQuery = _context.ManagementAssignments
-                    .AsNoTracking()
-                    .Join(_context.Groups.AsNoTracking().Where(g => g.Name.Contains(term)),
-                        a => a.GroupId,
-                        g => g.Id,
-                        (a, _) => a.UserId);
-                var managementMatchUserIdsQuery = managementEntityMatchUserIdsQuery
-                    .Union(managementDivisionMatchUserIdsQuery)
-                    .Union(managementSectionMatchUserIdsQuery)
-                    .Union(managementGroupMatchUserIdsQuery)
-                    .Distinct();
+                var digitsOnlyTerm = new string(term.Where(char.IsDigit).ToArray());
+                var isNumericSearch = !string.IsNullOrWhiteSpace(digitsOnlyTerm) && digitsOnlyTerm.Length >= Math.Max(3, term.Length - 1);
+                var includeExpandedRelationshipSearch = !isNumericSearch && term.Length >= 3;
 
                 var identifyMatchUserIdsQuery = _context.Identifies
                     .AsNoTracking()
                     .Where(i =>
                         (i.FullName != null && i.FullName.Contains(term)) ||
                         (i.PhoneNumber != null && i.PhoneNumber.Contains(term)) ||
-                        (i.WhatsAppNumber != null && i.WhatsAppNumber.Contains(term)))
+                        (i.WhatsAppNumber != null && i.WhatsAppNumber.Contains(term)) ||
+                        (i.IdentityCardN != null && i.IdentityCardN.Contains(term)) ||
+                        (i.Email != null && i.Email.Contains(term)))
                     .Select(i => i.UserId)
                     .Distinct();
 
-                query = query.Where(u =>
-                    (u.Email != null && u.Email.Contains(term)) ||
-                    (u.PhoneNumber != null && u.PhoneNumber.Contains(term)) ||
-                    identifyMatchUserIdsQuery.Contains(u.Id) ||
-                    affiliationMatchUserIdsQuery.Contains(u.Id) ||
-                    managementMatchUserIdsQuery.Contains(u.Id));
+                if (includeExpandedRelationshipSearch)
+                {
+                    var affiliationEntityMatchUserIdsQuery = _context.AffiliationInfos
+                        .AsNoTracking()
+                        .Join(_context.AffiliationEntities.AsNoTracking().Where(e => e.Name.Contains(term)),
+                            a => a.AffiliationEntityId,
+                            e => e.Id,
+                            (a, _) => a.UserId);
+                    var divisionMatchUserIdsQuery = _context.AffiliationInfos
+                        .AsNoTracking()
+                        .Join(_context.Divisions.AsNoTracking().Where(d => d.Name.Contains(term)),
+                            a => a.DivisionId,
+                            d => d.Id,
+                            (a, _) => a.UserId);
+                    var sectionMatchUserIdsQuery = _context.AffiliationInfos
+                        .AsNoTracking()
+                        .Join(_context.Sections.AsNoTracking().Where(s => s.Name.Contains(term)),
+                            a => a.SectionId,
+                            s => s.Id,
+                            (a, _) => a.UserId);
+                    var groupMatchUserIdsQuery = _context.AffiliationInfos
+                        .AsNoTracking()
+                        .Join(_context.Groups.AsNoTracking().Where(g => g.Name.Contains(term)),
+                            a => a.GroupId,
+                            g => g.Id,
+                            (a, _) => a.UserId);
+                    var affiliationMatchUserIdsQuery = _context.AffiliationInfos
+                        .AsNoTracking()
+                        .Where(a => a.BadgeNumber != null && a.BadgeNumber.Contains(term))
+                        .Select(a => a.UserId)
+                        .Union(affiliationEntityMatchUserIdsQuery)
+                        .Union(divisionMatchUserIdsQuery)
+                        .Union(sectionMatchUserIdsQuery)
+                        .Union(groupMatchUserIdsQuery)
+                        .Distinct();
+
+                    var managementEntityMatchUserIdsQuery = _context.ManagementAssignments
+                        .AsNoTracking()
+                        .Join(_context.AffiliationEntities.AsNoTracking().Where(e => e.Name.Contains(term)),
+                            a => a.AffiliationEntityId,
+                            e => e.Id,
+                            (a, _) => a.UserId);
+                    var managementDivisionMatchUserIdsQuery = _context.ManagementAssignments
+                        .AsNoTracking()
+                        .Join(_context.Divisions.AsNoTracking().Where(d => d.Name.Contains(term)),
+                            a => a.DivisionId,
+                            d => d.Id,
+                            (a, _) => a.UserId);
+                    var managementSectionMatchUserIdsQuery = _context.ManagementAssignments
+                        .AsNoTracking()
+                        .Join(_context.Sections.AsNoTracking().Where(s => s.Name.Contains(term)),
+                            a => a.SectionId,
+                            s => s.Id,
+                            (a, _) => a.UserId);
+                    var managementGroupMatchUserIdsQuery = _context.ManagementAssignments
+                        .AsNoTracking()
+                        .Join(_context.Groups.AsNoTracking().Where(g => g.Name.Contains(term)),
+                            a => a.GroupId,
+                            g => g.Id,
+                            (a, _) => a.UserId);
+                    var managementMatchUserIdsQuery = managementEntityMatchUserIdsQuery
+                        .Union(managementDivisionMatchUserIdsQuery)
+                        .Union(managementSectionMatchUserIdsQuery)
+                        .Union(managementGroupMatchUserIdsQuery)
+                        .Distinct();
+
+                    query = query.Where(u =>
+                        (u.Email != null && u.Email.Contains(term)) ||
+                        (u.PhoneNumber != null && u.PhoneNumber.Contains(term)) ||
+                        identifyMatchUserIdsQuery.Contains(u.Id) ||
+                        affiliationMatchUserIdsQuery.Contains(u.Id) ||
+                        managementMatchUserIdsQuery.Contains(u.Id));
+                }
+                else
+                {
+                    query = query.Where(u =>
+                        (u.Email != null && u.Email.Contains(term)) ||
+                        (u.PhoneNumber != null && u.PhoneNumber.Contains(term)) ||
+                        identifyMatchUserIdsQuery.Contains(u.Id));
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(role))
@@ -1126,6 +1224,7 @@ ORDER BY file_id;";
                         i.IsBasicInfoApproved &&
                         !i.RequestedPromotion &&
                         !i.IsPromoted &&
+                        string.IsNullOrEmpty(i.RejectionReason) &&
                         i.AccountType != "فرد") &&
                         !memberRoleUserIdsQuery.Contains(u.Id)),
                     "promotion-pending" => query.Where(u => _context.Identifies.Any(i =>
@@ -1142,17 +1241,83 @@ ORDER BY file_id;";
             }
 
             var totalUsersCount = await query.CountAsync();
-            var totalPages = Math.Max(1, (int)Math.Ceiling(totalUsersCount / (double)pageSize));
+            var totalPages = Math.Max(
+                1,
+                (int)Math.Ceiling(totalUsersCount / (double)pageSize));
+
             page = Math.Min(page, totalPages);
 
+            // جلب المسؤولين مرة واحدة بدل تنفيذ Join متكرر داخل ORDER BY
+            var priorityRoleNames = new[]
+            {
+                clsRoles.SystemManager,
+                clsRoles.SuperAdmin,
+                clsRoles.Admin,
+                clsRoles.DistrictAdmin,
+                clsRoles.Manager,
+                clsRoles.AssistantManager
+            };
+
+            var priorityRoleMemberships = await roleMembershipQuery
+                .Where(x => priorityRoleNames.Contains(x.RoleName))
+                .Select(x => new
+                {
+                    x.UserId,
+                    x.RoleName
+                })
+                .ToListAsync();
+
+            var systemManagerUserIds = priorityRoleMemberships
+                .Where(x => x.RoleName == clsRoles.SystemManager)
+                .Select(x => x.UserId)
+                .Distinct()
+                .ToList();
+
+            var superAdminUserIds = priorityRoleMemberships
+                .Where(x => x.RoleName == clsRoles.SuperAdmin)
+                .Select(x => x.UserId)
+                .Distinct()
+                .ToList();
+
+            var adminUserIds = priorityRoleMemberships
+                .Where(x => x.RoleName == clsRoles.Admin)
+                .Select(x => x.UserId)
+                .Distinct()
+                .ToList();
+
+            var districtAdminUserIds = priorityRoleMemberships
+                .Where(x => x.RoleName == clsRoles.DistrictAdmin)
+                .Select(x => x.UserId)
+                .Distinct()
+                .ToList();
+
+            var managerRoleUserIds = priorityRoleMemberships
+                .Where(x =>
+                    x.RoleName == clsRoles.Manager ||
+                    x.RoleName == clsRoles.AssistantManager)
+                .Select(x => x.UserId)
+                .Distinct()
+                .ToList();
+
+            var assignedManagerUserIds = await _context.ManagementAssignments
+                .AsNoTracking()
+                .Select(x => x.UserId)
+                .Distinct()
+                .ToListAsync();
+
             var users = await query
-                .OrderByDescending(u => canManageSystemManager && systemManagerUserIdsQuery.Contains(u.Id))
-                .ThenByDescending(u => superAdminUserIdsQuery.Contains(u.Id))
-                .ThenByDescending(u => adminUserIdsQuery.Contains(u.Id))
-                .ThenByDescending(u => districtAdminUserIdsQuery.Contains(u.Id))
+                .OrderByDescending(u =>
+                    canManageSystemManager &&
+                    systemManagerUserIds.Contains(u.Id))
                 .ThenByDescending(u =>
-                    assignedManagerUserIdsQuery.Contains(u.Id) ||
-                    managerRoleUserIdsQuery.Contains(u.Id))
+                    superAdminUserIds.Contains(u.Id))
+                .ThenByDescending(u =>
+                    adminUserIds.Contains(u.Id))
+                .ThenByDescending(u =>
+                    districtAdminUserIds.Contains(u.Id))
+                .ThenByDescending(u =>
+                    assignedManagerUserIds.Contains(u.Id) ||
+                    managerRoleUserIds.Contains(u.Id))
                 .ThenBy(u => u.Email)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
@@ -1280,6 +1445,7 @@ ORDER BY file_id;";
                     FullName = userProfile?.FullName ?? "غير مكتمل",
                     CoverImage = userProfile?.CoverImage,
                     PromotionStatus = userProfile?.RequestedPromotion == true ? "⏳ قيد المراجعة" : userProfile?.RejectionReason != null ? "❌ مرفوض" : "",
+                    IsBasicInfoApproved = userProfile?.IsBasicInfoApproved ?? false,
                     RequestedPromotion = userProfile?.RequestedPromotion ?? false,
                     RejectionReason = userProfile?.RejectionReason,
                     HasCompleteProfile = IsProfileComplete(userProfile, userAddress, null, null),
@@ -1324,6 +1490,9 @@ ORDER BY file_id;";
             ViewBag.AdministrativeAssistants = await _context.ManagementAssignments.AsNoTracking().CountAsync(x => x.AssignmentRole == "Assistant");
             ViewBag.TotalIndividuals = await _context.Identifies.AsNoTracking().CountAsync(i => i.Education != null && i.Education != "" && (i.AccountType == "فرد" || i.IsPromoted));
             ViewBag.CanResetUserPasswords = await IsCurrentUserPasswordResetAllowedAsync();
+            ViewBag.PageTitle = pageTitleOverride;
+            ViewBag.ListAction = listActionOverride;
+            ViewBag.IsOnlineUsersPage = onlineOnly;
 
             viewName = viewName == "AdministrativeManagers" ? viewName : "Users";
             return View(viewName, list);
@@ -1373,6 +1542,8 @@ ORDER BY file_id;";
                             i.AccountType == "مكتمل" &&
                             string.IsNullOrEmpty(i.RejectionReason));
 
+            var governorateOptions = await GetAllWorkGovernorateFilterValuesAsync();
+
             var totalRequests = await requestsQuery.CountAsync();
             var totalPages = Math.Max(1, (int)Math.Ceiling(totalRequests / (double)pageSize));
             page = Math.Max(1, Math.Min(page, totalPages));
@@ -1417,6 +1588,7 @@ ORDER BY file_id;";
             ViewBag.TotalRequests = totalRequests;
             ViewBag.CurrentPage = page;
             ViewBag.TotalPages = totalPages;
+            ViewBag.GovernorateOptions = governorateOptions;
 
             return View(viewModel);
         }
@@ -1432,6 +1604,8 @@ ORDER BY file_id;";
                             string.IsNullOrEmpty(i.BasicInfoRejectionReason) &&
                             !string.IsNullOrEmpty(i.FullName) &&
                             !string.IsNullOrEmpty(i.IdentityCardN) && i.IdentityCardN.Length >= 12);
+
+            var governorateOptions = await GetAllWorkGovernorateFilterValuesAsync();
 
             var totalRequests = await requestsQuery.CountAsync();
             var totalPages = Math.Max(1, (int)Math.Ceiling(totalRequests / (double)pageSize));
@@ -1471,6 +1645,7 @@ ORDER BY file_id;";
             ViewBag.TotalRequests = totalRequests;
             ViewBag.CurrentPage = page;
             ViewBag.TotalPages = totalPages;
+            ViewBag.GovernorateOptions = governorateOptions;
 
             return View(viewModel);
         }
@@ -1602,6 +1777,32 @@ ORDER BY file_id;";
                 .ToList();
         }
 
+        private async Task<List<string>> GetAllWorkGovernorateFilterValuesAsync()
+        {
+            var profiles = await _context.Identifies
+                .AsNoTracking()
+                .Select(i => new { i.Id, i.WorkGovernorate })
+                .ToListAsync();
+
+            var profileIds = profiles.Select(i => i.Id).ToList();
+
+            var workLocations = await _context.WorkLocations
+                .AsNoTracking()
+                .Where(w => profileIds.Contains(w.IdentifyId) && !string.IsNullOrEmpty(w.Governorate))
+                .Select(w => new { w.IdentifyId, w.Governorate })
+                .ToListAsync();
+
+            return profiles
+                .Select(profile =>
+                    workLocations.FirstOrDefault(w => w.IdentifyId == profile.Id)?.Governorate
+                    ?? profile.WorkGovernorate)
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Select(value => value!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(value => value)
+                .ToList();
+        }
+
         private static int NormalizeRequestHistoryPageSize(int pageSize)
         {
             int[] allowedPageSizes = [10, 25, 50, 100];
@@ -1624,8 +1825,8 @@ ORDER BY file_id;";
             {
                 var governorate = searchGovernorate.Trim();
                 query = query.Where(i =>
-                    (i.WorkGovernorate != null && i.WorkGovernorate.Contains(governorate)) ||
-                    _context.WorkLocations.Any(w => w.IdentifyId == i.Id && w.Governorate != null && w.Governorate.Contains(governorate)));
+                    i.WorkGovernorate == governorate ||
+                    _context.WorkLocations.Any(w => w.IdentifyId == i.Id && w.Governorate == governorate));
             }
 
             if (!string.IsNullOrWhiteSpace(searchPhone))

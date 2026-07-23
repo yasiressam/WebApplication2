@@ -2,7 +2,7 @@
 @{
     Layout = "_Layout";
     var administrativeOnly = ViewBag.AdministrativeOnly is bool value && value;
-    var pageTitle = administrativeOnly ? "المسؤولين والمعاونين" : "إدارة المستخدمين";
+    var pageTitle = ViewBag.PageTitle as string ?? (administrativeOnly ? "المسؤولين والمعاونين" : "إدارة المستخدمين");
 
     // جلب الإحصائيات
     var totalUsers = ViewBag.TotalUsers is int totalUsersValue ? totalUsersValue : Model.Count();
@@ -23,7 +23,7 @@
     var currentEducationFilter = ViewBag.EducationFilter as string ?? "";
     var currentProfileStageFilter = ViewBag.ProfileStageFilter as string ?? "";
     var canResetUserPasswords = ViewBag.CanResetUserPasswords is bool canResetPasswordsValue && canResetPasswordsValue;
-    var listAction = administrativeOnly ? "AdministrativeManagers" : "Users";
+    var listAction = ViewBag.ListAction as string ?? (administrativeOnly ? "AdministrativeManagers" : "Users");
     
     // حساب الأدمن (الذين لديهم دور Admin وليس SuperAdmin)
     var admins = ViewBag.Admins is int adminsValue ? adminsValue : Model.Count(u => u.Roles != null &&
@@ -736,10 +736,10 @@
                     <label class="form-label fw-bold">🧭 مرحلة الاستمارة:</label>
                     <select class="form-select" id="profileStageFilter">
                         <option value="">كل المراحل</option>
-                        <option value="incomplete">غير مكتمل</option>
-                        <option value="basic-pending">انتظار موافقة الأساسية</option>
-                        <option value="needs-additional">بانتظار إكمال الاستمارة الثانية</option>
-                        <option value="promotion-pending">انتظار الترقية</option>
+                        <option value="incomplete">⚪ غير مكتمل</option>
+                        <option value="basic-pending">🔵 انتظار موافقة الأساسية</option>
+                        <option value="needs-additional">🟡 بانتظار إكمال الاستمارة الثانية</option>
+                        <option value="promotion-pending">🟠 انتظار الترقية</option>
                     </select>
                 </div>
                 <div class="col-md-1 mb-3 d-flex align-items-end">
@@ -1095,12 +1095,12 @@
                         <nav aria-label="Page navigation">
                             <ul class="pagination pagination-sm mb-0" id="serverPagination">
                                 <li class="page-item @(currentPage == 1 ? "disabled" : "")">
-<a class="page-link" asp-action="@listAction" asp-route-page="@(currentPage - 1)" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">السابق</a>
+<a class="page-link" asp-action="@listAction" asp-route-page="@(currentPage - 1)" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter" asp-route-profileStage="@currentProfileStageFilter">السابق</a>
                                 </li>
                                 @if (firstPage > 1)
                                 {
                                     <li class="page-item">
-<a class="page-link" asp-action="@listAction" asp-route-page="1" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">1</a>
+<a class="page-link" asp-action="@listAction" asp-route-page="1" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter" asp-route-profileStage="@currentProfileStageFilter">1</a>
                                     </li>
                                     @if (firstPage > 2)
                                     {
@@ -1112,7 +1112,7 @@
                                 @for (var p = firstPage; p <= lastPage; p++)
                                 {
                                     <li class="page-item @(p == currentPage ? "active" : "")">
-<a class="page-link" asp-action="@listAction" asp-route-page="@p" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">@p</a>
+<a class="page-link" asp-action="@listAction" asp-route-page="@p" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter" asp-route-profileStage="@currentProfileStageFilter">@p</a>
                                     </li>
                                 }
                                 @if (lastPage < totalPages)
@@ -1124,11 +1124,11 @@
                                         </li>
                                     }
                                     <li class="page-item">
-<a class="page-link" asp-action="@listAction" asp-route-page="@totalPages" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">@totalPages</a>
+<a class="page-link" asp-action="@listAction" asp-route-page="@totalPages" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter" asp-route-profileStage="@currentProfileStageFilter">@totalPages</a>
                                     </li>
                                 }
                                 <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
-<a class="page-link" asp-action="@listAction" asp-route-page="@(currentPage + 1)" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter">التالي</a>
+<a class="page-link" asp-action="@listAction" asp-route-page="@(currentPage + 1)" asp-route-pageSize="@pageSize" asp-route-search="@currentSearch" asp-route-role="@currentRoleFilter" asp-route-residenceGovernorate="@currentResidenceGovernorateFilter" asp-route-workGovernorate="@currentWorkGovernorateFilter" asp-route-gender="@currentGenderFilter" asp-route-status="@currentStatusFilter" asp-route-managerLevel="@currentManagerLevelFilter" asp-route-education="@currentEducationFilter" asp-route-profileStage="@currentProfileStageFilter">التالي</a>
                                 </li>
                             </ul>
                         </nav>

@@ -10,6 +10,7 @@
     var currentPage = ViewBag.CurrentPage is int cp ? cp : 1;
     var totalPages = ViewBag.TotalPages is int tp ? tp : 1;
     var totalRequestsCount = ViewBag.TotalRequests is int tr ? tr : Model.Count();
+    var governorateOptions = ViewBag.GovernorateOptions as IEnumerable<string> ?? Enumerable.Empty<string>();
 }
 
 <style>
@@ -314,24 +315,10 @@
                 </label>
             <select class="form-select" id="governorateFilter">
                 <option value="">جميع المحافظات</option>
-                <option value="بغداد">بغداد</option>
-                <option value="البصرة">البصرة</option>
-                <option value="نينوى">نينوى</option>
-                <option value="أربيل">أربيل</option>
-                <option value="السليمانية">السليمانية</option>
-                <option value="دهوك">دهوك</option>
-                <option value="كركوك">كركوك</option>
-                <option value="الأنبار">الأنبار</option>
-                <option value="بابل">بابل</option>
-                <option value="ديالى">ديالى</option>
-                <option value="ذي قار">ذي قار</option>
-                <option value="القادسية">القادسية</option>
-                <option value="صلاح الدين">صلاح الدين</option>
-                <option value="النجف">النجف</option>
-                <option value="كربلاء">كربلاء</option>
-                <option value="واسط">واسط</option>
-                <option value="ميسان">ميسان</option>
-                <option value="المثنى">المثنى</option>
+                @foreach (var governorate in governorateOptions)
+                {
+                    <option value="@governorate">@governorate</option>
+                }
                 
             </select>
             </div>
@@ -442,17 +429,47 @@
 
     @if (totalPages > 1)
     {
+        var firstPage = Math.Max(1, currentPage - 2);
+        var lastPage = Math.Min(totalPages, currentPage + 2);
         <nav class="mt-4" aria-label="Pagination">
             <ul class="pagination justify-content-center">
                 <li class="page-item @(currentPage == 1 ? "disabled" : "")">
                     <a class="page-link" href="@Url.Action("PromotionRequests", new { page = currentPage - 1 })">السابق</a>
                 </li>
-                @for (int i = 1; i <= totalPages; i++)
+
+                @if (firstPage > 1)
+                {
+                    <li class="page-item @(currentPage == 1 ? "active" : "")">
+                        <a class="page-link" href="@Url.Action("PromotionRequests", new { page = 1 })">1</a>
+                    </li>
+                    @if (firstPage > 2)
+                    {
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    }
+                }
+
+                @for (int i = firstPage; i <= lastPage; i++)
                 {
                     <li class="page-item @(i == currentPage ? "active" : "")">
                         <a class="page-link" href="@Url.Action("PromotionRequests", new { page = i })">@i</a>
                     </li>
                 }
+
+                @if (lastPage < totalPages)
+                {
+                    @if (lastPage < totalPages - 1)
+                    {
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                    }
+                    <li class="page-item">
+                        <a class="page-link" href="@Url.Action("PromotionRequests", new { page = totalPages })">@totalPages</a>
+                    </li>
+                }
+
                 <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
                     <a class="page-link" href="@Url.Action("PromotionRequests", new { page = currentPage + 1 })">التالي</a>
                 </li>

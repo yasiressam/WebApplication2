@@ -4,6 +4,9 @@ namespace WebApplication2.Models
 {
     public class RegisterViewModel
     {
+        [Display(Name = "طريقة التسجيل")]
+        public string RegistrationMethod { get; set; } = "whatsapp";
+
         [EmailAddress]
         [Display(Name = "البريد الإلكتروني")]
         public string Email { get; set; } = string.Empty;
